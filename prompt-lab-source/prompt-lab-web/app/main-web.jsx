@@ -4,7 +4,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { HashRouter } from 'react-router-dom';
 import { ClerkProvider, SignedIn, SignedOut, SignIn, UserButton, useUser, useAuth, useClerk } from '@clerk/clerk-react';
-import App from '../../prompt-lab-extension/src/App';
+import { hasClerkSessionHint } from '../../prompt-lab-extension/src/lib/clerkSessionHint.js';
 import ErrorBoundary from '../../prompt-lab-extension/src/ErrorBoundary';
 import ReportProblemHost from '../../prompt-lab-extension/src/ReportProblemHost.jsx';
 import {
@@ -18,6 +18,32 @@ import '../../prompt-lab-extension/src/index.css';
 
 // /app/compare and friends -> /app/#/compare before the hash router mounts.
 redirectAppPathToHash();
+
+// AUD-007: the workbench is only needed once someone is signed in, so it is
+// its own chunk. Signed-out phones get the sign-in screen without downloading
+// and parsing it. When Clerk's session cookie says someone is probably signed
+// in, start fetching it now so it loads alongside Clerk instead of after.
+const loadApp = () => import('../../prompt-lab-extension/src/App');
+const App = React.lazy(loadApp);
+const likelySignedIn = typeof document !== 'undefined' && hasClerkSessionHint(document.cookie);
+if (likelySignedIn) loadApp().catch(() => {});
+
+function LoadingScreen() {
+  return (
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: '#0f172a',
+      color: '#94a3b8',
+      fontFamily: 'system-ui, sans-serif',
+      fontSize: '15px',
+    }}>
+      Loading...
+    </div>
+  );
+}
 
 const CLERK_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 const reportRoot = document.createElement('div');
@@ -68,6 +94,84 @@ const landingProps = {
   onLandingAttributionConsumed: consumeLandingAttribution,
 };
 
+function SignInShell({ pending = false }) {
+  return (
+    <main style={{
+      minHeight: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '20px',
+      padding: '24px 16px',
+      boxSizing: 'border-box',
+      background: '#0f172a',
+      fontFamily: 'system-ui, -apple-system, Segoe UI, sans-serif',
+    }}>
+      <section
+        data-testid="signin-context"
+        data-upgrade={signInContext.upgrade ? 'true' : 'false'}
+        aria-labelledby="signin-context-heading"
+        style={{ maxWidth: '400px', width: '100%', color: '#f0ede6', textAlign: 'center' }}
+      >
+        <a href="/" style={{ color: '#fdba74', fontSize: '13px', textDecoration: 'underline' }}>
+          &larr; Back to promptlab.tools
+        </a>
+        <h1 id="signin-context-heading" style={{ margin: '14px 0 8px', fontSize: '22px', lineHeight: 1.25 }}>
+          {signInContext.heading}
+        </h1>
+        <p style={{ margin: 0, fontSize: '14px', lineHeight: 1.5, color: '#cbd5e1' }}>
+          {signInContext.body}
+        </p>
+      </section>
+      {pending ? (
+        <div
+          data-testid="signin-pending"
+          role="status"
+          aria-live="polite"
+          style={{
+            width: '100%', maxWidth: '400px', minHeight: '380px', boxSizing: 'border-box',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            border: '1px solid #27272a', borderRadius: '0.75rem', background: '#06060a',
+            color: '#94a3b8', fontSize: '14px',
+          }}
+        >
+          Loading sign-in…
+        </div>
+      ) : <SignIn
+        forceRedirectUrl={authRedirectUrls.forceRedirectUrl}
+        fallbackRedirectUrl={authRedirectUrls.fallbackRedirectUrl}
+        signUpForceRedirectUrl={authRedirectUrls.signUpForceRedirectUrl}
+        signUpFallbackRedirectUrl={authRedirectUrls.signUpFallbackRedirectUrl}
+        appearance={{
+          layout: { socialButtonsVariant: 'blockButton' },
+          variables: {
+            colorPrimary: '#c2410c',
+            colorBackground: '#06060a',
+            colorText: '#f0ede6',
+            colorNeutral: '#f0ede6',
+            colorInputBackground: '#18181b',
+            colorInputText: '#f0ede6',
+            borderRadius: '0.75rem',
+          },
+          elements: {
+            // Provider artwork includes dark pixels; give it a light surface
+            // instead of relying on the card's general text color.
+            socialButtonsBlockButton: {
+              backgroundColor: '#f0ede6',
+              color: '#18181b',
+              border: '1px solid #f0ede6',
+              '&:hover': { backgroundColor: '#ffffff' },
+              '&:focus-visible': { outline: '2px solid #fb923c', outlineOffset: '3px' },
+            },
+            socialButtonsBlockButtonText: { color: '#18181b' },
+          },
+        }}
+      />}
+    </main>
+  );
+}
+
 function AuthGate() {
   const { user, isLoaded } = useUser();
   const { getToken } = useAuth();
@@ -80,86 +184,19 @@ function AuthGate() {
   }), [clerk]);
 
   if (!isLoaded) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: '#0f172a',
-        color: '#94a3b8',
-        fontFamily: 'system-ui, sans-serif',
-        fontSize: '15px',
-      }}>
-        Loading...
-      </div>
-    );
+    // Signed-out visitors see the sign-in heading straight away; the Clerk
+    // form fills in when Clerk has loaded. Probable sessions keep the neutral
+    // loading screen so a signed-in user never sees a sign-in flash.
+    return likelySignedIn ? <LoadingScreen /> : <SignInShell pending />;
   }
 
   return (
     <>
       <SignedOut>
-        <main style={{
-          minHeight: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '20px',
-          padding: '24px 16px',
-          boxSizing: 'border-box',
-          background: '#0f172a',
-          fontFamily: 'system-ui, -apple-system, Segoe UI, sans-serif',
-        }}>
-          <section
-            data-testid="signin-context"
-            data-upgrade={signInContext.upgrade ? 'true' : 'false'}
-            aria-labelledby="signin-context-heading"
-            style={{ maxWidth: '400px', width: '100%', color: '#f0ede6', textAlign: 'center' }}
-          >
-            <a href="/" style={{ color: '#fdba74', fontSize: '13px', textDecoration: 'underline' }}>
-              &larr; Back to promptlab.tools
-            </a>
-            <h1 id="signin-context-heading" style={{ margin: '14px 0 8px', fontSize: '22px', lineHeight: 1.25 }}>
-              {signInContext.heading}
-            </h1>
-            <p style={{ margin: 0, fontSize: '14px', lineHeight: 1.5, color: '#cbd5e1' }}>
-              {signInContext.body}
-            </p>
-          </section>
-          <SignIn
-            forceRedirectUrl={authRedirectUrls.forceRedirectUrl}
-            fallbackRedirectUrl={authRedirectUrls.fallbackRedirectUrl}
-            signUpForceRedirectUrl={authRedirectUrls.signUpForceRedirectUrl}
-            signUpFallbackRedirectUrl={authRedirectUrls.signUpFallbackRedirectUrl}
-            appearance={{
-              layout: { socialButtonsVariant: 'blockButton' },
-              variables: {
-                colorPrimary: '#c2410c',
-                colorBackground: '#06060a',
-                colorText: '#f0ede6',
-                colorNeutral: '#f0ede6',
-                colorInputBackground: '#18181b',
-                colorInputText: '#f0ede6',
-                borderRadius: '0.75rem',
-              },
-              elements: {
-                // Provider artwork includes dark pixels; give it a light surface
-                // instead of relying on the card's general text color.
-                socialButtonsBlockButton: {
-                  backgroundColor: '#f0ede6',
-                  color: '#18181b',
-                  border: '1px solid #f0ede6',
-                  '&:hover': { backgroundColor: '#ffffff' },
-                  '&:focus-visible': { outline: '2px solid #fb923c', outlineOffset: '3px' },
-                },
-                socialButtonsBlockButtonText: { color: '#18181b' },
-              },
-            }}
-          />
-        </main>
+        <SignInShell />
       </SignedOut>
       <SignedIn>
+        <React.Suspense fallback={<LoadingScreen />}>
         <HashRouter>
           <App
             {...landingProps}
@@ -169,6 +206,7 @@ function AuthGate() {
             clerkUserButton={<UserButton afterSignOutUrl="/?splash=1" appearance={{ variables: { colorPrimary: '#c2410c' } }} />}
           />
         </HashRouter>
+        </React.Suspense>
       </SignedIn>
     </>
   );
@@ -179,9 +217,11 @@ if (!CLERK_KEY) {
     console.warn('[PromptLab] Clerk key missing - running unauthenticated in dev mode');
     ReactDOM.createRoot(document.getElementById('root')).render(
       <ErrorBoundary>
-        <HashRouter>
-          <App {...landingProps} />
-        </HashRouter>
+        <React.Suspense fallback={<LoadingScreen />}>
+          <HashRouter>
+            <App {...landingProps} />
+          </HashRouter>
+        </React.Suspense>
       </ErrorBoundary>
     );
   } else {
