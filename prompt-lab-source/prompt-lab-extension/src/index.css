@@ -1481,6 +1481,9 @@ html[data-palette]:not([data-palette='ember']) .pl-app-shell[data-theme='light']
 .pl-artwork-recent-choice[data-pinned='true'] { border-color: var(--pl-brand-ember-bright); }
 .pl-artwork-recent-choice button[aria-pressed='true'] { background: color-mix(in srgb, var(--pl-brand-ember) 20%, transparent); }
 .pl-artwork-recent-choice button:hover, .pl-artwork-recent-choice button:focus-visible { background: color-mix(in srgb, currentColor 10%, transparent); }
+.pl-artwork-suggestions { display: grid; gap: 0.4rem; border-bottom: 1px solid color-mix(in srgb, currentColor 15%, transparent); padding-bottom: 0.5rem; font-size: 0.75rem; }
+.pl-artwork-suggestion { display: grid; min-width: 2.75rem; min-height: 2.75rem; padding: 0; place-items: center; border: 1px dashed color-mix(in srgb, currentColor 30%, transparent); border-radius: 7px; }
+.pl-artwork-suggestion:hover, .pl-artwork-suggestion:focus-visible { background: color-mix(in srgb, currentColor 10%, transparent); }
 .pl-write-prompt-open { display: flex; align-items: center; gap: 0.5rem; }
 .pl-write-prompt-copy { min-width: 0; flex: 1; }
 .pl-write-search-recovery { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.6rem; }
