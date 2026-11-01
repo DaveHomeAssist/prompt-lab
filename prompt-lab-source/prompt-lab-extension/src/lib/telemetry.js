@@ -1,7 +1,6 @@
 import { APP_VERSION } from '../constants.js';
 import { isExtension } from './platform.js';
 import {
-  isLandingTelemetryEvent,
   normalizeTelemetryEventName,
   sanitizeTelemetryEventContext,
 } from '../../../shared/telemetrySchema.js';
@@ -16,6 +15,7 @@ export function createDefaultTelemetryState() {
     pendingEvents: [],
     lastSyncedAt: '',
     lastError: '',
+    deletionPending: false,
   };
 }
 
@@ -42,6 +42,7 @@ export function normalizeTelemetryState(value = {}) {
       : [],
     lastSyncedAt: typeof value?.lastSyncedAt === 'string' ? value.lastSyncedAt : '',
     lastError: typeof value?.lastError === 'string' ? value.lastError : '',
+    deletionPending: value?.deletionPending === true,
   };
 }
 
@@ -79,7 +80,8 @@ export function createDeviceId() {
 
 export function buildTelemetryEnvelope(state, sessionId, event, context = {}) {
   const eventName = normalizeTelemetryEventName(event);
-  const landingEvent = isLandingTelemetryEvent(eventName);
+  // AN-07: events carry only the anonymous device and session ids. The contact
+  // email is sent with the identify payload (buildTelemetryIdentityPayload).
   return {
     kind: 'event',
     event: eventName,
@@ -88,9 +90,6 @@ export function buildTelemetryEnvelope(state, sessionId, event, context = {}) {
     deviceId: state.deviceId,
     sessionId,
     telemetryEnabled: state?.telemetryEnabled === true,
-    ...(!landingEvent && normalizeEmail(state.contactEmail)
-      ? { contactEmail: normalizeEmail(state.contactEmail) }
-      : {}),
     context: sanitizeTelemetryEventContext(eventName, context),
   };
 }
@@ -104,6 +103,21 @@ export function buildTelemetryIdentityPayload(state, sessionId, overrides = {}) 
     sessionId,
     telemetryEnabled: overrides.telemetryEnabled ?? state.telemetryEnabled,
     contactEmail: normalizeEmail(overrides.contactEmail ?? state.contactEmail),
+  };
+}
+
+// PRIV-02: sent when the user withdraws insights consent. The server deletes
+// this device's profile, the contact record written by this device, and this
+// device's queued events. The email is only a lookup hint; the server checks
+// that the contact record belongs to the same device id before deleting it.
+export function buildTelemetryWithdrawalPayload(state) {
+  const contactEmail = normalizeEmail(state?.contactEmail);
+  return {
+    kind: 'withdraw',
+    surface: getTelemetrySurface(),
+    deviceId: state?.deviceId,
+    telemetryEnabled: false,
+    ...(contactEmail ? { contactEmail } : {}),
   };
 }
 

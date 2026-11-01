@@ -49,6 +49,11 @@ for (const page of LANDING_PAGES) {
     assert.match(html, /id="billingAnnual" value="annual" checked/);
     assert.doesNotMatch(html, /id="billingMonthly"[^>]*\schecked/);
     assert.match(html, /period=annual&amp;source=landing-pricing" class="pricing-btn filled" id="proCta"/);
+    // CA-03: the Pro CTA names the plan and price for both periods.
+    assert.match(html, new RegExp(escape(`id="proCta" data-period="annual" data-analytics-id="landing.pricing.pro">Get Pro, $${annual}/year &rarr;</a>`)));
+    assert.match(html, new RegExp(escape(`'Get Pro, $${annual}/year \\u2192' : 'Get Pro, $${monthly}/month \\u2192'`)));
+    assert.match(html, new RegExp(escape(`<p class="pricing-note">You'll confirm in Prompt Lab before Stripe Checkout. Nothing is charged here.</p>`)));
+    assert.doesNotMatch(html, /Continue to PromptLab/);
     assert.match(html, /selected \? selected\.value : 'annual'/);
     assert.match(html, new RegExp(`proPrice\\.textContent\\s*=\\s*'${escape(annual)}'`));
     assert.match(html, new RegExp(`proPrice\\.textContent\\s*=\\s*'${escape(monthly)}'`));
