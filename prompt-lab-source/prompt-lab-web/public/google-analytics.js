@@ -7,6 +7,13 @@
   var consentPromptStyleId = consentPromptId + '-style';
   var consentKey = 'pl_telemetry_consent';
   var configured = false;
+  // AN-04: only production hosts send data to the GA4 property, so Vercel
+  // previews, localhost and QA runs never mix with production traffic.
+  var productionHosts = ['promptlab.tools', 'www.promptlab.tools', 'mobile.promptlab.tools'];
+
+  function isProductionHost() {
+    return productionHosts.indexOf(String(window.location.hostname || '').toLowerCase()) !== -1;
+  }
 
   function createConsentState(value) {
     var consent = value ? 'granted' : 'denied';
@@ -69,6 +76,7 @@
       return;
     }
 
+    if (!isProductionHost()) return;
     loadGoogleTag();
     if (!configured) {
       configured = true;
