@@ -2,7 +2,7 @@
 
 ## 1. Workspace Context
 
-- Repo path: `/Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab`
+- Repo path: `<repo-root>`
 - Branch: `main` tracking `origin/main`
 - Project type: multi-surface prompt engineering product repo
 - Stack:
@@ -28,16 +28,16 @@
 
 ## 3. Files / Surfaces That Matter
 
-- `/Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/AGENTS.md`
-- `/Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/README.md`
-- `/Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/IMPLEMENTATION_PLAN.md`
-- `/Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/PROMPT_LAB_AGENT.md`
-- `/Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/CURRENT_PROJECT_REPORT.md`
-- `/Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/docs/index.html`
-- `/Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/prompt-lab-source/public/prompt-lab-landing.html`
-- `/Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/prompt-lab-source/ARCHITECTURE.md`
-- `/Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/prompt-lab-source/package.json`
-- `/Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/prompt-lab-source/NOTION_DOCS_AGENT.md`
+- `<repo-root>/AGENTS.md`
+- `<repo-root>/README.md`
+- `<repo-root>/IMPLEMENTATION_PLAN.md`
+- `<repo-root>/PROMPT_LAB_AGENT.md`
+- `<repo-root>/CURRENT_PROJECT_REPORT.md`
+- `<repo-root>/docs/index.html`
+- `<repo-root>/prompt-lab-source/public/prompt-lab-landing.html`
+- `<repo-root>/prompt-lab-source/ARCHITECTURE.md`
+- `<repo-root>/prompt-lab-source/package.json`
+- `<repo-root>/prompt-lab-source/NOTION_DOCS_AGENT.md`
 
 ## 4. Known Good Facts
 
@@ -111,18 +111,18 @@
 
 ## 8. Verification
 
-- `git -C /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab status --short --branch`
-- `git -C /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab diff --stat -- docs/index.html prompt-lab-source/public/prompt-lab-landing.html`
-- `sed -n '1,220p' /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/AGENTS.md`
-- `sed -n '1,260p' /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/prompt-lab-source/ARCHITECTURE.md`
-- `sed -n '1,240p' /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/CURRENT_PROJECT_REPORT.md`
-- `sed -n '1,220p' /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/PROMPT_LAB_AGENT.md`
+- `git -C <repo-root> status --short --branch`
+- `git -C <repo-root> diff --stat -- docs/index.html prompt-lab-source/public/prompt-lab-landing.html`
+- `sed -n '1,220p' <repo-root>/AGENTS.md`
+- `sed -n '1,260p' <repo-root>/prompt-lab-source/ARCHITECTURE.md`
+- `sed -n '1,240p' <repo-root>/CURRENT_PROJECT_REPORT.md`
+- `sed -n '1,220p' <repo-root>/PROMPT_LAB_AGENT.md`
 
 ## 9. Ready-to-Paste Session Prompt
 
 ```text
 You are working in:
-/Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab
+<repo-root>
 
 Use the current filesystem and git state as ground truth.
 
@@ -138,14 +138,14 @@ Repo context:
   - https://prompt-lab-tawny.vercel.app/app/
 
 Inspect first:
-- /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/AGENTS.md
-- /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/PROMPT_LAB_AGENT.md
-- /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/CURRENT_PROJECT_REPORT.md
-- /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/prompt-lab-source/ARCHITECTURE.md
+- <repo-root>/AGENTS.md
+- <repo-root>/PROMPT_LAB_AGENT.md
+- <repo-root>/CURRENT_PROJECT_REPORT.md
+- <repo-root>/prompt-lab-source/ARCHITECTURE.md
 
 Current dirty files already exist and should be treated as user-owned/in-progress unless the task explicitly targets them:
-- /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/docs/index.html
-- /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/prompt-lab-source/public/prompt-lab-landing.html
+- <repo-root>/docs/index.html
+- <repo-root>/prompt-lab-source/public/prompt-lab-landing.html
 
 Current likely focus:
 - finish or validate landing/docs alignment to promptlab.tools and the current Prompt Lab repo/app URLs
@@ -163,10 +163,10 @@ Guardrails:
 - Keep scope tight unless asked to expand it.
 
 First commands to run:
-- git -C /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab status --short --branch
-- git -C /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab diff --stat -- docs/index.html prompt-lab-source/public/prompt-lab-landing.html
-- sed -n '1,220p' /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/AGENTS.md
-- sed -n '1,260p' /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/prompt-lab-source/ARCHITECTURE.md
+- git -C <repo-root> status --short --branch
+- git -C <repo-root> diff --stat -- docs/index.html prompt-lab-source/public/prompt-lab-landing.html
+- sed -n '1,220p' <repo-root>/AGENTS.md
+- sed -n '1,260p' <repo-root>/prompt-lab-source/ARCHITECTURE.md
 
 Then:
 1. confirm the target surface
