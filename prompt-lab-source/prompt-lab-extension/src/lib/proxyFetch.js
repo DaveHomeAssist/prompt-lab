@@ -1,4 +1,5 @@
 import { recordHostedQuota } from './hostedQuota.js';
+import { recordHostedOutputCap, requestedMaxTokens } from './hostedOutputCap.js';
 
 /**
  * Proxy-aware fetch wrapper for hosted web mode.
@@ -25,6 +26,7 @@ export function createProxyFetch(proxyUrl = '/api/proxy') {
 
     // Headers only; the body stays unread for the provider layer.
     recordHostedQuota(res);
+    if (res.ok) recordHostedOutputCap(res, requestedMaxTokens(init.body));
     return res;
   };
 }
