@@ -578,6 +578,8 @@ textarea:disabled {
 }
 
 @media (max-width: 560px) {
+  .pl-results-shell { position: relative; }
+  .pl-results-verdict { padding-right: 3.25rem; }
   .pl-result-commit-bar { padding-right: 3rem; }
   .pl-commit-label { display: inline-block; max-width: 12rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .pl-commit-target { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
