@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Inherits root rules from `/Users/daverobertson/Desktop/Code/AGENTS.md`.
+Inherits root rules from `~/Desktop/Code/AGENTS.md`.
 
 ## Workspace contract
 
