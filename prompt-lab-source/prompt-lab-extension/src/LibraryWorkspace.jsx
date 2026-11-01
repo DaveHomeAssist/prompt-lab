@@ -4,6 +4,7 @@ import Ic from './icons';
 import { rememberArtwork } from './lib/recentArtwork.js';
 import ArtworkPopover from './ArtworkPopover.jsx';
 import ArtworkPicker, { Artwork } from './ArtworkPicker.jsx';
+import { suggestArtwork } from './lib/artworkSuggestions.js';
 import { LIBRARY_LAYOUTS, safeArtwork } from './lib/libraryPresentation.js';
 import FollowUpOrigin from './FollowUpOrigin.jsx';
 import { matchesLibrarySearch } from './lib/libraryMatching.js';
@@ -162,7 +163,7 @@ function InspectorContent({ m, selected, smartView, inspectorTab, detailsDraft, 
 
   if (inspectorTab === 'details') {
     return <div className="pl-inspector-details-form">
-      <ArtworkPicker label="Prompt artwork" value={detailsDraft.artwork} onChange={artwork => setDetailsDraft(current => ({ ...current, artwork }))} disabled={smartView === 'trash'} />
+      <ArtworkPicker label="Prompt artwork" value={detailsDraft.artwork} onChange={artwork => setDetailsDraft(current => ({ ...current, artwork }))} disabled={smartView === 'trash'} suggestions={smartView === 'trash' ? [] : suggestArtwork({ title: detailsDraft.title, text: content, tags: selected.tags, collection: selected.collection }, { current: detailsDraft.artwork })} />
       <label>Title<input value={detailsDraft.title} onChange={(event) => setDetailsDraft((current) => ({ ...current, title: event.target.value }))} disabled={smartView === 'trash'} /></label>
       <label>Purpose<textarea value={detailsDraft.purpose} onChange={(event) => setDetailsDraft((current) => ({ ...current, purpose: event.target.value }))} disabled={smartView === 'trash'} /></label>
       <label>Owner<input value={detailsDraft.owner} onChange={(event) => setDetailsDraft((current) => ({ ...current, owner: event.target.value }))} disabled={smartView === 'trash'} /></label>
