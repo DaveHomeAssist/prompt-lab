@@ -1,3 +1,9 @@
+/**
+ * @vitest-environment jsdom
+ * @vitest-environment-options {"url": "https://promptlab.tools/"}
+ */
+// AN-04: GA4 loads only on production hosts, so these behaviour tests run as
+// https://promptlab.tools. googleAnalyticsHostGate.test.js covers other hosts.
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';

@@ -29,3 +29,21 @@ test('a known deep link still resolves without the recovery notice', async ({ pa
   await expect(page).toHaveURL(/\/app\/#\/library$/);
   await expect(page.getByText(/Page not found/)).toHaveCount(0);
 });
+
+test('#/diff opens Write on its Diff tab without the not-found notice (V-04)', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('pl2-telemetry', JSON.stringify({ consent: 'denied' }));
+    localStorage.setItem('pl_telemetry_consent', 'denied');
+  });
+
+  await page.goto('/app/#/diff');
+
+  await expect(page.getByTestId('prompt-input')).toBeVisible();
+  await expect(page).toHaveURL(/\/app\/#\/$/);
+  // toHaveCount(0) would retry until the ~2.4s toast expires, so sample the
+  // page directly: the notice must never appear.
+  for (let i = 0; i < 10; i += 1) {
+    expect(await page.getByText(/Page not found/).count()).toBe(0);
+    await page.waitForTimeout(150);
+  }
+});

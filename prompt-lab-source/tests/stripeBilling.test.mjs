@@ -345,7 +345,7 @@ function stripeJson(body, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 }
 
-test('first license check and checkout share one new customer while Stripe Search lags', async () => {
+test('a license check and a concurrent checkout end with one customer while Stripe Search lags', async () => {
   const jwks = await createJwksHarness();
   process.env.STRIPE_SECRET_KEY = 'sk_test_123';
   process.env.STRIPE_MONTHLY_PRICE_ID = 'price_monthly';
@@ -405,10 +405,11 @@ test('first license check and checkout share one new customer while Stripe Searc
     assert.equal(licenseResponse.status, 200);
     assert.equal(checkoutResponse.status, 200);
     assert.equal(customers.length, 1);
-    assert.equal((await licenseResponse.json()).customerId, 'cus_1');
+    // INT-06: the license check only looks up; it sees the customer only if
+    // the checkout's create finished first.
+    assert.ok(['', 'cus_1'].includes((await licenseResponse.json()).customerId));
     assert.equal((await checkoutResponse.json()).customerId, 'cus_1');
-    // Two or three creates, depending on whether the second hit the 409 first.
-    assert.ok(createKeys.length >= 2);
+    assert.ok(createKeys.length >= 1);
     assert.equal(new Set(createKeys).size, 1);
     assert.match(createKeys[0], /^promptlab-customer:user_123:[0-9a-f]{32}$/);
   } finally {

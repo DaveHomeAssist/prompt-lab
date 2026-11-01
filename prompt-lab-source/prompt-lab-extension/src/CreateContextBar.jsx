@@ -98,7 +98,10 @@ export default function CreateContextBar({
       data-editing-mode={context.mode}
       className={`flex items-center gap-x-3 gap-y-1 flex-wrap ${m.surface} border ${m.border} rounded-lg px-3 py-1`}
     >
-      <details className="min-w-0 flex-1" open={!compact}>
+      {/* The summary heading is shrink-0, so give the details a floor that fits
+          it; below that the side-panel toggles wrap to their own row instead of
+          drawing over "New unsaved prompt" (320px viewport). */}
+      <details className="pl-context-details min-w-[9.5rem] basis-[9.5rem] flex-1" open={!compact}>
       <summary className="pl-context-summary flex flex-wrap cursor-pointer items-center gap-2 min-w-0 text-xs">
         <span aria-hidden="true">▸</span>
         <span className={`pl-context-heading text-[10px] uppercase tracking-widest font-bold shrink-0 ${accentTextClass}`}>{context.heading}</span>
@@ -136,8 +139,12 @@ export default function CreateContextBar({
       </div>
       </div>
       </details>
-      {scratchPanel && <SidePanelToggle m={m} panel={scratchPanel} label="Scratch" icon="PanelRight" accentBadgeClass={accentBadgeClass} />}
-      {promptsPanel && <SidePanelToggle m={m} panel={promptsPanel} label="Prompts" icon="Star" accentBadgeClass={accentBadgeClass} />}
+      {(scratchPanel || promptsPanel) && (
+        <div className="pl-context-toggles ml-auto flex shrink-0 items-center gap-x-1.5">
+          {scratchPanel && <SidePanelToggle m={m} panel={scratchPanel} label="Scratch" icon="PanelRight" accentBadgeClass={accentBadgeClass} />}
+          {promptsPanel && <SidePanelToggle m={m} panel={promptsPanel} label="Prompts" icon="Star" accentBadgeClass={accentBadgeClass} />}
+        </div>
+      )}
     </section>
   );
 }

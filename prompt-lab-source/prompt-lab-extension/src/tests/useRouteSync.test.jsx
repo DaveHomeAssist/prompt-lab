@@ -67,6 +67,17 @@ describe('useRouteSync route recovery', () => {
     expect(screen.getByTestId('pathname')).toHaveTextContent('/library');
   });
 
+  it('opens /diff on the Write Diff tab and settles on / without a not-found report', async () => {
+    const props = renderRouteSync('/diff', { onUnknownRoute: vi.fn(), onRouteResultTab: vi.fn() });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('pathname')).toHaveTextContent(/^\/$/);
+    });
+    expect(props.onRouteResultTab).toHaveBeenCalledWith('diff');
+    expect(props.setWorkspaceView).toHaveBeenCalledWith('editor');
+    expect(props.onUnknownRoute).not.toHaveBeenCalled();
+  });
+
   it('recovers an unknown route to the Write workspace and reports it', async () => {
     const props = renderRouteSync('/definitely-not-a-route', { onUnknownRoute: vi.fn() });
 

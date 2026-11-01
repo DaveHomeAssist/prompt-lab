@@ -1,5 +1,6 @@
 import {
   buildStripeConfig,
+  clientErrorMessage,
   corsRejectionResponse,
   createPortalSessionForClerk,
   jsonResponse,
@@ -59,7 +60,7 @@ async function portalHandler(request) {
     }, 200, {}, request);
   } catch (error) {
     const status = isExternalFetchTimeout(error) ? 504 : 400;
-    return jsonResponse({ error: error.message || 'Could not create billing portal session.' }, status, {}, request);
+    return jsonResponse({ error: clientErrorMessage(error, 'Could not create billing portal session.') }, status, {}, request);
   }
 }
 
