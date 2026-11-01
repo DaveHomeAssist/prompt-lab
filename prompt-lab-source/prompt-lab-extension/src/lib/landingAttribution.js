@@ -55,7 +55,8 @@ const ALLOWED_VALUES = {
     'privacy',
   ]),
   period: BILLING_PERIODS,
-  demoMode: new Set(['balanced', 'concise', 'detailed']),
+  // Landing sample strategies, plus the retired mode samples so older saved attribution still validates.
+  demoMode: new Set(['expanded', 'refined', 'rebuilt', 'balanced', 'concise', 'detailed']),
 };
 
 export function parseLandingIntent(search = '') {
