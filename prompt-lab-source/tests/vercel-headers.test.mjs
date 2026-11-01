@@ -99,6 +99,21 @@ test('/pricing and /privacy redirect to real content (AUD-023)', () => {
   assert.ok(!config.rewrites.some((rule) => rule.source.startsWith('/privacy')), 'privacy must redirect, not rewrite to the stub');
 });
 
+test('pages send HSTS with includeSubDomains and COOP (security pass 2026-11-01)', () => {
+  for (const path of [...PAGES, '/companion/pilot-overview.html']) {
+    const headers = headersFor(path);
+    assert.equal(headers['strict-transport-security'], 'max-age=63072000; includeSubDomains', `${path} HSTS`);
+    assert.equal(headers['cross-origin-opener-policy'], 'same-origin-allow-popups', `${path} COOP`);
+  }
+  // preload stays out until Dave decides to submit promptlab.tools to the
+  // HSTS preload list (hard to undo once shipped in browsers).
+  assert.doesNotMatch(JSON.stringify(config.headers), /preload/);
+  // The framed bridge gets HSTS but no COOP (COOP has no effect in iframes).
+  const bridge = headersFor('/legacy-library-bridge.html');
+  assert.equal(bridge['strict-transport-security'], 'max-age=63072000; includeSubDomains');
+  assert.equal(bridge['cross-origin-opener-policy'], undefined);
+});
+
 test('the retired mobile.promptlab.tools host has no rewrite and no API trust', () => {
   const hostRules = [...(config.rewrites || []), ...(config.redirects || []), ...(config.headers || [])]
     .filter(rule => (rule.has || []).some(cond => cond.type === 'host' && /mobile\.promptlab\.tools/i.test(cond.value)));
