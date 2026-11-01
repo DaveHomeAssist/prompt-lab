@@ -1559,6 +1559,7 @@ export default function App({
           saveTags={saveTags} setSaveTags={setSaveTags}
           changeNote={changeNote} setChangeNote={setChangeNote}
           collections={lib.collections}
+          libraryTags={lib.allLibTags} tagSourceText={saveSourceText}
           showNewColl={showNewColl} setShowNewColl={setShowNewColl}
           newCollName={newCollName} setNewCollName={setNewCollName}
           commitNewCollection={commitNewCollection}
