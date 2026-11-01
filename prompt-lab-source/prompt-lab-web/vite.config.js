@@ -1,6 +1,7 @@
 import { checkVersions } from '../scripts/check-version-consistency.mjs';
 import { buildIdentity } from '../scripts/build-identity.mjs';
 import { diagnosticSourceMaps } from '../scripts/diagnostic-sourcemaps.mjs';
+import { accountSyncWebCsp } from '../scripts/account-sync-build.mjs';
 import { previewClerkCsp } from '../scripts/preview-clerk-csp.mjs';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
@@ -11,7 +12,8 @@ if (versionErrors.length) throw new Error(versionErrors.join('\n'));
 
 export default defineConfig({
   appType: 'mpa',
-  plugins: [react(), diagnosticSourceMaps('web'), previewClerkCsp()],
+  // accountSyncWebCsp is a no-op unless VITE_PL_ACCOUNT_SYNC=on (docs/ACCOUNT_SYNC_DESIGN.md).
+  plugins: [react(), diagnosticSourceMaps('web'), previewClerkCsp(), accountSyncWebCsp()],
   define: {
     ...buildIdentity(),
     'import.meta.env.VITE_WEB_MODE': JSON.stringify('true'),
