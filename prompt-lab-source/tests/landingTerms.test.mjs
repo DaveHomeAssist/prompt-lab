@@ -37,12 +37,12 @@ test('terms are final: no draft label, indexable and linked from the site and ch
   assert.match(billingModal, /https:\/\/promptlab\.tools\/terms/);
 });
 
-test('every open placeholder names one of Dave\'s decisions (D1-D5)', () => {
-  const ids = [...terms.matchAll(/<mark class="decision" data-decision="([^"]+)">/g)].map((m) => m[1]);
-  for (const id of ids) assert.match(id, /^D[1-5]$/, `unknown decision id ${id}`);
-  // Every unfilled bracket placeholder must sit inside a decision mark.
-  const bare = terms.replace(/<mark class="decision"[^>]*>[\s\S]*?<\/mark>/g, '');
-  assert.doesNotMatch(bare.replace(/<[^>]+>/g, ' '), /\[[A-Z][A-Z ]+[:\]]/, 'placeholder outside a decision mark');
+test('published terms have no open placeholders and name the operator and law', () => {
+  assert.doesNotMatch(terms, /data-decision=/);
+  assert.doesNotMatch(terms.replace(/<[^>]+>/g, ' '), /\[[A-Z][A-Z ]+[:\]]/, 'unfilled bracket placeholder');
+  assert.match(text, /run by David Robertson, an individual/);
+  assert.match(text, /laws of the State of New Jersey, USA/);
+  assert.match(text, /Effective: [A-Z][a-z]+ \d{1,2}, \d{4}/);
 });
 
 test('the only contact address is the public support email', () => {
