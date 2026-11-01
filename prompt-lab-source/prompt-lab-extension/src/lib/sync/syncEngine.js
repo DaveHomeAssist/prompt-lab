@@ -35,7 +35,22 @@ const utf8Length = (text) => new TextEncoder().encode(text).length;
 // prints a space after every ':' and ',' (R-12): {"a": 1, "b": [1, 2]}.
 // JSON.stringify omits those spaces, so a member-heavy payload measured that
 // way can be far smaller than what the server counts.
+// jsonb prints numbers as numeric does, without an exponent: 1e21 is
+// 1000000000000000000000 and 1e-7 is 0.0000001 (re-review 4, Low).
+function numberLength(value) {
+  const text = JSON.stringify(value);
+  const match = /^(-?)(\d+)(?:\.(\d+))?e([+-]\d+)$/.exec(text);
+  if (!match) return text.length;
+  const [, sign, whole, fraction = '', exp] = match;
+  const digits = (whole + fraction).replace(/^0+(?=\d)/, '');
+  const point = whole.length + Number(exp); // digits left of the decimal point
+  const body = point <= 0 ? 2 - point + digits.length // 0.000ddd
+    : point >= digits.length ? point // ddd000
+    : digits.length + 1; // dd.dd
+  return sign.length + body;
+}
 function jsonbLength(value) {
+  if (typeof value === 'number') return numberLength(value);
   if (value === null || typeof value !== 'object') return utf8Length(JSON.stringify(value) ?? 'null');
   if (Array.isArray(value)) return 2 + value.reduce((sum, item, index) => sum + (index ? 2 : 0) + jsonbLength(item), 0);
   const entries = Object.entries(value);
@@ -114,26 +129,30 @@ export function createSyncEngine({ storage, transport, userId, deviceId = getDev
   // { version, hash } until the winner's row is actually applied. The shadow
   // keeps the last applied version, so pulls and the manifest still deliver
   // the winner; the record marks the losing content as settled (it is saved as
-  // a conflict copy) so it is not pushed again, and a newer edit is based on
-  // the winning version.
+  // a conflict copy) so it is not pushed again. A newer edit is still based on
+  // the shadow's version (R-16), so it conflicts with the winner instead of
+  // silently replacing it.
   const lostRecord = (key) => state.lost?.[key];
-  const settleShadow = (key, value) => {
-    state.shadow[key] = value;
+  const forgetLost = (key) => {
     if (state.lost?.[key]) { const { [key]: done, ...rest } = state.lost; state.lost = rest; }
   };
+  const settleShadow = (key, value) => { state.shadow[key] = value; forgetLost(key); };
 
   function captureLocal() {
     const local = readLocalItems(storage);
     for (const [key, item] of local) {
       const lost = lostRecord(key);
       const settledHash = lost ? lost.hash : state.shadow[key]?.hash;
-      if ((!lost && !state.shadow[key]) || settledHash !== hashValue(item.payload)) enqueue({ key, ...item, ...(lost ? { baseVersion: lost.version } : {}) });
+      // R-16: a newer edit stays based on the last version this device
+      // applied (the shadow), not the winner it has not seen, so the server
+      // treats it as a conflict and keeps the losing side as a conflict copy.
+      if ((!lost && !state.shadow[key]) || settledHash !== hashValue(item.payload)) enqueue({ key, ...item });
     }
     for (const [key, shadow] of Object.entries(state.shadow)) {
       const lost = lostRecord(key);
       const settledHash = lost ? lost.hash : shadow.hash;
       if (settledHash !== null && !local.has(key) && key.startsWith('prompt:')) {
-        enqueue({ key, kind: 'prompt', item_id: key.slice('prompt:'.length), payload: null, deleted: true, ...(lost ? { baseVersion: lost.version } : {}) });
+        enqueue({ key, kind: 'prompt', item_id: key.slice('prompt:'.length), payload: null, deleted: true });
       }
     }
   }
@@ -224,6 +243,9 @@ export function createSyncEngine({ storage, transport, userId, deviceId = getDev
       else if (shadow.version > Number(row.version)) delete state.shadow[key]; // server went back in time: re-upload ours
     }
     for (const key of Object.keys(state.shadow)) if (!server.has(key)) delete state.shadow[key];
+    // R-17: a pending lost record for an item the account no longer has (for
+    // example after "Delete my synced data") would keep it from re-uploading.
+    for (const key of Object.keys(state.lost || {})) if (!server.has(key)) forgetLost(key);
     const result = applyServerRows(await fetchRows(behind));
     state.lastManifestAt = now();
     saveState();
@@ -382,7 +404,12 @@ export function createSyncEngine({ storage, transport, userId, deviceId = getDev
         const lostKeys = Object.keys(state.lost || {});
         if (lostKeys.length) {
           // Winners a lost push could not fetch last time (#285 Codex P1).
-          const recovered = applyServerRows(await fetchRows(lostKeys));
+          const winners = await fetchRows(lostKeys);
+          // R-17: no row on the account any more (erased): drop the record and
+          // the shadow, so the local copy uploads again as a new item.
+          const found = new Set(winners.map((row) => itemKey(row.kind, row.item_id)));
+          for (const key of lostKeys) if (!found.has(key)) { forgetLost(key); delete state.shadow[key]; }
+          const recovered = applyServerRows(winners);
           add(recovered.written); summary.pulled += recovered.pulled;
           for (const [key, row] of recovered.deferred) deferred.set(key, row);
           saveState();
