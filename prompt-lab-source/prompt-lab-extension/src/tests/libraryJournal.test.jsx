@@ -384,9 +384,12 @@ describe('library journal writes after a failed boot read', () => {
     idb.state.openDelayMs = 80;
     const blind = await boot({ timeoutMs: 10 });
     expect(blind.outcome.action).toBe('unavailable');
-    // No Clear marker locally, so the new prompt is saved under generation '0'.
-    saveJson(storageKeys.library, [row('new')]);
-    saveJson(storageKeys.trash, [row('binned')]);
+    // No Clear marker locally, so the new prompt is saved under generation '0'
+    // (after the Clear, as a real save is).
+    await new Promise(resolve => setTimeout(resolve, 5));
+    const later = new Date().toISOString();
+    saveJson(storageKeys.library, [row('new', later)]);
+    saveJson(storageKeys.trash, [row('binned', later)]);
     await new Promise(resolve => setTimeout(resolve, 150));
     await settled(blind.journal);
     blind.stop();
@@ -574,4 +577,185 @@ describe('sync-key saves held during a sync', () => {
     expect(prompts.some(item => item.deleted)).toBe(false);
     expect([...rows.values()].filter(r => !r.deleted).map(r => r.item_id).sort()).toEqual(['a', 'b', 'c']);
   });
+});
+
+// Fire Watch re-review 8 probes C1, T1, D2 (failed-boot merge) as tests.
+describe('re-review 8: failed-boot merge', () => {
+  const row = (id, updatedAt = '2026-11-01T10:00:00.000Z', extra = {}) => ({ id, title: id, updatedAt, ...extra });
+  const stopAll = () => { for (const stop of stops.splice(0)) stop(); };
+  const snap = () => localEntries();
+  const visible = (key) => filterDeletedLibraryRecords(JSON.parse(localStorage.getItem(key) || '[]'), readLibraryDeletionState(localStorage)).map(r => r.id);
+  const failBoot = async () => { idb.state.openDelayMs = 80; const started = await boot({ timeoutMs: 10 }); idb.state.openDelayMs = 0; return started; };
+  const finish = async (started) => { await new Promise(r => setTimeout(r, 150)); await settled(started.journal); stopAll(); };
+
+  it('R-30 (C1): a rollback across a Clear does not undo the Clear', async () => {
+    let j = await boot();
+    saveJson(storageKeys.library, [row('old1'), row('old2')]);
+    await settled(j.journal);
+    const preClear = snap();
+    await new Promise(r => setTimeout(r, 5));
+    const generation = markLibraryCleared(localStorage);
+    expect(Number.isFinite(new Date(localStorage.getItem(`pl2-library-clear:${generation}`)).getTime())).toBe(true);
+    saveJson(storageKeys.library, [row('kept', new Date().toISOString(), { metadata: { libraryGeneration: generation } })]);
+    await settled(j.journal); stopAll();
+    replaceLocal(preClear); // WebView2 lost the tail: the Clear and later writes
+    j = await failBoot();
+    await new Promise(r => setTimeout(r, 5));
+    saveJson(storageKeys.library, [...JSON.parse(localStorage.getItem(storageKeys.library)), row('new', new Date().toISOString())]);
+    await finish(j);
+    expect((await boot()).outcome.action).toBe('restore');
+    expect(visible(storageKeys.library).sort()).toEqual(['kept', 'new']);
+  });
+
+  it('R-30: with a Clear marker from before this fix ("1"), the journal\'s last commit is the bound', () => {
+    const generation = '0000000000000002:abc';
+    const merged = mergeLibraryEntries(
+      { [`pl2-library-clear:${generation}`]: '1', [storageKeys.library]: '[]' },
+      { [storageKeys.library]: JSON.stringify([row('old', '2026-11-01T09:00:00.000Z'), row('new', '2026-11-01T12:00:00.000Z')]) },
+      { savedAt: '2026-11-01T11:00:00.000Z' },
+    );
+    const rows = JSON.parse(merged[storageKeys.library]);
+    expect(rows.find(r => r.id === 'new').metadata.libraryGeneration).toBe(generation);
+    expect(rows.find(r => r.id === 'old').metadata?.libraryGeneration).toBeUndefined();
+  });
+
+  it('R-31 (T1): a rolled-back trash move is not undone, and the prompt is in one place', async () => {
+    let j = await boot();
+    saveJson(storageKeys.library, [row('a'), row('x')]);
+    await settled(j.journal);
+    const pre = snap();
+    saveJson(storageKeys.library, [row('a')]);
+    saveJson(storageKeys.trash, [row('x', '2026-11-01T11:00:00.000Z', { deletedAt: '2026-11-01T11:00:00.000Z' })]);
+    await settled(j.journal); stopAll();
+    replaceLocal(pre); // no trash key, x back in the Library
+    j = await failBoot();
+    saveJson(storageKeys.library, [...JSON.parse(localStorage.getItem(storageKeys.library)), row('n')]);
+    await finish(j);
+    await boot();
+    expect(visible(storageKeys.library).sort()).toEqual(['a', 'n']);
+    expect(visible(storageKeys.trash)).toEqual(['x']);
+  });
+
+  it('R-31: the newer move wins whichever side made it', () => {
+    const lib = storageKeys.library; const trash = storageKeys.trash;
+    // The journal trashed x at 11:00; this device has an older trash key without x.
+    let merged = mergeLibraryEntries(
+      { [lib]: '[]', [trash]: JSON.stringify([row('x', '2026-11-01T11:00:00.000Z', { deletedAt: '2026-11-01T11:00:00.000Z' })]) },
+      { [lib]: JSON.stringify([row('x')]), [trash]: '[]' },
+    );
+    expect(JSON.parse(merged[lib])).toEqual([]);
+    expect(JSON.parse(merged[trash]).map(r => r.id)).toEqual(['x']);
+    // This device restored x at 12:00, after the journal's 11:00 trash move.
+    merged = mergeLibraryEntries(
+      { [lib]: '[]', [trash]: JSON.stringify([row('x', '2026-11-01T11:00:00.000Z', { deletedAt: '2026-11-01T11:00:00.000Z' })]) },
+      { [lib]: JSON.stringify([row('x', '2026-11-01T12:00:00.000Z')]), [trash]: '[]' },
+    );
+    expect(JSON.parse(merged[lib]).map(r => r.id)).toEqual(['x']);
+    expect(JSON.parse(merged[trash])).toEqual([]);
+  });
+
+  it('R-32 (D2): a collection deleted after a failed boot stays deleted', async () => {
+    let j = await boot();
+    saveJson(storageKeys.library, [row('a')]);
+    saveJson(storageKeys.collections, ['Work', 'Old']);
+    saveJson(storageKeys.folders, [{ id: 'f1', name: 'Keep' }, { id: 'f2', name: 'Gone' }]);
+    await settled(j.journal); stopAll();
+    j = await failBoot();
+    saveJson(storageKeys.collections, ['Work']);
+    saveJson(storageKeys.folders, [{ id: 'f1', name: 'Keep' }]);
+    await finish(j);
+    await boot();
+    expect(JSON.parse(localStorage.getItem(storageKeys.collections))).toEqual(['Work']);
+    expect(JSON.parse(localStorage.getItem(storageKeys.folders)).map(f => f.id)).toEqual(['f1']);
+  });
+
+  it('R-32: collections only the journal has still come back after a total loss', async () => {
+    let j = await boot();
+    saveJson(storageKeys.collections, ['Work', 'Old']);
+    await settled(j.journal); stopAll();
+    localStorage.clear();
+    j = await failBoot();
+    saveJson(storageKeys.collections, ['New']);
+    await finish(j);
+    await boot();
+    expect(JSON.parse(localStorage.getItem(storageKeys.collections))).toEqual(['New', 'Work', 'Old']);
+  });
+});
+
+// R-33: the probe's H cases. The app dies after a push was applied on the
+// account, while the follow-up pull is in flight.
+describe('R-33: crash after a successful push', () => {
+  const entry = (id) => ({ id, title: id, original: id, enhanced: id, tags: [], createdAt: '2026-11-01T10:00:00.000Z', updatedAt: '2026-11-01T10:00:00.000Z' });
+  const stopAll = () => { for (const stop of stops.splice(0)) stop(); };
+  const visible = (key) => filterDeletedLibraryRecords(JSON.parse(localStorage.getItem(key) || '[]'), readLibraryDeletionState(localStorage)).map(r => r.id);
+  function server() {
+    const rows = new Map(); let seq = 0; const pushes = []; const ctl = { hangPullAfterPush: null, pushedOnce: false };
+    const put = (id, payload, deleted = false) => { const v = (rows.get(id)?.version || 0) + 1; rows.set(id, { kind: 'prompt', item_id: id, payload, deleted, version: v, lamport: 1, change_seq: ++seq }); return v; };
+    const transport = {
+      pull: async (cursor, limit) => {
+        if (ctl.pushedOnce && ctl.hangPullAfterPush) await ctl.hangPullAfterPush.promise;
+        return [...rows.values()].filter(r => r.change_seq > cursor).sort((a, b) => a.change_seq - b.change_seq).slice(0, limit);
+      },
+      push: async (device, items) => {
+        const out = items.map((item) => {
+          pushes.push(item);
+          if (item.kind !== 'prompt') return { kind: item.kind, item_id: item.item_id, status: 'applied', version: 1 };
+          const current = rows.get(item.item_id);
+          if ((current?.version || 0) !== Number(item.base_version)) return { kind: item.kind, item_id: item.item_id, status: 'conflict_lost', version: current.version };
+          return { kind: item.kind, item_id: item.item_id, status: 'applied', version: put(item.item_id, item.payload, item.deleted) };
+        });
+        ctl.pushedOnce = true;
+        return out;
+      },
+      manifest: async () => [...rows.values()].map(({ kind, item_id, version }) => ({ kind, item_id, version })),
+      fetchItems: async (keys) => keys.map(({ item_id }) => rows.get(item_id)).filter(Boolean),
+    };
+    return { rows, put, pushes, transport, ctl };
+  }
+  const bootBoth = async () => {
+    const library = await boot();
+    const settings = await startSettingsJournal({ storage: localStorage, idb });
+    stops.push(settings.stop);
+    return library;
+  };
+
+  for (const mode of ['kept', 'lost']) {
+    for (const op of ['edit', 'delete']) {
+      it(`H-${mode}-${op}: no re-push and no self-conflict copy`, async () => {
+        const srv = server();
+        const engine = () => createSyncEngine({ storage: localStorage, transport: srv.transport, userId: 'u1', deviceId: 'd1', notifyWrite: notifyLocalWrite });
+        srv.put('a', { state: 'active', entry: entry('a') });
+        localStorage.setItem(storageKeys.library, '[]');
+        let library = await bootBoth();
+        await engine().syncOnce();
+        await settled(library.journal);
+        srv.ctl.pushedOnce = false;
+        if (op === 'edit') saveJson(storageKeys.library, [...JSON.parse(localStorage.getItem(storageKeys.library)), entry('c')]);
+        else { saveJson(storageKeys.library, []); markLibraryDeleted(['a']); }
+        await settled(library.journal);
+        let release;
+        srv.ctl.hangPullAfterPush = { promise: new Promise((_, reject) => { release = reject; }) };
+        const inFlight = engine().syncOnce();
+        for (let i = 0; i < 50 && !srv.ctl.pushedOnce; i += 1) await new Promise(r => setTimeout(r, 2));
+        expect(srv.ctl.pushedOnce).toBe(true);
+        await new Promise(r => setTimeout(r, 20));
+        await settled(library.journal);
+        const atCrash = localEntries();
+        stopAll();
+        release(new Error('app closed'));
+        await inFlight;
+        replaceLocal(mode === 'kept' ? atCrash : {});
+        srv.ctl.hangPullAfterPush = null;
+
+        library = await bootBoth();
+        srv.pushes.length = 0;
+        const result = await engine().syncOnce();
+        expect(srv.pushes.filter(item => item.kind === 'prompt')).toEqual([]);
+        expect(result.conflicts).toBe(0);
+        const onServer = [...srv.rows.values()].map(r => `${r.item_id}${r.deleted ? '(del)' : ''}v${r.version}`).sort();
+        expect(onServer).toEqual(op === 'edit' ? ['av1', 'cv1'] : ['a(del)v2']);
+        expect(visible(storageKeys.library).sort()).toEqual(op === 'edit' ? ['a', 'c'] : []);
+      });
+    }
+  }
 });

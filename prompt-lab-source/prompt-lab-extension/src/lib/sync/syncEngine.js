@@ -394,9 +394,13 @@ export function createSyncEngine({ storage, transport, userId, deviceId = getDev
       return await runSync(options);
     } finally {
       release();
-      notifyWrite?.(stateKey(userId));
-      notifyWrite?.(queueKey(userId));
+      announceSyncWrites();
     }
+  }
+
+  function announceSyncWrites() {
+    notifyWrite?.(stateKey(userId));
+    notifyWrite?.(queueKey(userId));
   }
 
   async function runSync({ allowOwnerChange = false } = {}) {
@@ -440,6 +444,10 @@ export function createSyncEngine({ storage, transport, userId, deviceId = getDev
         for (const [key, row] of pulled.deferred) deferred.set(key, row);
       }
       const pushed = await pushQueue(deferred);
+      // R-33: the push is applied on the account; journal the settled state
+      // and outbox now, not only at the end, so a crash during the follow-up
+      // pull does not restore the pre-push pair and re-push the same changes.
+      if (pushed.pushed || pushed.conflicts) { saveState(); announceSyncWrites(); }
       add(pushed.written);
       summary.pushed = pushed.pushed; summary.conflicts += pushed.conflicts;
       if (summary.pushed) add((await pullAndApply(state.cursor)).written);

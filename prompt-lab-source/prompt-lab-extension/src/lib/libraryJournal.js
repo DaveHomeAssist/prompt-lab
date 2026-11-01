@@ -106,13 +106,17 @@ const parseArray = (raw) => { try { const value = JSON.parse(raw); return Array.
 // journal yet (its boot read failed or timed out), the Library counterpart of
 // the settings journal's R-20 merge. Local Storage may have lost what the
 // journal holds, so the write must not replace the record wholesale:
-// - a Library key only the journal has is kept;
+// - deletion and Clear Library markers are append-only and kept, so readers
+//   still filter out what either side deleted;
 // - array keys (prompts, trash, collections, folders, packs) are merged per
 //   element: this device's copy wins unless the journal's is strictly newer,
-//   and journal-only elements are kept, except a prompt this device moved to
-//   or from the trash, which stays where this device put it;
-// - deletion and Clear Library markers are append-only and kept, so readers
-//   still filter out what either side deleted.
+//   and journal-only elements are kept, except structure entries (collections,
+//   folders, packs) this device removed in this session (R-32);
+// - a prompt that ends up in both the Library and the trash goes where its
+//   newer move puts it (deletedAt/updatedAt), whichever side made it (R-31);
+// - rows this device saved after the journal's newer Clear Library move to
+//   that Clear's generation; older rows a rollback brought back stay hidden
+//   (#293 Codex P1, R-30).
 // When the journal contributed anything, the record leaves out the sync state
 // and outbox: they describe this device's smaller Library, and pairing them
 // with the merged one could push deletes (R-21). The next restore then drops
@@ -125,54 +129,88 @@ const clearGeneration = (entries) => Object.keys(entries).reduce((newest, key) =
   const candidate = key.slice(LIBRARY_CLEAR_PREFIX.length);
   return CLEAR_GENERATION.test(candidate) && candidate > newest ? candidate : newest;
 }, '0');
+const timeOf = (value) => {
+  const parsed = typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value) ? new Date(value).getTime() : NaN;
+  return Number.isFinite(parsed) ? parsed : null;
+};
+// When the journal's Clear happened: the marker records it (R-30). Markers from
+// before that hold '1'; then the journal's last commit time is the bound.
+const clearTime = (entries, generation, savedAt) => timeOf(entries[`${LIBRARY_CLEAR_PREFIX}${generation}`]) ?? timeOf(savedAt);
+const rowClock = (row) => Math.max(timeOf(row?.updatedAt) ?? 0, timeOf(row?.deletedAt) ?? 0, timeOf(row?.createdAt) ?? 0);
+const generationOf = (row) => row?.metadata?.libraryGeneration || '0';
+const STRUCTURE_KEYS = RECORD_KEYS.filter((key) => key !== storageKeys.library && key !== storageKeys.trash);
 
-// #293 Codex P1: this device saved its rows under the Clear generation it
-// knew. When the merge brings in a newer Clear marker from the journal, move
-// those rows to that generation, or the restored marker would hide prompts
-// saved after the loss. Journal rows keep their own generation, so whatever
-// the clear removed stays hidden.
-function restampToGeneration(raw, from, to) {
-  const rows = parseArray(raw);
-  if (!rows) return raw;
-  return JSON.stringify(rows.map((row) => (row && typeof row === 'object' && (row.metadata?.libraryGeneration || '0') === from)
-    ? { ...row, metadata: { ...(row.metadata || {}), libraryGeneration: to } } : row));
+function mergeElements(local, journal, removed = new Set()) {
+  const index = new Map(local.map((item, position) => [elementKey(item), position]));
+  const result = [...local];
+  let changed = false;
+  for (const item of journal) {
+    const id = elementKey(item);
+    if (index.has(id)) {
+      const position = index.get(id);
+      if (elementClock(item) > elementClock(result[position])) { result[position] = item; changed = true; }
+    } else if (!removed.has(id)) {
+      index.set(id, result.length); result.push(item); changed = true;
+    }
+  }
+  return { result, changed };
 }
 
-export function mergeLibraryEntries(stored, fresh) {
+export function mergeLibraryEntries(stored, fresh, { savedAt = null, removed = {} } = {}) {
   const merged = { ...fresh };
-  let adopted = false;
+  for (const [key, value] of Object.entries(stored)) {
+    if (isLibraryDeletionKey(key) && !Object.hasOwn(fresh, key)) merged[key] = value;
+  }
+  // R-30: only rows saved after the journal's Clear join its generation.
   const mine = clearGeneration(fresh);
   const theirs = clearGeneration(stored);
-  if (theirs > mine) {
-    for (const key of [storageKeys.library, storageKeys.trash]) {
-      if (Object.hasOwn(fresh, key)) merged[key] = restampToGeneration(fresh[key], mine, theirs);
-    }
+  const after = theirs > mine ? clearTime(stored, theirs, savedAt) : null;
+  const localRows = (key) => {
+    if (!Object.hasOwn(fresh, key)) return [];
+    const rows = parseArray(fresh[key]);
+    if (!rows || after === null) return rows;
+    return rows.map((row) => (row && typeof row === 'object' && generationOf(row) === mine && rowClock(row) > after)
+      ? { ...row, metadata: { ...(row.metadata || {}), libraryGeneration: theirs } } : row);
+  };
+  const results = {};
+  for (const key of RECORD_KEYS) {
+    if (!Object.hasOwn(stored, key) && !Object.hasOwn(fresh, key)) continue;
+    const journal = Object.hasOwn(stored, key) ? parseArray(stored[key]) : [];
+    const local = key === storageKeys.library || key === storageKeys.trash
+      ? localRows(key)
+      : (Object.hasOwn(fresh, key) ? parseArray(fresh[key]) : []);
+    if (!local || !journal) { if (!Object.hasOwn(fresh, key)) merged[key] = stored[key]; continue; }
+    results[key] = mergeElements(local, journal, removed[key]).result;
   }
-  const freshIds = (key) => new Set((parseArray(fresh[key]) || []).map(elementKey));
-  const otherSide = { [storageKeys.library]: freshIds(storageKeys.trash), [storageKeys.trash]: freshIds(storageKeys.library) };
-  for (const [key, storedValue] of Object.entries(stored)) {
-    if (isSyncLibraryKey(key)) continue;
-    if (!RECORD_KEYS.includes(key) && !isLibraryDeletionKey(key)) continue;
-    if (!Object.hasOwn(fresh, key)) { merged[key] = storedValue; adopted = true; continue; }
-    if (!RECORD_KEYS.includes(key) || storedValue === merged[key]) continue;
-    const local = parseArray(merged[key]);
-    const journal = parseArray(storedValue);
-    if (!local || !journal) continue;
-    const exclude = otherSide[key] || new Set();
-    const index = new Map(local.map((item, position) => [elementKey(item), position]));
-    const result = [...local];
-    let changed = false;
-    for (const item of journal) {
-      const id = elementKey(item);
-      if (index.has(id)) {
-        const position = index.get(id);
-        if (elementClock(item) > elementClock(result[position])) { result[position] = item; changed = true; }
-      } else if (!exclude.has(id)) {
-        index.set(id, result.length); result.push(item); changed = true;
-      }
+  // R-31: one place per prompt, decided by the newer move.
+  const library = results[storageKeys.library];
+  const trash = results[storageKeys.trash];
+  if (library && trash) {
+    const inFresh = (key) => new Set((parseArray(fresh[key]) || []).map(elementKey));
+    const freshTrash = inFresh(storageKeys.trash);
+    const trashed = new Map(trash.map((row) => [elementKey(row), row]));
+    const dropFromLibrary = new Set();
+    const dropFromTrash = new Set();
+    for (const row of library) {
+      const id = elementKey(row);
+      if (!trashed.has(id)) continue;
+      const binned = trashed.get(id);
+      const movedOut = Math.max(timeOf(binned?.deletedAt) ?? 0, timeOf(binned?.updatedAt) ?? 0);
+      const movedIn = timeOf(row?.updatedAt) ?? 0;
+      const toTrash = movedOut === movedIn ? freshTrash.has(id) : movedOut > movedIn;
+      (toTrash ? dropFromLibrary : dropFromTrash).add(id);
     }
-    if (changed) { merged[key] = JSON.stringify(result); adopted = true; }
+    results[storageKeys.library] = library.filter((row) => !dropFromLibrary.has(elementKey(row)));
+    results[storageKeys.trash] = trash.filter((row) => !dropFromTrash.has(elementKey(row)));
   }
+  for (const [key, rows] of Object.entries(results)) {
+    const text = JSON.stringify(rows);
+    const freshText = Object.hasOwn(fresh, key) ? JSON.stringify(parseArray(fresh[key])) : null;
+    if (text !== freshText) merged[key] = text;
+    else if (Object.hasOwn(fresh, key)) merged[key] = fresh[key];
+  }
+  const adopted = [...new Set([...Object.keys(merged), ...Object.keys(fresh)])]
+    .some((key) => !isSyncLibraryKey(key) && merged[key] !== fresh[key]);
   if (adopted) for (const key of Object.keys(merged)) if (isSyncLibraryKey(key)) delete merged[key];
   return merged;
 }
@@ -217,7 +255,7 @@ function writeRecord(db, storage, wanted, recordId, readState, merge) {
       // inside this transaction, so a write after a failed boot read cannot
       // drop keys the journal holds and this device has not seen.
       const fresh = readState(storage);
-      const entries = merge ? merge(current.result?.entries || {}, fresh) : fresh;
+      const entries = merge ? merge(current.result?.entries || {}, fresh, current.result || null) : fresh;
       store.put({ id: recordId, revision, entries, savedAt: new Date().toISOString() });
     };
     transaction.oncomplete = () => resolve(revision);
@@ -261,6 +299,26 @@ export function createLibraryJournal({
   let revision = 0;
   // True once a boot read has seen the record, so a write knows what it replaces.
   let reconciled = false;
+  // R-32: structure entries this device removed while unreconciled, so the
+  // pre-boot merge does not bring them back from the journal.
+  let lastSeen = null;
+  const removed = {};
+  const trackRemovals = (fresh) => {
+    if (lastSeen) {
+      for (const key of STRUCTURE_KEYS) {
+        const before = (parseArray(lastSeen[key]) || []).map(elementKey);
+        const now = new Set((parseArray(fresh[key]) || []).map(elementKey));
+        const gone = (removed[key] ||= new Set());
+        for (const id of before) if (!now.has(id)) gone.add(id);
+        for (const id of now) gone.delete(id);
+      }
+    }
+    lastSeen = fresh;
+  };
+  const preBootMerge = mergeBeforeBoot && ((storedEntries, fresh, record) => {
+    trackRemovals(fresh);
+    return mergeBeforeBoot(storedEntries, fresh, { savedAt: record?.savedAt ?? null, removed });
+  });
   const database = () => {
     // A failed open is retried by the next write instead of being cached.
     dbPromise ||= openJournal(idb).catch((error) => {
@@ -284,7 +342,7 @@ export function createLibraryJournal({
     revision = Math.max(revision, readLocalRevision(storage, revisionKey)) + 1;
     const wanted = revision;
     setLocalRevision(wanted);
-    const write = chain.then(() => database()).then((db) => writeRecord(db, storage, wanted, recordId, readState, mergeEntries || (reconciled ? null : mergeBeforeBoot))).then((committed) => {
+    const write = chain.then(() => database()).then((db) => writeRecord(db, storage, wanted, recordId, readState, mergeEntries || (reconciled ? null : preBootMerge))).then((committed) => {
       // The journal was ahead (for example after a boot read timed out), so
       // the commit took a higher revision. Keep localStorage in step with it.
       if (committed > revision) revision = committed;
@@ -309,6 +367,7 @@ export function createLibraryJournal({
 
   const restore = async () => {
     const local = { revision: readLocalRevision(storage, revisionKey), entries: readState(storage) };
+    lastSeen = local.entries;
     revision = local.revision;
     let record;
     let attempts = 0;

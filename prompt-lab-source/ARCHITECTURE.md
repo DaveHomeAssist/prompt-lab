@@ -279,6 +279,9 @@ Persistence contracts (post 2026-08 behavioral-audit remediation):
   with value `1`; the marker contains no title or body. Clear Library appends a
   `pl2-library-clear:<counter>:<uuid>` key. A logical counter and deterministic
   UUID tie-break order concurrent clears without trusting wall-clock time.
+  The marker's value is the Clear's ISO time (older markers hold `1`); only the
+  desktop journal's failed-boot merge reads it, to tell rows saved after the
+  Clear from rows a Local Storage rollback brought back.
   Live/trash records carry `metadata.libraryGeneration`; missing values mean
   the original generation. Readers, storage-event adoption, and delayed writes
   exclude deleted IDs and records from earlier clear generations.
