@@ -2,10 +2,13 @@ import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import usePromptLibrary from '../hooks/usePromptLibrary.js';
 import { saveJson, storageKeys } from '../lib/storage.js';
-import { LIBRARY_DELETED_PREFIX, markLibraryDeleted } from '../lib/libraryDeletion.js';
+import { LIBRARY_DELETED_PREFIX, filterDeletedLibraryRecords, markLibraryCleared, markLibraryDeleted, readLibraryDeletionState } from '../lib/libraryDeletion.js';
+import { createSyncEngine, queueKey, stateKey } from '../lib/sync/syncEngine.js';
+import { notifyLocalWrite } from '../lib/storage.js';
+import { startSettingsJournal } from '../lib/settingsJournal.js';
 import {
   LIBRARY_JOURNAL_DB, LIBRARY_JOURNAL_RECORD, LIBRARY_JOURNAL_REVISION_KEY, LIBRARY_JOURNAL_STORE,
-  applyLibraryJournalRecord, createLibraryJournal, libraryJournalSupported, planLibraryJournalBoot, startLibraryJournal,
+  applyLibraryJournalRecord, createLibraryJournal, libraryJournalSupported, mergeLibraryEntries, planLibraryJournalBoot, startLibraryJournal,
 } from '../lib/libraryJournal.js';
 
 vi.mock('../lib/legacyLibraryMigration.js', async (importOriginal) => ({
@@ -316,5 +319,259 @@ describe('desktop library journal', () => {
     vi.useRealTimers();
     await settled(journal);
     expect(JSON.parse(journalRecord().entries[storageKeys.library]).map((row) => row.id)).toEqual(['from-ui']);
+  });
+});
+
+// Like the settings journal's R-20 fix: a write made before this device has
+// read the journal (failed boot read) must not replace the whole record.
+describe('library journal writes after a failed boot read', () => {
+  const row = (id, updatedAt = '2026-11-01T10:00:00.000Z', title = id) => ({ id, title, updatedAt });
+  const STATE = 'pl2-sync-state:user_A';
+
+  it('keeps the journal\'s rows, markers and order and restores them on the next boot', async () => {
+    const first = await boot();
+    localStorage.setItem(storageKeys.library, JSON.stringify([row('a'), row('b')]));
+    localStorage.setItem(storageKeys.collections, JSON.stringify(['Work']));
+    localStorage.setItem(`${LIBRARY_DELETED_PREFIX}gone`, '1');
+    localStorage.setItem(STATE, '{"shadow":{"prompt:a":{},"prompt:b":{}}}');
+    saveJson(storageKeys.library, JSON.parse(localStorage.getItem(storageKeys.library)));
+    await settled(first.journal);
+    first.stop();
+
+    // Local Storage lost everything; the journal answers only after boot gave up.
+    localStorage.clear();
+    idb.state.openDelayMs = 80;
+    const blind = await boot({ timeoutMs: 10 });
+    expect(blind.outcome.action).toBe('unavailable');
+    localStorage.setItem(STATE, '{"shadow":{}}');
+    saveJson(storageKeys.library, [row('c')]);
+    await new Promise(resolve => setTimeout(resolve, 150));
+    await settled(blind.journal);
+
+    const entries = journalRecord().entries;
+    expect(JSON.parse(entries[storageKeys.library]).map(r => r.id)).toEqual(['c', 'a', 'b']);
+    expect(entries[storageKeys.collections]).toBe('["Work"]');
+    expect(entries[`${LIBRARY_DELETED_PREFIX}gone`]).toBe('1');
+    // This device's sync state describes only [c]; it must not pair with the merge.
+    expect(entries[STATE]).toBeUndefined();
+    blind.stop();
+
+    idb.state.openDelayMs = 0;
+    const next = await boot();
+    expect(next.outcome.action).toBe('restore');
+    expect(ids(storageKeys.library)).toEqual(['c', 'a', 'b']);
+    expect(localStorage.getItem(STATE)).toBeNull();
+  });
+
+  it('replaces the record as before once the boot read succeeded', async () => {
+    localStorage.setItem(storageKeys.library, JSON.stringify([row('a'), row('b')]));
+    const { journal } = await boot();
+    await settled(journal);
+    saveJson(storageKeys.library, [row('b')]);
+    await settled(journal);
+    expect(JSON.parse(journalRecord().entries[storageKeys.library]).map(r => r.id)).toEqual(['b']);
+  });
+
+  it('#293 Codex P1: prompts saved after the loss stay visible when an older Clear marker comes back', async () => {
+    const first = await boot();
+    saveJson(storageKeys.library, [row('old')]);
+    const generation = markLibraryCleared(localStorage);
+    saveJson(storageKeys.library, [{ ...row('kept'), metadata: { libraryGeneration: generation } }]);
+    await settled(first.journal);
+    first.stop();
+
+    localStorage.clear();
+    idb.state.openDelayMs = 80;
+    const blind = await boot({ timeoutMs: 10 });
+    expect(blind.outcome.action).toBe('unavailable');
+    // No Clear marker locally, so the new prompt is saved under generation '0'.
+    saveJson(storageKeys.library, [row('new')]);
+    saveJson(storageKeys.trash, [row('binned')]);
+    await new Promise(resolve => setTimeout(resolve, 150));
+    await settled(blind.journal);
+    blind.stop();
+
+    idb.state.openDelayMs = 0;
+    expect((await boot()).outcome.action).toBe('restore');
+    const visible = (key) => filterDeletedLibraryRecords(JSON.parse(localStorage.getItem(key) || '[]'), readLibraryDeletionState(localStorage)).map(r => r.id);
+    expect(visible(storageKeys.library)).toEqual(['new', 'kept']);
+    expect(visible(storageKeys.trash)).toEqual(['binned']);
+    expect(JSON.parse(localStorage.getItem(storageKeys.library)).some(r => r.id === 'old')).toBe(false);
+  });
+
+  describe('mergeLibraryEntries', () => {
+    const lib = storageKeys.library;
+    const trash = storageKeys.trash;
+    it('keeps this device\'s copy unless the journal\'s is strictly newer', () => {
+      const merged = mergeLibraryEntries(
+        { [lib]: JSON.stringify([row('a', '2026-11-01T12:00:00.000Z', 'journal'), row('b', '2026-11-01T09:00:00.000Z', 'journal')]) },
+        { [lib]: JSON.stringify([row('b', '2026-11-01T10:00:00.000Z', 'mine'), row('a', '2026-11-01T11:00:00.000Z', 'mine')]) },
+      );
+      expect(JSON.parse(merged[lib]).map(r => `${r.id}:${r.title}`)).toEqual(['b:mine', 'a:journal']);
+    });
+    it('leaves a prompt where this device moved it between Library and trash', () => {
+      const merged = mergeLibraryEntries(
+        { [lib]: JSON.stringify([row('a'), row('x')]), [trash]: JSON.stringify([row('b')]) },
+        { [lib]: JSON.stringify([row('b')]), [trash]: JSON.stringify([row('a')]) },
+      );
+      expect(JSON.parse(merged[lib]).map(r => r.id)).toEqual(['b', 'x']);
+      expect(JSON.parse(merged[trash]).map(r => r.id)).toEqual(['a']);
+    });
+    it('keeps the sync state when the journal adds nothing', () => {
+      const fresh = { [lib]: JSON.stringify([row('a')]), 'pl2-sync-state:u': '{}', 'pl2-sync-queue:u': '[]' };
+      expect(mergeLibraryEntries({ [lib]: JSON.stringify([row('a')]), 'pl2-sync-state:u': '{"old":1}' }, fresh)).toEqual(fresh);
+    });
+    it('never takes the journal\'s sync state', () => {
+      const merged = mergeLibraryEntries({ 'pl2-sync-state:u': '{"old":1}', [lib]: '[]' }, { [lib]: '[]' });
+      expect(merged).toEqual({ [lib]: '[]' });
+    });
+  });
+});
+
+// R-28 / R-29: the engine tells the Library journal about its state and
+// outbox itself, once per sync.
+describe('sync state reaches the Library journal from the engine', () => {
+  const emptyServer = () => ({
+    pull: async () => [], push: async (device, items) => items.map(item => ({ kind: item.kind, item_id: item.item_id, status: 'applied', version: 1 })),
+    manifest: async () => [], fetchItems: async () => [],
+  });
+  const engine = (transport, now = () => Date.now()) => createSyncEngine({ storage: localStorage, transport, userId: 'u1', deviceId: 'd1', notifyWrite: notifyLocalWrite, now });
+
+  it('R-29: with only the Library journal running, a sync commits its state and outbox', async () => {
+    localStorage.setItem(storageKeys.library, '[]');
+    const { journal } = await boot();
+    await settled(journal);
+    await engine(emptyServer()).syncOnce();
+    await settled(journal);
+    // A later sync that only changes the state (the manifest check is due).
+    const firstState = localStorage.getItem(stateKey('u1'));
+    await engine(emptyServer(), () => Date.now() + 7 * 24 * 3600 * 1000).syncOnce();
+    await settled(journal);
+    expect(localStorage.getItem(stateKey('u1'))).not.toBe(firstState);
+    const entries = journalRecord().entries;
+    expect(entries[stateKey('u1')]).toBe(localStorage.getItem(stateKey('u1')));
+    expect(JSON.parse(entries[stateKey('u1')]).initialized).toBe(true);
+    expect(Object.hasOwn(entries, queueKey('u1'))).toBe(localStorage.getItem(queueKey('u1')) !== null);
+  });
+
+  it('R-28: one Library commit per sync however often the state is saved', async () => {
+    localStorage.setItem(storageKeys.library, '[]');
+    const { journal } = await boot();
+    // The desktop also runs the settings journal, which watches every Storage write.
+    const settings = await startSettingsJournal({ storage: localStorage, idb });
+    stops.push(settings.stop);
+    await settled(journal);
+    const clock = () => Date.now();
+    await engine(emptyServer(), clock).syncOnce(); // first run
+    await settled(journal);
+    // A slow transport spreads the saves of one sync over several turns.
+    const slow = { ...emptyServer(), pull: async () => { await new Promise(r => setTimeout(r, 5)); return []; } };
+    let saves = 0;
+    const realSet = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key, value) { if (key === stateKey('u1')) saves += 1; return realSet.call(this, key, value); };
+    const before = journalRecord().revision;
+    try {
+      await engine(slow, clock).syncOnce();
+      await settled(journal);
+    } finally { Storage.prototype.setItem = realSet; }
+    expect(saves).toBeGreaterThan(1);
+    expect(journalRecord().revision - before).toBe(1);
+  });
+});
+
+describe('sync-key saves held during a sync', () => {
+  const STATE = stateKey('u1');
+  const bootBoth = async () => {
+    const library = await boot();
+    const settings = await startSettingsJournal({ storage: localStorage, idb });
+    stops.push(settings.stop);
+    return library;
+  };
+  const stopAll = () => { for (const stop of stops.splice(0)) stop(); };
+
+  it('a raw sync-state write outside a sync is saved to the Library record', async () => {
+    localStorage.setItem(storageKeys.library, '[]');
+    const { journal } = await bootBoth();
+    await settled(journal);
+    localStorage.setItem(STATE, '{"initialized":true,"cursor":42}');
+    localStorage.setItem(queueKey('u1'), '{}');
+    await settled(journal);
+    expect(journalRecord().entries[STATE]).toBe('{"initialized":true,"cursor":42}');
+    expect(journalRecord().entries[queueKey('u1')]).toBe('{}');
+    // And it survives a reload with Local Storage intact.
+    stopAll();
+    expect((await bootBoth()).outcome.action).toBe('current');
+    expect(localStorage.getItem(STATE)).toBe('{"initialized":true,"cursor":42}');
+  });
+
+  // The app dies while a push is in flight. Whatever Local Storage kept, the
+  // next boot pairs the Library with the sync state of the same commit, and the
+  // next sync pushes only the genuinely new local prompt: no stray push, no delete.
+  it.each([
+    ['Local Storage kept the writes after the last commit', 'kept'],
+    ['Local Storage lost everything', 'lost'],
+  ])('a crash mid-sync leaves the last good state: %s', async (_, mode) => {
+    const entry = (id) => ({ id, title: id, original: id, enhanced: id, tags: [], createdAt: '2026-11-01T10:00:00.000Z', updatedAt: '2026-11-01T10:00:00.000Z' });
+    const rows = new Map(); let seq = 0; const pushes = []; let hangPush = null;
+    const put = (item_id, payload, deleted = false) => {
+      const version = (rows.get(item_id)?.version || 0) + 1;
+      rows.set(item_id, { kind: 'prompt', item_id, payload, deleted, version, lamport: 1, change_seq: ++seq });
+      return version;
+    };
+    const transport = {
+      pull: async (cursor, limit) => [...rows.values()].filter(r => r.change_seq > cursor).sort((a, b) => a.change_seq - b.change_seq).slice(0, limit),
+      push: async (device, items) => {
+        if (hangPush) await hangPush.promise;
+        return items.map((item) => {
+          pushes.push(item);
+          if (item.kind !== 'prompt') return { kind: item.kind, item_id: item.item_id, status: 'applied', version: 1 };
+          const current = rows.get(item.item_id);
+          if ((current?.version || 0) !== Number(item.base_version)) return { kind: item.kind, item_id: item.item_id, status: 'conflict_lost', version: current.version };
+          return { kind: item.kind, item_id: item.item_id, status: 'applied', version: put(item.item_id, item.payload, item.deleted) };
+        });
+      },
+      manifest: async () => [...rows.values()].map(({ kind, item_id, version }) => ({ kind, item_id, version })),
+      fetchItems: async (keys) => keys.map(({ item_id }) => rows.get(item_id)).filter(Boolean),
+    };
+    const engine = () => createSyncEngine({ storage: localStorage, transport, userId: 'u1', deviceId: 'd1', notifyWrite: notifyLocalWrite });
+
+    put('a', { state: 'active', entry: entry('a') });
+    localStorage.setItem(storageKeys.library, '[]');
+    let library = await bootBoth();
+    await engine().syncOnce();
+    await settled(library.journal);
+
+    // Another device adds b; this device saves c; the push never returns.
+    put('b', { state: 'active', entry: entry('b') });
+    saveJson(storageKeys.library, [...JSON.parse(localStorage.getItem(storageKeys.library)), entry('c')]);
+    await settled(library.journal);
+    let release;
+    hangPush = { promise: new Promise((resolve, reject) => { release = reject; }) };
+    const inFlight = engine().syncOnce();
+    for (let i = 0; i < 20 && !rows.size; i += 1) await Promise.resolve();
+    await new Promise(resolve => setTimeout(resolve, 20));
+    await library.journal.flush().catch(() => {});
+
+    // Crash: the journals stop; what Local Storage held at that moment is all that is left.
+    const atCrash = localEntries();
+    stopAll();
+    release(new Error('app closed'));
+    await inFlight;
+    replaceLocal(mode === 'kept' ? atCrash : {});
+    hangPush = null;
+
+    library = await bootBoth();
+    const ids = JSON.parse(localStorage.getItem(storageKeys.library)).map(r => r.id).sort();
+    const shadow = Object.keys(JSON.parse(localStorage.getItem(STATE)).shadow).filter(k => k.startsWith('prompt:')).sort();
+    // The Library and the shadow come from one commit.
+    expect(ids).toEqual(['a', 'b', 'c']);
+    expect(shadow).toEqual(['prompt:a', 'prompt:b']);
+
+    pushes.length = 0;
+    await engine().syncOnce();
+    const prompts = pushes.filter(item => item.kind === 'prompt');
+    expect(prompts.map(item => item.item_id)).toEqual(['c']);
+    expect(prompts.some(item => item.deleted)).toBe(false);
+    expect([...rows.values()].filter(r => !r.deleted).map(r => r.item_id).sort()).toEqual(['a', 'b', 'c']);
   });
 });

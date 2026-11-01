@@ -4,7 +4,7 @@ import {
   isSettingsJournalKey, journalValue, mergeSettingsEntries, startSettingsJournal,
 } from '../lib/settingsJournal.js';
 import { LIBRARY_JOURNAL_RECORD, isSyncLibraryKey, startLibraryJournal } from '../lib/libraryJournal.js';
-import { PROVIDER_NON_SECRET_FIELDS, PROVIDER_SECRET_FIELDS, VALID_PROVIDERS } from '../lib/providerRegistry.js';
+import { PROVIDER_NON_SECRET_FIELDS, PROVIDER_SECRET_FIELDS, VALID_PROVIDERS, getProvider } from '../lib/providerRegistry.js';
 import { notifyLocalWrite, storageKeys } from '../lib/storage.js';
 import { createSyncEngine, stateKey } from '../lib/sync/syncEngine.js';
 import { createFakeIndexedDb } from './helpers/fakeIndexedDb.js';
@@ -118,6 +118,25 @@ describe('desktop settings journal', () => {
         expect(out).not.toContain('user:');
       });
     }
+
+    it('R-27: every provider settings key is a model field, a base URL or a listed secret field', () => {
+      const SECRET_NAME = /key|secret|token|password|passwd|auth|bearer|credential|pat$|signature|cookie/i;
+      for (const id of VALID_PROVIDERS) {
+        const provider = getProvider(id);
+        const secrets = [...(provider.secretFields || []), provider.apiKeyField].filter(Boolean);
+        expect(Array.isArray(provider.secretFields), `${id}.secretFields is explicit`).toBe(true);
+        for (const field of provider.settingsKeys) {
+          const known = field === provider.modelField || field === `${id}BaseUrl` || secrets.includes(field);
+          expect(known, `${id}.${field} must be a model field, a base URL or listed in secretFields`).toBe(true);
+          if (SECRET_NAME.test(field)) expect(secrets, `${id}.${field} looks secret`).toContain(field);
+          if (secrets.includes(field)) {
+            expect(PROVIDER_SECRET_FIELDS).toContain(field);
+            expect(PROVIDER_NON_SECRET_FIELDS).not.toContain(field);
+          }
+        }
+      }
+      for (const field of PROVIDER_NON_SECRET_FIELDS) expect(SECRET_NAME.test(field), field).toBe(false);
+    });
 
     it('keeps allowlisted primitives only and strips URL credentials', () => {
       const out = JSON.parse(journalValue('pl2-provider-settings', JSON.stringify({
@@ -337,5 +356,56 @@ describe('R-21: sync state restores together with the Library', () => {
     server.pushes.length = 0;
     await engineFor(server).syncOnce();
     expect(promptPushes(server).some(item => item.item_id === 'b' && item.deleted)).toBe(true);
+  });
+});
+
+describe('billing cache: plan and entitlement fields only', () => {
+  const cached = {
+    plan: 'pro', status: 'active', billingPeriod: 'monthly', productName: 'Prompt Lab Pro',
+    lastValidatedAt: '2026-11-01T10:00:00.000Z', lastVerifiedAt: '2026-11-01T10:00:00.000Z',
+    billingDisabled: false, checkoutDisabled: false,
+    customerEmail: 'person@example.com', customerName: 'Pat Person', customerId: 'cus_FAKE123',
+    subscriptionId: 'sub_FAKE123', priceId: 'price_FAKE123', manageUrl: 'https://billing.example.com/p/session/FAKE',
+    validationError: 'Signed in as person@example.com', futureField: { address: '1 Main St' },
+  };
+  const personal = ['person@example.com', 'Pat Person', 'cus_FAKE123', 'sub_FAKE123', 'price_FAKE123', 'billing.example.com', '1 Main St'];
+
+  it('journals only the entitlement fields', () => {
+    const out = JSON.parse(journalValue('pl2-billing', JSON.stringify(cached)));
+    expect(out).toEqual({
+      plan: 'pro', status: 'active', billingPeriod: 'monthly', productName: 'Prompt Lab Pro',
+      lastValidatedAt: '2026-11-01T10:00:00.000Z', lastVerifiedAt: '2026-11-01T10:00:00.000Z',
+      billingDisabled: false, checkoutDisabled: false,
+    });
+  });
+
+  it('never writes personal billing fields to IndexedDB, and restores the entitlement after Local Storage loss', async () => {
+    const first = await boot();
+    localStorage.setItem('pl2-billing', JSON.stringify(cached));
+    await settle(first);
+    const stored = JSON.stringify(record());
+    for (const value of personal) expect(stored).not.toContain(value);
+    loseLocalStorage();
+    await boot();
+    const restored = JSON.parse(localStorage.getItem('pl2-billing'));
+    expect(restored.plan).toBe('pro');
+    expect(restored.lastVerifiedAt).toBe(cached.lastVerifiedAt);
+    for (const value of personal) expect(JSON.stringify(restored)).not.toContain(value);
+  });
+
+  it('keeps the live personal fields when a newer journaled entitlement replaces an older live copy', async () => {
+    const first = await boot();
+    localStorage.setItem('pl2-billing', JSON.stringify({ ...cached, plan: 'free', status: 'canceled' }));
+    await settle(first);
+    stopAll();
+    const stamps = stampsOf();
+    localStorage.setItem('pl2-billing', JSON.stringify(cached));
+    localStorage.setItem(SETTINGS_JOURNAL_STAMPS_KEY, JSON.stringify({ 'pl2-billing': stamps['pl2-billing'] - 10 }));
+    localStorage.removeItem(SETTINGS_JOURNAL_REVISION_KEY);
+    await boot();
+    const live = JSON.parse(localStorage.getItem('pl2-billing'));
+    expect(live.plan).toBe('free');
+    expect(live.status).toBe('canceled');
+    expect(live.customerEmail).toBe('person@example.com');
   });
 });

@@ -1,7 +1,8 @@
 import { createLibraryJournal, isSyncLibraryKey } from './libraryJournal.js';
-import { notifyLocalWrite, storageKeys } from './storage.js';
+import { notifyLocalWrite, storageKeys, syncWritesHeld } from './storage.js';
 import { logWarn } from './logger.js';
 import { PROVIDER_NON_SECRET_FIELDS } from './providerRegistry.js';
+import { BILLING_ENTITLEMENT_FIELDS } from './billing.js';
 
 // WebView2 can lose the tail of its Local Storage log across hard restarts
 // (Windows CI: every key written after launch 1 read empty on launches 2-4).
@@ -20,8 +21,10 @@ import { PROVIDER_NON_SECRET_FIELDS } from './providerRegistry.js';
 //
 // Billing: pl2-billing is a client-side entitlement cache, not a security
 // boundary (docs/billing-policy.md). On the desktop nothing re-verifies it
-// (no sign-in there), so the journal only puts back the exact cached value
-// this device already had, lastVerifiedAt included; it cannot grant anything.
+// (no sign-in there), so the journal only puts back the plan and entitlement
+// fields this device already had (BILLING_ENTITLEMENT_FIELDS, lastVerifiedAt
+// included); it cannot grant anything. Account email, name, Stripe ids and the
+// portal link are never journaled.
 export const SETTINGS_JOURNAL_RECORD = 'settings';
 export const SETTINGS_JOURNAL_REVISION_KEY = 'pl2-settings-journal-revision';
 export const SETTINGS_JOURNAL_STAMPS_KEY = 'pl2-settings-journal-stamps';
@@ -62,9 +65,9 @@ function withoutUrlCredentials(value) {
   }
 }
 
-function safeProviderSettings(parsed) {
+function allowlisted(parsed, fields) {
   const safe = {};
-  for (const field of PROVIDER_NON_SECRET_FIELDS) {
+  for (const field of fields) {
     if (!Object.hasOwn(parsed, field)) continue;
     let value = parsed[field];
     if (!PRIMITIVE.has(typeof value)) continue;          // objects, arrays, null: dropped
@@ -77,14 +80,23 @@ function safeProviderSettings(parsed) {
   return safe;
 }
 
+// JSON object keys journaled through a field allowlist; live fields outside
+// it survive a restore. Provider settings: no API keys (R-19). Billing cache:
+// plan and entitlement only, no account email, name or other personal data.
+const ALLOWLISTED = Object.freeze({
+  [PROVIDER_SETTINGS_KEY]: PROVIDER_NON_SECRET_FIELDS,
+  [storageKeys.billing]: BILLING_ENTITLEMENT_FIELDS,
+});
+
 // The journaled form of a value, or null when it is withheld (never journaled).
 export function journalValue(key, raw) {
   if (raw === null || raw === undefined) return null;
-  if (key !== PROVIDER_SETTINGS_KEY) return SECRET_VALUE.test(raw) ? null : raw;
+  const fields = Object.hasOwn(ALLOWLISTED, key) ? ALLOWLISTED[key] : null;
+  if (!fields) return SECRET_VALUE.test(raw) ? null : raw;
   try {
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
-    return JSON.stringify(safeProviderSettings(parsed));
+    return JSON.stringify(allowlisted(parsed, fields));
   } catch { return null; }
 }
 
@@ -190,7 +202,7 @@ export function applySettingsJournalRecord(storage, record, rawSet = (k, v) => s
     const journalNewer = live === null ? saved.stamp >= liveStamp : liveStamp > 0 && saved.stamp > liveStamp;
     if (!journalNewer) continue;
     let value = saved.value;
-    if (key === PROVIDER_SETTINGS_KEY && live !== null) {
+    if (Object.hasOwn(ALLOWLISTED, key) && live !== null) {
       const current = parseObject(live, null);
       if (current && !Array.isArray(current)) value = JSON.stringify({ ...current, ...JSON.parse(saved.value) });
     }
@@ -234,7 +246,9 @@ function watchWrites(storage, onWrite) {
   };
   const after = (key) => {
     if (isSettingsJournalKey(key)) { stamp(key); onWrite(key); }
-    else if (isSyncLibraryKey(key)) notifyLocalWrite(key);
+    // Sync state and outbox writes go to the Library journal. During a sync
+    // they are held; the engine announces them once at the end (R-28, R-29).
+    else if (isSyncLibraryKey(key) && !syncWritesHeld()) notifyLocalWrite(key);
   };
   function setItem(key, value) {
     const result = originalSet.call(this, key, value);

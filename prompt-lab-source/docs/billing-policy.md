@@ -135,11 +135,14 @@ values above against `billingPolicy.js`.
 - Desktop has no sign-in, so it never re-checks the cached entitlement
   (`pl2-billing`) with the server: a cached Pro is trusted there with no time
   limit, and an owner-status cache is never revalidated on any surface. Desktop
-  also journals the cache in IndexedDB (`settingsJournal.js`) so it survives
-  WebView2 Local Storage loss. The journal restores only the exact cached value
-  (with its `lastVerifiedAt`), never anything newer than the device had, so it
-  grants nothing new. The cache holds the account email, name and portal link,
-  which therefore also persist in the desktop profile's IndexedDB.
+  also journals the plan and entitlement fields of the cache in IndexedDB
+  (`settingsJournal.js`, `BILLING_ENTITLEMENT_FIELDS` in `billing.js`: plan,
+  status, billing period, product name, `lastValidatedAt`, `lastVerifiedAt` and
+  the two disabled flags) so they survive WebView2 Local Storage loss. The cache
+  has no separate expiry field; the two timestamps anchor revalidation and the
+  offline grace. The journal restores only values this device already had, so
+  it grants nothing new. The account email, name, Stripe customer, subscription
+  and price ids, the portal link and error text are never journaled.
 - In-app Pro feature gates apply only to the hosted web app (built with
   `VITE_PROMPTLAB_PRO_GATES=on`; `areFeatureGatesActive()` in
   `prompt-lab-extension/src/lib/billing.js`). There, Free accounts cannot use
