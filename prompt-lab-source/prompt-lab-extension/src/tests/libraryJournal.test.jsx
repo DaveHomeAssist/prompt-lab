@@ -756,6 +756,25 @@ describe('re-review 9: failed-boot merge without clock trust', () => {
     expect(await rollbackAcrossClear([row('old')], row('slow', behind))).toEqual(['kept', 'slow']);
   });
 
+  it('#303 Codex P2: a rollback across two Clears keeps rows the first Clear removed hidden', async () => {
+    let j = await boot();
+    saveJson(storageKeys.library, [row('first')]);
+    await settled(j.journal);
+    const preClear = localEntries();
+    const one = markLibraryCleared(localStorage);
+    saveJson(storageKeys.library, [row('second', new Date().toISOString(), { metadata: { libraryGeneration: one } })]);
+    await settled(j.journal);
+    const two = markLibraryCleared(localStorage);
+    saveJson(storageKeys.library, [row('kept', new Date().toISOString(), { metadata: { libraryGeneration: two } })]);
+    await settled(j.journal); stopAll();
+    replaceLocal(preClear); // the rollback lost both Clears
+    j = await failBoot();
+    saveJson(storageKeys.library, [...JSON.parse(localStorage.getItem(storageKeys.library)), row('new', new Date().toISOString())]);
+    await finish(j);
+    expect((await boot()).outcome.action).toBe('restore');
+    expect(visible(storageKeys.library).sort()).toEqual(['kept', 'new']);
+  });
+
   it('R-35 (D3): a collection removed in a session whose commit failed stays removed after the next blind session', async () => {
     let j = await boot();
     saveJson(storageKeys.library, [row('a')]);

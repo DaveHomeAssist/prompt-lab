@@ -176,11 +176,19 @@ export function mergeLibraryEntries(stored, fresh, { savedAt = null, removed = {
   for (const [key, value] of Object.entries(stored)) {
     if (isLibraryDeletionKey(key) && !Object.hasOwn(fresh, key)) merged[key] = value;
   }
-  // R-30/R-34: only rows the journal's Clear did not remove join its generation.
+  // R-30/R-34: only rows that no Clear newer than this device's generation
+  // removed join the journal's newest generation. Each marker lists only the
+  // rows present at its own Clear, so every intervening marker is checked
+  // (#303 Codex P2).
   const mine = clearGeneration(fresh);
   const theirs = clearGeneration(stored);
-  const clear = theirs > mine ? clearMarker(stored, theirs, savedAt) : null;
-  const joins = (row) => (clear.ids ? !clear.ids.has(row.id) : clear.after !== null && rowClock(row) > clear.after);
+  const clears = theirs > mine ? Object.keys(stored)
+    .filter((key) => key.startsWith(LIBRARY_CLEAR_PREFIX))
+    .map((key) => key.slice(LIBRARY_CLEAR_PREFIX.length))
+    .filter((generation) => CLEAR_GENERATION.test(generation) && generation > mine)
+    .map((generation) => clearMarker(stored, generation, savedAt)) : [];
+  const clear = clears.length ? clears : null;
+  const joins = (row) => clears.every((marker) => (marker.ids ? !marker.ids.has(row.id) : marker.after !== null && rowClock(row) > marker.after));
   const localRows = (key) => {
     if (!Object.hasOwn(fresh, key)) return [];
     const rows = parseArray(fresh[key]);
