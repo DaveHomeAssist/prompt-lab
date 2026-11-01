@@ -184,7 +184,7 @@ export default function PostEnhanceResults({
       <header className="pl-results-verdict">
         <span className="sr-only">Results</span>
         <div className="min-w-0">
-          <p className="pl-eyebrow">What changed</p><h2 id="result-verdict-title" className={`pl-result-summary${summaryClamped ? ' is-clamped' : ''}`}>{visibleVerdict}</h2>
+          <p className="pl-eyebrow">What changed</p><h2 id="result-verdict-title" className={`pl-result-summary${summaryClamped && !showFullSummary ? ' is-clamped' : ''}`}>{visibleVerdict}</h2>
           {summaryClamped && <button type="button" className="pl-text-button" aria-expanded={showFullSummary} onClick={() => setShowFullSummary(value => !value)}>{showFullSummary ? 'Show less' : 'Show full summary'}</button>}
           <div className="pl-result-metrics" aria-label="Run details">
             {provider && <span>{provider}</span>}{model && <span>{model}</span>}

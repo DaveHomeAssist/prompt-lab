@@ -30,6 +30,19 @@ function Harness({ onSaveAsNew = vi.fn(), onSave = vi.fn(), onCopy = vi.fn(), on
 }
 
 describe('PostEnhanceResults', () => {
+  it('drops the two-line clamp when the full summary is expanded', () => {
+    const changeSummary = 'Clearer structure. '.repeat(15).trim();
+    render(<Harness initialMeta={{ ...structuredMeta, changeSummary }} />);
+    const title = document.getElementById('result-verdict-title');
+    expect(title).toHaveClass('is-clamped');
+    expect(title.textContent.endsWith('…')).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Show full summary' }));
+    expect(title).not.toHaveClass('is-clamped');
+    expect(title).toHaveTextContent(changeSummary);
+    fireEvent.click(screen.getByRole('button', { name: 'Show less' }));
+    expect(title).toHaveClass('is-clamped');
+  });
+
   it('reconciles a failed button save and later edits with acknowledged saves from another entry point', async () => {
     const onSave = vi.fn().mockResolvedValue(null);
     const { container, rerender } = render(<Harness onSave={onSave} />);
