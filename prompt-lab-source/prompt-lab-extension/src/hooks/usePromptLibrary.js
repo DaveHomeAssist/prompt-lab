@@ -871,7 +871,7 @@ export default function usePromptLibrary(notify) {
   }, [notify]);
 
   const clearLibrary = useCallback(() => {
-    try { generationRef.current = markLibraryCleared(); } catch {
+    try { generationRef.current = markLibraryCleared(localStorage, [...libraryRef.current, ...trashRef.current].map((entry) => entry?.id)); } catch {
       notify('Clear failed. The Library has not been removed.');
       return false;
     }

@@ -62,3 +62,18 @@ test('inline event-handler attributes fail the build', () => {
   const html = '<meta http-equiv="Content-Security-Policy" content="script-src \'self\' \'unsafe-inline\'"><button onclick="x()">x</button>';
   assert.throws(() => applyInlineScriptHashes(html), /Inline event-handler/);
 });
+
+// R-36 (re-review 9): static legal pages in public/ are copied as is (the build
+// plugin skips them). They have no inline scripts, so script-src needs no
+// 'unsafe-inline'.
+for (const page of ['public/privacy.html', 'public/terms.html', 'public/privacy/index.html']) {
+  test(`${page}: no inline scripts and no script-src 'unsafe-inline'`, () => {
+    const html = read(page);
+    const directive = scriptSrc(html);
+    assert.ok(directive.startsWith('script-src'), 'page keeps a script-src');
+    assert.doesNotMatch(directive, /'unsafe-inline'/);
+    assert.deepEqual(inlineScriptHashes(html), []);
+    assert.doesNotMatch(html, /\son[a-z]+\s*=\s*["']/i, 'no inline event handlers');
+    assert.doesNotMatch(html, /javascript:/i);
+  });
+}

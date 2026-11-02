@@ -1,4 +1,4 @@
-import { notifyLocalWrite } from './storage.js';
+import { notifyLocalWrite, storageKeys } from './storage.js';
 
 // Append-only, content-free keys prevent concurrent tabs from replacing another
 // tab's deletion metadata. Keep them until a replica-expiry policy exists.
@@ -59,13 +59,35 @@ export function markLibraryDeleted(ids, storage = localStorage) {
   notifyLocalWrite(key);
 }
 
-export function markLibraryCleared(storage = localStorage) {
+const storedIds = (storage, key) => {
+  try {
+    const rows = JSON.parse(storage.getItem(key));
+    return Array.isArray(rows) ? rows.map((row) => row?.id).filter((id) => typeof id === 'string') : [];
+  } catch {
+    return [];
+  }
+};
+
+// The marker value records what the Clear removed: its time (R-30) and the ids
+// of the prompts and trash it cleared (R-34), so the desktop journal can tell
+// cleared rows from later ones without comparing device clocks. Readers use
+// only the key. If the id list does not fit, the time alone is kept.
+export function markLibraryCleared(storage = localStorage, ids = []) {
   const { generation } = readLibraryDeletionState(storage);
   const counter = Number(generation.split(':')[0]) + 1;
   if (!Number.isSafeInteger(counter)) throw new Error('Library generation limit reached.');
   const next = `${String(counter).padStart(16, '0')}:${crypto.randomUUID()}`;
-  // The value records when the Clear happened (R-30); readers use only the key.
-  storage.setItem(`${LIBRARY_CLEAR_PREFIX}${next}`, new Date().toISOString());
-  notifyLocalWrite(`${LIBRARY_CLEAR_PREFIX}${next}`);
+  const key = `${LIBRARY_CLEAR_PREFIX}${next}`;
+  const at = new Date().toISOString();
+  const cleared = [...new Set([
+    ...storedIds(storage, storageKeys.library), ...storedIds(storage, storageKeys.trash),
+    ...ids.filter((id) => typeof id === 'string'),
+  ])];
+  try {
+    storage.setItem(key, JSON.stringify({ at, ids: cleared }));
+  } catch {
+    storage.setItem(key, at);
+  }
+  notifyLocalWrite(key);
   return next;
 }
