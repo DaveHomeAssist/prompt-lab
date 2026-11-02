@@ -158,7 +158,8 @@ test('INT-07 / SEC-A07: billing CORS refuses malformed extension origins', async
   process.env.PROMPTLAB_PROXY_ALLOWED_ORIGINS = 'https://listed.example';
   const { isAllowedCorsOrigin } = await load(stripeBillingUrl);
   assert.equal(isAllowedCorsOrigin('https://promptlab.tools'), true);
-  assert.equal(isAllowedCorsOrigin('https://mobile.promptlab.tools'), true);
+  // Retired host (no DNS record): never trusted, so a future record can't inherit access.
+  assert.equal(isAllowedCorsOrigin('https://mobile.promptlab.tools'), false);
   assert.equal(isAllowedCorsOrigin('https://listed.example'), true);
   assert.equal(isAllowedCorsOrigin('chrome-extension://abcdefghijklmnopabcdefghijklmnop'), true);
   assert.equal(isAllowedCorsOrigin('chrome-extension://evil'), false);
