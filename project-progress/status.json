@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-11-02T08:27:57.462Z",
+  "snapshotAt": "2026-11-02T10:16:47.808Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "fdd0abf6a56de9c785fb030ee9b3141eb20ec479",
+  "mainSha": "b4f08abe76dce712c47cd4a829c9a6437e5d2613",
   "overall": "Acceptance incomplete",
-  "nextAction": "Verify code block copying in a signed-in production session, then select the next November slice. Existing Stripe renewal notifications, purchase-dialog and broader platform/human acceptance remain with their owning records.",
+  "nextAction": "Deliver and live verify contextual Chat beside Write. Copy code signed-in production acceptance is complete. Other November items and existing platform/billing acceptance remain with their owning records.",
   "evidence": [
+    {
+      "label": "Signed-in Copy code acceptance and contextual chat candidate",
+      "state": "Running",
+      "detail": "November2: N01 Done after visible signed-in production b4f08ab clipboard, keyboard, themes, viewport and controlled failure/retry checks. Synthetic QA Scratch note retained; original draft, Library, clipboard, theme and viewport preserved. N02 In progress: session-only contextual Write panel with unchecked prompt context, existing transport/preflight/usage limits, cancellation, multi-turn history and recoverable reply handoff. Dominic Node22.23.4 passed25 focused tests, extension build and three packaged browser flows at375/1440/3840px. Cancel button reuse and composer clipping repaired with regressions. Full shared tests ran1713 assertions successfully but two transferred Mac metadata files failed collection; metadata removed; final regression subsequently passed. Hosted runner setup initially lacked writable Vite cache and matching Chromium path, now isolated. No real inference yet. CI, merge, deployment and live chat acceptance pending. Complete104-row snapshot retains14 plan items. Final Dominic regression passed1713 shared tests across149 files and231 legacy tests. Hosted chat passed2/2 with selected model, multi-turn messages, quota display,429 and manual retry; extension browser3/3 passed including visible composer.",
+      "url": "https://app.notion.com/p/40c255fc8f44816e8a27e0a1b10c6ee6"
+    },
     {
       "label": "November intake and code block copy slice",
       "state": "Open",
@@ -1788,14 +1794,14 @@
     {
       "id": "40c255fc8f448150a92efe8b618c509c",
       "title": "Copy individual code blocks",
-      "status": "In progress",
+      "status": "Done",
       "severity": "Medium",
       "area": "Editor",
       "type": "Feature",
       "url": "https://app.notion.com/40c255fc8f448150a92efe8b618c509c",
       "inPlan": false,
-      "nextAction": "Verify Copy code in a signed-in production session.",
-      "verification": "PR308 merged fdd0abf after16 passing checks; exact production deployment READY and served control verified. Dominic13 focused tests, extension build and actual clipboard/keyboard/theme/viewport acceptance pass. Signed-in production interaction remains unverified."
+      "nextAction": null,
+      "verification": "PR308/309 delivered; signed-in production b4f08ab exact clipboard readback passed for whitespace, Unicode, markup, empty, long and unfinished blocks, keyboard, both themes and three viewports. Pending, rejected and missing clipboard API, retry and restoration passed. N01 acceptance complete."
     },
     {
       "id": "40c255fc8f4481668168f6da751a37bb",
@@ -1812,14 +1818,14 @@
     {
       "id": "40c255fc8f44816e8a27e0a1b10c6ee6",
       "title": "Chat with AI inside Prompt Lab",
-      "status": "Not started",
+      "status": "In progress",
       "severity": "Medium",
       "area": "Editor",
       "type": "Feature",
       "url": "https://app.notion.com/40c255fc8f44816e8a27e0a1b10c6ee6",
       "inPlan": false,
-      "nextAction": "Scope the requested slice using the November intake brief.",
-      "verification": "Notion row read back; implementation acceptance pending."
+      "nextAction": "Finish regression and hosted browser checks, pass candidate CI, merge, deploy and verify signed-in production chat.",
+      "verification": "Dominic Node22:25 focused,1713 shared/149files,231 legacy, extension build,3 packaged browser flows and2 hosted chat flows pass. Candidate CI, merge, deployment and live chat acceptance pending."
     },
     {
       "id": "40c255fc8f44818b844ece5f2cd6336c",

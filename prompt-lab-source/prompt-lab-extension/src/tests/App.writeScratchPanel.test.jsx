@@ -1,7 +1,9 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SCRATCH_KEY, SCRATCH_SCHEMA_VERSION_KEY } from '../lib/scratchSchema.js';
+import { callModel } from '../api.js';
+vi.mock('../api.js', () => ({ callModel: vi.fn() }));
 
 // Scratch beside Write, mounted through the real App, CreateContextBar and
 // MainWorkspace. Hook mocks follow App.failedRunComparison.test.jsx.
@@ -40,7 +42,7 @@ const mocks = vi.hoisted(() => {
       showNewColl: false, setShowNewColl: fn(), newCollName: '', setNewCollName: fn(),
       varVals: {}, setVarVals: fn(), showVarForm: false, setShowVarForm: fn(),
       pendingTemplate: null, applyTemplate: fn(), skipTemplate: fn(),
-      doSave: fn(), closeSavePanel: fn(), openSavePanel: fn(), loadEntry: fn(), sendEntryToABTest: fn(),
+      doSave: fn(), closeSavePanel: fn(), openSavePanel: fn(), loadEntry: fn(), sendEntryToABTest: fn(), dismissSaveReceipt: fn(),
       addToComposer: fn(), currentTestCases: [], clearPersistenceState: fn(),
     }),
     useExecutionFlow: () => ({
@@ -67,7 +69,7 @@ vi.mock('../hooks/useEditorState.js', () => ({ default: mocks.useEditorState }))
 vi.mock('../hooks/usePersistenceFlow.js', () => ({ default: mocks.usePersistenceFlow }));
 vi.mock('../hooks/useExecutionFlow.js', () => ({ default: mocks.useExecutionFlow }));
 vi.mock('../hooks/useNavigation.js', () => ({ default: mocks.useNavigation }));
-vi.mock('../lib/platform.js', () => ({ isExtension: false }));
+vi.mock('../lib/platform.js', () => ({ isExtension: false, openSettings: vi.fn() }));
 vi.mock('../lib/navigationRegistry.js', async (importOriginal) => ({
   ...(await importOriginal()),
   resolveRouteState: vi.fn(() => null),
@@ -119,6 +121,7 @@ const panel = () => screen.queryByRole('complementary', { name: 'Scratch notes b
 
 describe('Scratch beside Write', () => {
   beforeEach(() => {
+    callModel.mockReset();
     localStorage.clear();
     seedNote();
     for (const [name, factory] of Object.entries(mocks.defaults)) mocks[name].mockImplementation(factory);
@@ -246,5 +249,29 @@ describe('Scratch beside Write', () => {
     expect(panel()).toBeNull();
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(screen.getByRole('button', { name: 'Scratch' })).toHaveFocus();
+  });
+
+  it('opens chat without sending and keeps a recoverable original when using a reply', async () => {
+    callModel.mockResolvedValue({ content: [{text:'A useful new prompt.'}], provider:'fixture',model:'selected-model' });
+    const setRaw = vi.fn();
+    const clearEditorState = vi.fn();
+    arrange({ useEditorState: {raw:'Original prompt to keep.',setRaw,clearEditorState} });
+    fireEvent.click(screen.getByRole('button', {name:'Chat',exact:true}));
+    expect(screen.getByRole('complementary', {name:'Chat beside Write'})).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', {name:'Include current prompt'})).not.toBeChecked();
+    expect(callModel).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByRole('textbox', {name:'Message',exact:true}), {target:{value:'Help me write a prompt'}});
+    fireEvent.click(screen.getByRole('button', {name:'Send message'}));
+    await waitFor(() => expect(screen.getByText('A useful new prompt.')).toBeVisible());
+    expect(JSON.stringify(callModel.mock.calls[0][0])).not.toContain('Original prompt to keep.');
+    fireEvent.click(screen.getByRole('button', {name:'Close side panel'}));
+    fireEvent.click(screen.getByRole('button', {name:'Chat',exact:true}));
+    expect(screen.getByText('A useful new prompt.')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', {name:'Use as new prompt'}));
+    expect(clearEditorState).toHaveBeenCalled();
+    expect(setRaw).toHaveBeenCalledWith('A useful new prompt.');
+    const recovery=JSON.parse(sessionStorage.getItem('pl2-draft-reset-recovery-v1'));
+    expect(recovery.editor.raw).toBe('Original prompt to keep.');
+    expect(recovery.reason).toBe('chat-handoff');
   });
 });
