@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "6b89a890173f75e7f17966c22d412ea331d64bcf",
+  "mainSha": "dd8756b1e2462f1a8997fe813aac10fe69862fe4",
   "overall": "Acceptance incomplete",
-  "nextAction": "Finish PR286 current-head CI, merge by repository policy, verify public Terms/footer/checkout references, and confirm Stripe upcoming-renewal emails. Approved legal wording retained. Other acceptance gates remain with their existing records.",
+  "nextAction": "Confirm Stripe upcoming-renewal emails and lead time in the live Dashboard; verify the authenticated purchase dialog. Terms release PR286 is published and public Terms/footer/sitemap plus deployed consent references pass. Other acceptance gates remain with their existing records.",
   "evidence": [
+    {
+      "label": "Approved Terms public release",
+      "state": "Verified",
+      "detail": "PR286 merged dd8756b1 after required checks passed. Production dpl_HqtLHxbzJ1khWR9dVS4VfqtgzTtM READY at exact merge. Browser followed landing footer to final Terms, effective Nov1; /terms and /terms.html match canonical exactly, sitemap includes Terms. Served App-BpUoLT4F.js contains checkout consent and absolute Terms link. Approved legal body unchanged; Pages publisher copy repaired and mirrored. Node22: landing66, BillingModal21, shared1685, legacy231 pass. Actual authenticated purchase dialog remains unverified (sign-in required), and Stripe renewal notification toggle is Unknown (API absent, Dashboard sign-in needed). No purchase. Existing Notion Terms issue remains In progress; RUN and issue notes updated/read back. Candidate Landing/Desktop checks are still finishing; no overall product acceptance claim.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/286"
+    },
     {
       "label": "Approved Terms release integration",
       "state": "Open",
@@ -1656,8 +1662,8 @@
     {
       "id": "be7baaee46ea4f01a3b69a78cb164225",
       "inPlan": false,
-      "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this refresh.",
+      "nextAction": "Confirm live Stripe renewal emails and reminder lead time; verify authenticated checkout disclosure.",
+      "verification": "PR286 published dd8756b1. Public Terms/footer/sitemap and deployed consent reference verified. Stripe setting and authenticated modal remain unconfirmed.",
       "title": "Keep draft Terms inactive until counsel and operator facts are resolved",
       "status": "In progress",
       "severity": "High",

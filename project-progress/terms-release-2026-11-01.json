@@ -1,0 +1,39 @@
+{
+  "verifiedAt": "2026-11-02T00:48:27.118134+00:00",
+  "mergeSha": "dd8756b1e2462f1a8997fe813aac10fe69862fe4",
+  "deploymentId": "dpl_HqtLHxbzJ1khWR9dVS4VfqtgzTtM",
+  "publicTerms": {
+    "url": "https://promptlab.tools/terms",
+    "matchesSource": true,
+    "effectiveDate": "2026-11-01",
+    "draftMarkersAbsent": true
+  },
+  "footer": {
+    "url": "https://promptlab.tools/index.html",
+    "termsLinkFollowed": true
+  },
+  "sitemap": {
+    "url": "https://promptlab.tools/sitemap.xml",
+    "termsIncluded": true
+  },
+  "checkout": {
+    "bundleUrl": "https://promptlab.tools/assets/App-BpUoLT4F.js",
+    "bundleSha256": "7d2e7190d0489f878cd9806f33cc7cf63f8c791e00e8cc5b1d1faf9f9deec276",
+    "consentTextPresent": true,
+    "termsUrl": "https://promptlab.tools/terms",
+    "renderedAuthenticatedDialog": "Unverified: sign-in required",
+    "purchaseAttempted": false
+  },
+  "stripeRenewalNotifications": {
+    "status": "Unconfirmed",
+    "reason": "Setting not exposed by connected API; Dashboard sign-in required",
+    "nextAction": "Confirm Send emails about upcoming renewals and the lead time under Prevent failed payments > Upcoming renewal events in the live Stripe account."
+  },
+  "localTests": {
+    "node": "22.23.4",
+    "landing": 66,
+    "billingModal": 21,
+    "vitest": 1685,
+    "legacy": 231
+  }
+}
