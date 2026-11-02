@@ -58,6 +58,7 @@ const webPageTargets = [
   ['setup.html', 'setup.html'],
   ['prompt-embed.html', 'prompt-embed.html'],
   ['privacy.html', 'privacy.html'],
+  ['terms.html', 'terms.html'],
   ['tools.html', 'tools.html'],
 ];
 
