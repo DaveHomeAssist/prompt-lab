@@ -18,7 +18,7 @@ for (const width of [375, 1440]) {
       const body = JSON.parse(envelope.body);
       sent.push({ target: envelope.targetUrl, body });
       if (sent.length === 3) {
-        return route.fulfill({ status: 429, json: { error: { message: 'Hosted daily limit reached', code: 'hosted_demo_daily_limit', limit: 3, reset_at: reset } }, headers: { 'X-Demo-Remaining': '0', 'X-Demo-Limit': '3', 'X-Demo-Reset': reset } });
+        return route.fulfill({ status: 429, json: { error: 'Hosted daily limit reached', code: 'hosted_demo_limit', limit: 3, reset_at: reset }, headers: { 'X-Demo-Remaining': '0', 'X-Demo-Limit': '3', 'X-Demo-Reset': reset } });
       }
       return route.fulfill({ json: { model: body.model, content: [{ type: 'text', text: `Reply ${sent.length}` }] }, headers: { 'X-Hosted-Access': 'standard', 'X-Demo-Remaining': '2', 'X-Demo-Limit': '3', 'X-Demo-Reset': reset, 'X-Hosted-Model': body.model } });
     });
@@ -43,7 +43,7 @@ for (const width of [375, 1440]) {
     expect(sent[1].body.messages).toEqual([{ role: 'user', content: 'First question' }, { role: 'assistant', content: 'Reply 1' }, { role: 'user', content: 'Second question' }]);
     await input.fill('Third question');
     await panel.getByRole('button', { name: 'Send message' }).click();
-    await expect(panel.getByRole('alert')).toBeVisible();
+    await expect(panel.getByRole('alert')).toContainText("Prompt Lab's free hosted demo limit is used up");
     await expect(input).toHaveValue('Third question');
     await expect(panel.getByTestId('hosted-quota')).toContainText('Hosted demo used up');
     expect(sent).toHaveLength(3);
