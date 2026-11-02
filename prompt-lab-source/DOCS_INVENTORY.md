@@ -25,6 +25,7 @@ Updated: 2026-09-05
 | `ARCHITECTURE.md` | Canonical system architecture | Active | Runtime layout across landing, hosted web app, extension, desktop, proxy, and shared frontend. |
 | `ROADMAP.md` | Product and release priorities | Active | Current shipped state and near-term priorities. |
 | `DOCS_INVENTORY.md` | Docs map and source-of-truth rules | Active | Inventory of major docs, public-doc authoring rules, and maintenance notes. |
+| `docs/NOVEMBER_INTAKE_BRIEF.md` | November feature intake | Active | Backlog links, first code-copy slice, acceptance and later product decisions. |
 | `docs/LIBRARY_COMPATIBILITY_CONTRACT.md` | Library shell and transfer contract | Active | Canonical search/sort, local storage, explicit export/import synchronization, field compatibility, and runtime proof boundaries. |
 | `docs/account-library-sync.md` | Account library sync proposal | Draft | Reconciled plan: chosen iCloud Drive folder first, hosted second; complete history/backups and shared app/API library. Runtime and hosted provider pending. |
 | `docs/account-library-sync-slices.md` | Account library sync build plan | Draft | Revised gated stages A1 to A4 for folder storage, then B1 to B3 for hosted storage. Supersedes web-first execution prompts; no implementation authorized. |
