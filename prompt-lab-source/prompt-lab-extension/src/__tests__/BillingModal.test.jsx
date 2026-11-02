@@ -300,6 +300,16 @@ describe('BillingModal billing policy disclosure', () => {
     expect(terms).toHaveTextContent('within 14 days of your first payment or an annual renewal');
   });
 
+  it('links the Terms of Service next to checkout', () => {
+    render(<BillingModal m={theme} billing={createBilling()} onClose={vi.fn()} />);
+    const terms = screen.getByTestId('billing-terms');
+    expect(terms).toHaveTextContent('By subscribing you agree to the Terms of Service.');
+    const link = screen.getByRole('link', { name: 'Terms of Service' });
+    expect(link).toHaveAttribute('href', 'https://promptlab.tools/terms');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+  });
+
   it('omits purchase terms when checkout is not offered', () => {
     render(<BillingModal m={theme} billing={{ ...createBilling(), checkoutDisabled: true }} onClose={vi.fn()} />);
     expect(screen.queryByTestId('billing-terms')).toBeNull();
