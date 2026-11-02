@@ -39,9 +39,21 @@ function headersFor(path) {
   return result;
 }
 
-function redirectFor(path) {
-  return (config.redirects || []).find((rule) => rule.source === path);
+function rewriteFor(path) {
+  return (config.rewrites || []).find((rule) => rule.source === path);
 }
+const stub = (file) => readFileSync(new URL(`../prompt-lab-web/public${file}`, import.meta.url), 'utf8');
+
+// R-39: Vercel does not apply `headers` rules to `redirects` responses (live,
+// re-review 10: they sent the default HSTS without includeSubDomains, and
+// each STS header replaces the cached policy). These paths are rewrites, so
+// they get the headers above.
+const FORMER_REDIRECTS = {
+  '/privatepolicy': '/privacy.html', '/privacy': '/privacy.html', '/privacy/': '/privacy.html',
+  '/pricing': '/#pricing', '/pricing/': '/#pricing',
+  '/login': '/app/', '/signin': '/app/', '/sign-in': '/app/', '/signup': '/app/', '/sign-up': '/app/',
+  '/settings': '/app/settings', '/account': '/app/account',
+};
 
 const PAGES = ['/', '/app/', '/app/index.html', '/terms.html', '/privacy.html', '/guide.html', '/api/billing/checkout'];
 
@@ -89,14 +101,34 @@ test('hashed build assets are cached immutably, pages are not (AUD-024)', () => 
   assert.ok(!config.headers.some((rule) => /immutable/.test(JSON.stringify(rule)) && rule.source !== '/assets/(.*)'));
 });
 
-test('/pricing and /privacy redirect to real content (AUD-023)', () => {
-  for (const path of ['/pricing', '/pricing/']) {
-    assert.deepEqual(redirectFor(path), { source: path, destination: '/#pricing', permanent: false });
-  }
+test('/pricing and /privacy reach real content (AUD-023)', () => {
+  // The privacy paths serve the policy itself (its canonical is /privacy.html),
+  // never the public/privacy/ stub.
   for (const path of ['/privacy', '/privacy/', '/privatepolicy']) {
-    assert.deepEqual(redirectFor(path), { source: path, destination: '/privacy.html', permanent: true });
+    assert.deepEqual(rewriteFor(path), { source: path, destination: '/privacy.html' });
   }
-  assert.ok(!config.rewrites.some((rule) => rule.source.startsWith('/privacy')), 'privacy must redirect, not rewrite to the stub');
+  assert.match(stub('/privacy.html'), /<link rel="canonical" href="https:\/\/promptlab\.tools\/privacy\.html">/);
+  for (const path of ['/pricing', '/pricing/']) assert.equal(rewriteFor(path)?.destination, '/go/pricing.html');
+});
+
+test('former redirect paths get the security headers: no redirects, rewrites only (R-39)', () => {
+  assert.deepEqual(config.redirects || [], [], 'Vercel sends redirects without the headers rules');
+  for (const [path, target] of Object.entries(FORMER_REDIRECTS)) {
+    const rule = rewriteFor(path);
+    assert.ok(rule, `${path} is a rewrite`);
+    const headers = headersFor(path);
+    assert.equal(headers['strict-transport-security'], 'max-age=63072000; includeSubDomains', `${path} HSTS`);
+    assert.equal(headers['x-frame-options'], 'DENY', `${path} X-Frame-Options`);
+    if (rule.destination === target) continue;
+    // Destinations with a fragment or an app route use a no-script refresh page.
+    const html = stub(rule.destination);
+    assert.ok(html.includes(`<meta http-equiv="refresh" content="0; url=${target}">`), `${path} refreshes to ${target}`);
+    assert.ok(html.includes(`<a href="${target}">`), `${path} links to ${target}`);
+    assert.match(html, /<meta name="robots" content="noindex,follow">/);
+    assert.match(html, /<link rel="canonical" href="https:\/\/promptlab\.tools\//);
+    assert.match(html, /content="default-src 'none'; base-uri 'none'; form-action 'none'"/);
+    assert.doesNotMatch(html, /<script/i);
+  }
 });
 
 test('pages send HSTS with includeSubDomains and COOP (security pass 2026-11-01)', () => {

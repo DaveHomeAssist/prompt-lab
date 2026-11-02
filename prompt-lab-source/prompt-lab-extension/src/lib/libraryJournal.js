@@ -1,5 +1,5 @@
 import { logWarn } from './logger.js';
-import { LIBRARY_CLEAR_PREFIX, isLibraryDeletionKey } from './libraryDeletion.js';
+import { LIBRARY_CLEAR_PREFIX, isLibraryDeletionKey, pruneClearMarkerIds } from './libraryDeletion.js';
 import { onLocalWrite, storageKeys } from './storage.js';
 
 // WebView2 batches localStorage commits in its storage service and can drop a
@@ -315,6 +315,8 @@ export function createLibraryJournal({
   // Used only until this device has read the record (see mergeLibraryEntries).
   mergeBeforeBoot = recordId === LIBRARY_JOURNAL_RECORD ? mergeLibraryEntries : null,
   removedKey = recordId === LIBRARY_JOURNAL_RECORD ? LIBRARY_JOURNAL_REMOVED_KEY : null,
+  // R-38: once reconciled, older Clear markers keep only their time.
+  pruneMarkers = recordId === LIBRARY_JOURNAL_RECORD ? pruneClearMarkerIds : null,
 }) {
   const label = recordId.charAt(0).toUpperCase() + recordId.slice(1);
   let dbPromise = null;
@@ -463,6 +465,11 @@ export function createLibraryJournal({
       revision = Math.max(revision, record?.revision || 0);
       commit();
     }
+    // The journal and Local Storage now agree, so the trimmed markers are
+    // committed (a queued 'journal' commit reads them in its transaction).
+    let pruned = [];
+    try { pruned = pruneMarkers ? pruneMarkers(storage) : []; } catch (error) { logWarn('library journal marker prune', error); }
+    if (pruned.length && action !== 'journal') commit();
     return { action, localRevision: local.revision, journalRevision: record?.revision ?? null, attempts };
   };
 
