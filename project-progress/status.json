@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-11-02T00:44:07.311755+00:00",
+  "snapshotAt": "2026-11-02T07:58:19.087Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "dd8756b1e2462f1a8997fe813aac10fe69862fe4",
+  "mainSha": "aad2b55ff519686f16e7497ae4c8de8825a0168c",
   "overall": "Acceptance incomplete",
   "nextAction": "Confirm Stripe upcoming-renewal emails and lead time in the live Dashboard; verify the authenticated purchase dialog. Terms release PR286 is published and public Terms/footer/sitemap plus deployed consent references pass. Other acceptance gates remain with their existing records.",
   "evidence": [
+    {
+      "label": "November intake and code block copy slice",
+      "state": "Open",
+      "detail": "2026-11-02: ten new Notion issues created and read back; existing Scratch editor and Agent authoring issues extended and read back. Complete104-row snapshot preserves14-item sprint membership. Scoped November brief records12 requests and later decisions. Dominic Node22.23.4:13 focused tests and extension build pass. Packaged Chromium clipboard paste, keyboard activation and no-page-overflow checks pass at375/1440/3840px in both themes. Initial browser fixture failed on mobile navigation and an ambiguous Write selector; corrected without application changes. PR checks and release acceptance pending. No inference or billing operations.",
+      "url": "https://app.notion.com/p/40c255fc8f448150a92efe8b618c509c"
+    },
     {
       "label": "Approved Terms public release",
       "state": "Verified",
@@ -1754,6 +1760,138 @@
       "area": "Editor",
       "type": "UX",
       "url": "https://app.notion.com/40b255fc8f448128afe3ebc347c8375d"
+    },
+    {
+      "id": "40c255fc8f448001bde4c3a81e9c3618",
+      "title": "B",
+      "status": "Not started",
+      "severity": "Unknown",
+      "area": "Unknown",
+      "type": "Unknown",
+      "url": "https://app.notion.com/40c255fc8f448001bde4c3a81e9c3618",
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "Notion disposition only; unrelated row preserved without inferred scope."
+    },
+    {
+      "id": "40c255fc8f44814d9862ca0464767a77",
+      "title": "Choose app and Scratch fonts and text size",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Layout",
+      "type": "Feature",
+      "url": "https://app.notion.com/40c255fc8f44814d9862ca0464767a77",
+      "inPlan": false,
+      "nextAction": "Scope the requested slice using the November intake brief.",
+      "verification": "Notion row read back; implementation acceptance pending."
+    },
+    {
+      "id": "40c255fc8f448150a92efe8b618c509c",
+      "title": "Copy individual code blocks",
+      "status": "In progress",
+      "severity": "Medium",
+      "area": "Editor",
+      "type": "Feature",
+      "url": "https://app.notion.com/40c255fc8f448150a92efe8b618c509c",
+      "inPlan": false,
+      "nextAction": "Finish browser and release acceptance.",
+      "verification": "Dominic Node22.23.4:13 focused tests, extension build and packaged Chromium clipboard/keyboard checks at375/1440/3840px in both themes pass. Release gates pending."
+    },
+    {
+      "id": "40c255fc8f4481668168f6da751a37bb",
+      "title": "Author and enhance system prompts",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Editor",
+      "type": "Feature",
+      "url": "https://app.notion.com/40c255fc8f4481668168f6da751a37bb",
+      "inPlan": false,
+      "nextAction": "Scope the requested slice using the November intake brief.",
+      "verification": "Notion row read back; implementation acceptance pending."
+    },
+    {
+      "id": "40c255fc8f44816e8a27e0a1b10c6ee6",
+      "title": "Chat with AI inside Prompt Lab",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Editor",
+      "type": "Feature",
+      "url": "https://app.notion.com/40c255fc8f44816e8a27e0a1b10c6ee6",
+      "inPlan": false,
+      "nextAction": "Scope the requested slice using the November intake brief.",
+      "verification": "Notion row read back; implementation acceptance pending."
+    },
+    {
+      "id": "40c255fc8f44818b844ece5f2cd6336c",
+      "title": "Extract a reusable generic template",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Editor",
+      "type": "Feature",
+      "url": "https://app.notion.com/40c255fc8f44818b844ece5f2cd6336c",
+      "inPlan": false,
+      "nextAction": "Scope the requested slice using the November intake brief.",
+      "verification": "Notion row read back; implementation acceptance pending."
+    },
+    {
+      "id": "40c255fc8f448192b4eefbd9c9d11b31",
+      "title": "Suggest smart tags for prompts",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Library",
+      "type": "Feature",
+      "url": "https://app.notion.com/40c255fc8f448192b4eefbd9c9d11b31",
+      "inPlan": false,
+      "nextAction": "Scope the requested slice using the November intake brief.",
+      "verification": "Notion row read back; implementation acceptance pending."
+    },
+    {
+      "id": "40c255fc8f4481ad982ed9c6ca30edf6",
+      "title": "Name custom labels and coordinate their colors",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Library",
+      "type": "Feature",
+      "url": "https://app.notion.com/40c255fc8f4481ad982ed9c6ca30edf6",
+      "inPlan": false,
+      "nextAction": "Scope the requested slice using the November intake brief.",
+      "verification": "Notion row read back; implementation acceptance pending."
+    },
+    {
+      "id": "40c255fc8f4481aeb3c9e2dce700ed1c",
+      "title": "Bulk edit prompt icons tags and metadata",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Library",
+      "type": "Feature",
+      "url": "https://app.notion.com/40c255fc8f4481aeb3c9e2dce700ed1c",
+      "inPlan": false,
+      "nextAction": "Scope the requested slice using the November intake brief.",
+      "verification": "Notion row read back; implementation acceptance pending."
+    },
+    {
+      "id": "40c255fc8f4481c9a715e8b5f7ffd58c",
+      "title": "Enhance skill instructions",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Editor",
+      "type": "Feature",
+      "url": "https://app.notion.com/40c255fc8f4481c9a715e8b5f7ffd58c",
+      "inPlan": false,
+      "nextAction": "Scope the requested slice using the November intake brief.",
+      "verification": "Notion row read back; implementation acceptance pending."
+    },
+    {
+      "id": "40c255fc8f4481da84d6ca5f401b337a",
+      "title": "Save smart groups and folder rules",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Library",
+      "type": "Feature",
+      "url": "https://app.notion.com/40c255fc8f4481da84d6ca5f401b337a",
+      "inPlan": false,
+      "nextAction": "Scope the requested slice using the November intake brief.",
+      "verification": "Notion row read back; implementation acceptance pending."
     }
   ]
 }
