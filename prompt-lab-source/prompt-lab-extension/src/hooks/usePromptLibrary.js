@@ -22,7 +22,8 @@ import {
   loadStarterPack as loadPack,
 } from '../lib/seedTransform.js';
 import {
-  LEGACY_LIBRARY_CHECK_KEY,
+  LEGACY_LIBRARY_SOURCES,
+  MAX_UNREACHABLE_ATTEMPTS,
   isSeedOnlyLibrary,
   mergeCollections,
   requestLegacyLibraryPayload,
@@ -218,13 +219,28 @@ export default function usePromptLibrary(notify) {
   useEffect(() => { collectionsRef.current = collections; }, [collections]);
   useEffect(() => { notifyRef.current = notify; }, [notify]);
 
-  const markLegacyLibraryChecked = useCallback(() => {
-    saveJson(LEGACY_LIBRARY_CHECK_KEY, true);
+  const markLegacyLibraryChecked = useCallback((source) => {
+    saveJson(source.checkKey, true);
+    removeKey(source.attemptsKey);
   }, []);
+  const isLegacySourceChecked = (source) => loadJson(source.checkKey, false) === true;
+  // An unreachable source that retries (www) is marked checked only after
+  // MAX_UNREACHABLE_ATTEMPTS loads; others (tawny) are checked at once, as before.
+  const noteLegacySourceUnreachable = useCallback((source) => {
+    if (!source.retryUnreachable) { markLegacyLibraryChecked(source); return; }
+    const attempts = Number(loadJson(source.attemptsKey, 0)) + 1;
+    if (attempts >= MAX_UNREACHABLE_ATTEMPTS) markLegacyLibraryChecked(source);
+    else saveJson(source.attemptsKey, attempts);
+  }, [markLegacyLibraryChecked]);
 
+  // Merged prompts go through the normal save path: library state plus the
+  // same persistRecords write a local edit uses, so account sync and (on
+  // desktop) the journal see them as ordinary local changes. persisted is
+  // false when the write was refused (storage full or a newer write from
+  // another tab), so the caller leaves the source unchecked to retry.
   const applyLegacyPayload = useCallback((payload) => {
     if (!payload || !Array.isArray(payload.library)) {
-      return { importedCount: 0, reachable: false, hasLegacyLibrary: false };
+      return { importedCount: 0, reachable: false, hasLegacyLibrary: false, persisted: false };
     }
 
     const previousCollections = collectionsRef.current;
@@ -233,17 +249,28 @@ export default function usePromptLibrary(notify) {
       ? mergeCollections(previousCollections, payload.collections)
       : previousCollections;
 
-    libraryRef.current = libraryResult.library;
-    collectionsRef.current = nextCollections;
-    setLibrary(libraryResult.library);
+    let persisted = true;
+    if (libraryResult.importedCount > 0) {
+      libraryRef.current = libraryResult.library;
+      setLibrary(libraryResult.library);
+    }
+    // Write even when nothing new was imported: an earlier attempt in this
+    // session may have merged rows into memory whose write was refused, and a
+    // zero-import retry must not acknowledge the source until they are stored.
+    if (libraryResult.importedCount > 0 || payload.library.length > 0) {
+      persisted = persistRecords(storageKeys.library, libraryRef.current);
+    }
     if (nextCollections !== previousCollections) {
+      collectionsRef.current = nextCollections;
       setCollections(nextCollections);
+      persisted = saveJson(storageKeys.collections, nextCollections) && persisted;
     }
 
     return {
       importedCount: libraryResult.importedCount,
       reachable: true,
       hasLegacyLibrary: payload.library.length > 0,
+      persisted,
     };
   }, []);
 
@@ -280,27 +307,36 @@ export default function usePromptLibrary(notify) {
     setLoadedStarterPackIds(getLoadedPacks());
     setLibReady(true);
 
-    const alreadyCheckedLegacy = loadJson(LEGACY_LIBRARY_CHECK_KEY, false) === true;
-    const shouldAttemptLegacyRecovery = shouldAttemptLegacyWebMigration(window.location.origin, window.location.protocol)
-      && !alreadyCheckedLegacy
-      && !legacyRecoveryAttemptedRef.current
-      && (!hasStoredLibrary || storedLibrary.length === 0 || isSeedOnlyLibrary(initialLibrary));
+    const emptyOrSeedOnly = !hasStoredLibrary || storedLibrary.length === 0 || isSeedOnlyLibrary(initialLibrary);
+    const sources = legacyRecoveryAttemptedRef.current ? [] : LEGACY_LIBRARY_SOURCES.filter(source => (
+      shouldAttemptLegacyWebMigration(window.location.origin, window.location.protocol, source)
+      && !isLegacySourceChecked(source)
+      && (source.mergeIntoExisting || emptyOrSeedOnly)
+    ));
 
-    if (!shouldAttemptLegacyRecovery) return undefined;
+    if (!sources.length) return undefined;
 
     let cancelled = false;
     legacyRecoveryAttemptedRef.current = true;
     setRecoveringLegacyLibrary(true);
-    requestLegacyLibraryPayload({ currentOrigin: window.location.origin })
-      .then((payload) => {
+    (async () => {
+      // One source at a time, so each merge de-dupes against the previous one.
+      for (const source of sources) {
+        const payload = await requestLegacyLibraryPayload({ currentOrigin: window.location.origin, source });
         if (cancelled) return;
         const result = applyLegacyPayload(payload);
-        markLegacyLibraryChecked();
-        if (!result.reachable) return;
-        if (result.importedCount > 0) {
-          notifyRef.current?.(`Recovered ${result.importedCount} prompts from your legacy web library.`);
+        if (!result.reachable) { noteLegacySourceUnreachable(source); continue; }
+        if (!result.persisted) {
+          notifyRef.current?.(`Prompts from ${source.label} could not be saved yet. Prompt Lab will try again next time.`);
+          continue;
         }
-      })
+        markLegacyLibraryChecked(source);
+        if (result.importedCount > 0) {
+          notifyRef.current?.(`Recovered ${result.importedCount} prompts from ${source.label}.`);
+        }
+      }
+    })()
+      .catch(() => {})
       .finally(() => {
         if (!cancelled) setRecoveringLegacyLibrary(false);
       });
@@ -308,7 +344,7 @@ export default function usePromptLibrary(notify) {
     return () => {
       cancelled = true;
     };
-  }, [applyLegacyPayload, markLegacyLibraryChecked]);
+  }, [applyLegacyPayload, markLegacyLibraryChecked, noteLegacySourceUnreachable]);
 
   useEffect(() => {
     if (!libReady) return undefined;
@@ -835,7 +871,7 @@ export default function usePromptLibrary(notify) {
   }, [notify]);
 
   const clearLibrary = useCallback(() => {
-    try { generationRef.current = markLibraryCleared(); } catch {
+    try { generationRef.current = markLibraryCleared(localStorage, [...libraryRef.current, ...trashRef.current].map((entry) => entry?.id)); } catch {
       notify('Clear failed. The Library has not been removed.');
       return false;
     }
@@ -1328,47 +1364,51 @@ export default function usePromptLibrary(notify) {
 
   const recoverLegacyWebLibrary = useCallback(async ({ force = false } = {}) => {
     if (recoveringLegacyLibrary) return { importedCount: 0, reason: 'busy' };
-    if (!shouldAttemptLegacyWebMigration(window.location.origin, window.location.protocol)) {
-      return { importedCount: 0, reason: 'unsupported' };
-    }
-
-    if (!force && loadJson(LEGACY_LIBRARY_CHECK_KEY, false) === true) {
-      return { importedCount: 0, reason: 'already-checked' };
-    }
+    const supported = LEGACY_LIBRARY_SOURCES.filter(source => (
+      shouldAttemptLegacyWebMigration(window.location.origin, window.location.protocol, source)));
+    if (!supported.length) return { importedCount: 0, reason: 'unsupported' };
+    const sources = force ? supported : supported.filter(source => !isLegacySourceChecked(source));
+    if (!sources.length) return { importedCount: 0, reason: 'already-checked' };
 
     setRecoveringLegacyLibrary(true);
     try {
-      const payload = await requestLegacyLibraryPayload({ currentOrigin: window.location.origin });
-      const result = applyLegacyPayload(payload);
-      if (!result.reachable) {
-        markLegacyLibraryChecked();
+      let importedCount = 0; let reachable = 0; let found = 0; let unsaved = 0;
+      const recoveredFrom = [];
+      for (const source of sources) {
+        const payload = await requestLegacyLibraryPayload({ currentOrigin: window.location.origin, source });
+        const result = applyLegacyPayload(payload);
+        if (!result.reachable) { noteLegacySourceUnreachable(source); continue; }
+        reachable += 1;
+        if (!result.persisted) { unsaved += 1; continue; }
+        markLegacyLibraryChecked(source);
+        if (result.hasLegacyLibrary) found += 1;
+        if (result.importedCount > 0) { importedCount += result.importedCount; recoveredFrom.push(source.label); }
+      }
+      if (unsaved) {
+        notify('Recovered prompts could not be saved. Browser storage may be full.');
+        return { importedCount: 0, reason: 'unsaved' };
+      }
+      if (!reachable) {
         notify('Legacy web library bridge is unavailable.');
         return { importedCount: 0, reason: 'unreachable' };
       }
-      markLegacyLibraryChecked();
-
-      if (!result.hasLegacyLibrary) {
+      if (!found) {
         notify('No legacy web library found.');
         return { importedCount: 0, reason: 'empty' };
       }
-
-      if (result.importedCount > 0) {
-        notify(`Recovered ${result.importedCount} prompts from your legacy web library.`);
+      if (importedCount > 0) {
+        notify(`Recovered ${importedCount} prompts from ${recoveredFrom.join(' and ')}.`);
       } else {
         notify('Legacy web library is already merged.');
       }
-
-      return {
-        importedCount: result.importedCount,
-        reason: result.importedCount > 0 ? 'recovered' : 'already-merged',
-      };
+      return { importedCount, reason: importedCount > 0 ? 'recovered' : 'already-merged' };
     } catch {
       notify('Legacy web library recovery failed.');
       return { importedCount: 0, reason: 'error' };
     } finally {
       setRecoveringLegacyLibrary(false);
     }
-  }, [applyLegacyPayload, markLegacyLibraryChecked, notify, recoveringLegacyLibrary]);
+  }, [applyLegacyPayload, markLegacyLibraryChecked, noteLegacySourceUnreachable, notify, recoveringLegacyLibrary]);
 
   const allLibTags = useMemo(
     () => normalizeTagList(library.flatMap(entry => entry.tags || [])),

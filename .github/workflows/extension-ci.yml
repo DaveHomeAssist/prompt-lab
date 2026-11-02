@@ -13,6 +13,12 @@ on:
       - prompt-lab-source/scripts/eval-davellm.mjs
       - prompt-lab-source/scripts/eval-davellm.test.mjs
       - .github/workflows/extension-ci.yml
+      - prompt-lab-source/supabase/**
+      - prompt-lab-source/api/sync/**
+      - prompt-lab-source/tests/clerk-sync-webhook.test.mjs
+      - prompt-lab-source/tests/account-sync-build.test.mjs
+      - prompt-lab-source/tests/desktop-token-bridge.test.mjs
+      - prompt-lab-source/scripts/account-sync-build.mjs
   pull_request:
     paths:
       - prompt-lab-source/scripts/diagnostic-sourcemaps*
@@ -23,6 +29,12 @@ on:
       - prompt-lab-source/scripts/eval-davellm.mjs
       - prompt-lab-source/scripts/eval-davellm.test.mjs
       - .github/workflows/extension-ci.yml
+      - prompt-lab-source/supabase/**
+      - prompt-lab-source/api/sync/**
+      - prompt-lab-source/tests/clerk-sync-webhook.test.mjs
+      - prompt-lab-source/tests/account-sync-build.test.mjs
+      - prompt-lab-source/tests/desktop-token-bridge.test.mjs
+      - prompt-lab-source/scripts/account-sync-build.mjs
 
 permissions:
   contents: read
@@ -49,6 +61,17 @@ jobs:
 
       - name: Run tests
         run: npm test
+
+      # Account sync (docs/ACCOUNT_SYNC_DESIGN.md): RLS and grant guards, protocol,
+      # quotas, concurrency on a throwaway local Postgres 17, engine end to end,
+      # webhook and build wiring. Runs in this job so it adds no workflow run.
+      - name: Install account sync test dependencies
+        working-directory: prompt-lab-source/supabase
+        run: npm ci
+
+      - name: Test account sync
+        working-directory: prompt-lab-source
+        run: npm run test:sync
 
       # The DaveLLM eval runner imports the Enhance payload, PII gate, parser and checkTraits.
       - name: Test DaveLLM eval runner

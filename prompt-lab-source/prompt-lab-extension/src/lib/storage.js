@@ -36,6 +36,18 @@ export function notifyLocalWrite(key) {
   }
 }
 
+// R-28: while a sync runs, its many sync-state and outbox saves are held
+// back from the desktop Library journal (each commit rewrites the whole
+// record); the engine announces them once when the sync ends. Writes outside a
+// sync are announced as they happen.
+let syncWriteHolds = 0;
+export function holdSyncWrites() {
+  syncWriteHolds += 1;
+  let released = false;
+  return () => { if (!released) { released = true; syncWriteHolds -= 1; } };
+}
+export const syncWritesHeld = () => syncWriteHolds > 0;
+
 export function loadJson(key, fallback = null) {
   try {
     const value = localStorage.getItem(key);

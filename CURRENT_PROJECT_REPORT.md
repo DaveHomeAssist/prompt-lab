@@ -18,7 +18,7 @@ snapshot below:
 
 ## Project Snapshot
 
-- Repo: `/Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab`
+- Repo: `<repo-root>`
 - Branch: `main`
 - Product: Prompt engineering workbench spanning extension, desktop, hosted web app, and public landing site
 - Core stack:
@@ -210,10 +210,10 @@ Keep the analysis grounded in the current repo state, not generic SaaS advice.
 ## Verification Commands
 
 ```bash
-git -C /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab status --short --branch
-git -C /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab diff --stat -- docs/index.html prompt-lab-source/public/prompt-lab-landing.html
-sed -n '1,220p' /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/AGENTS.md
-sed -n '1,220p' /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/README.md
-sed -n '1,260p' /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/prompt-lab-source/ARCHITECTURE.md
-sed -n '1,240p' /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/IMPLEMENTATION_PLAN.md
+git -C <repo-root> status --short --branch
+git -C <repo-root> diff --stat -- docs/index.html prompt-lab-source/public/prompt-lab-landing.html
+sed -n '1,220p' <repo-root>/AGENTS.md
+sed -n '1,220p' <repo-root>/README.md
+sed -n '1,260p' <repo-root>/prompt-lab-source/ARCHITECTURE.md
+sed -n '1,240p' <repo-root>/IMPLEMENTATION_PLAN.md
 ```

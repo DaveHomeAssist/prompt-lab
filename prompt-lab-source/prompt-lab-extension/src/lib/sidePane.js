@@ -1,9 +1,9 @@
 // Width bounds for the panel beside the Write editor (Scratch), in pixels.
 export const SIDE_PANE_WIDTH = Object.freeze({ min: 280, max: 720, default: 360 });
 
-// Views of the panel beside Write. Scratch shows notes; the other three list
-// prompts with the Library's smart-view rules.
-export const WRITE_SIDE_VIEWS = Object.freeze(['scratch', 'all', 'recent', 'favorites']);
+// Views of the panel beside Write: Scratch, Chat and three prompt lists using
+// the Library's smart-view rules.
+export const WRITE_SIDE_VIEWS = Object.freeze(['scratch', 'all', 'recent', 'favorites', 'chat']);
 export const WRITE_PROMPT_VIEWS = Object.freeze([
   { id: 'all', label: 'All' },
   { id: 'recent', label: 'Recent' },

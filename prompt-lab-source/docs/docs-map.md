@@ -25,6 +25,8 @@ Use these to understand the repo shape, live surfaces, and current issue log.
 
 ### Product or architecture work
 
+- `NOVEMBER_INTAKE_BRIEF.md`
+
 - `../ARCHITECTURE.md`
 - `../ROADMAP.md`
 - `feature-health-dashboard.md`

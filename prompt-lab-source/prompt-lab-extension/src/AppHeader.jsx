@@ -132,7 +132,7 @@ export default function AppHeader({
         <div className="pl-header-actions ml-auto flex items-center gap-1" data-header-actions>
           <button type="button" data-testid="global-new-prompt" onClick={onNewPrompt}
             disabled={newPromptDisabled} title="Start a separate prompt. Current work can be restored with Undo."
-            className="pl-primary-button ui-control px-2.5 py-1.5 text-xs whitespace-nowrap disabled:opacity-40">
+            className="pl-secondary-button pl-header-new-prompt ui-control px-2.5 py-1.5 text-xs whitespace-nowrap disabled:opacity-40">
             <Ic n="Plus" size={13} /> New Prompt
           </button>
           <div className="pl-header-secondary flex items-center gap-1">

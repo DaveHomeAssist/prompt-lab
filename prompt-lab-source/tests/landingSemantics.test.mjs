@@ -100,7 +100,7 @@ test('interactive sample uses labeled native controls and persistent status sema
   assert.equal(modeInputs.length, 3);
   assert.deepEqual(
     modeInputs.map((tag) => attributeValue(tag, 'value')).sort(),
-    ['balanced', 'concise', 'detailed'],
+    ['expanded', 'rebuilt', 'refined'],
   );
   for (const tag of modeInputs) {
     assert.equal(attributeValue(tag, 'type'), 'radio');
@@ -210,7 +210,7 @@ test('public landing surfaces declare a restrictive content security policy', ()
   ];
   const requiredDirectives = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline'",
+    "script-src 'self'",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data:",
     "font-src 'self'",
@@ -229,6 +229,10 @@ test('public landing surfaces declare a restrictive content security policy', ()
     for (const directive of requiredDirectives) {
       assert.ok(policy.includes(directive), `${pageName} CSP is missing ${directive}`);
     }
+    // R-36: pages without inline scripts must not allow them.
+    if (['privacy', 'terms', 'privacy redirect'].includes(pageName)) {
+      assert.doesNotMatch(/script-src[^;]*/.exec(policy)?.[0] ?? '', /'unsafe-inline'/, `${pageName} script-src must not allow 'unsafe-inline'`);
+    }
     if (pageName !== 'privacy redirect') {
       assert.match(policy, /script-src[^;]*https:\/\/www\.googletagmanager\.com/);
       assert.match(policy, /img-src[^;]*https:\/\/\*\.google-analytics\.com/);
@@ -246,9 +250,9 @@ test('landing conversion controls have unique stable analytics identifiers', () 
   assert.equal(new Set(analyticsIds).size, analyticsIds.length, 'Landing analytics IDs must be unique');
   assert.deepEqual([...analyticsIds].sort(), [
     'landing.demo.example_prompt',
-    'landing.demo.mode_balanced',
-    'landing.demo.mode_concise',
-    'landing.demo.mode_detailed',
+    'landing.demo.mode_expanded',
+    'landing.demo.mode_rebuilt',
+    'landing.demo.mode_refined',
     'landing.demo.show_result',
     'landing.demo.try_own',
     'landing.final.try_free',

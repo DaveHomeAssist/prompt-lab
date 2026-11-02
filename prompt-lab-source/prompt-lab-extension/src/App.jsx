@@ -6,7 +6,7 @@ import {
   extractVars,
 } from './promptUtils';
 import { scanSensitiveData } from './piiScanner.js';
-import { captureContext } from './lib/platform.js';
+import { captureContext, openSettings } from './lib/platform.js';
 import { buildCaptureInsertion } from './lib/captureContext.js';
 import { T, DEFAULT_GOLDEN_THRESHOLD } from './constants';
 import useLibrary from './hooks/usePromptLibrary.js';
@@ -16,8 +16,12 @@ import useEditorState from './hooks/useEditorState.js';
 import useExecutionFlow from './hooks/useExecutionFlow.js';
 import usePersistenceFlow from './hooks/usePersistenceFlow.js';
 import useFollowUpSuggestions from './hooks/useFollowUpSuggestions.js';
+import usePromptChat from './hooks/usePromptChat.js';
+import PromptChatPanel from './PromptChatPanel.jsx';
 import { resolveFollowUpSource } from './lib/followUpProvenance.js';
 import useABTest from './hooks/useABTest.js';
+import useAccountSync from './hooks/useAccountSync.js';
+import { AccountSyncBar, AccountSyncPanel } from './AccountSync.jsx';
 import useBillingState from './hooks/useBillingState.js';
 import useTelemetryState from './hooks/useTelemetryState.js';
 import Toast from './Toast';
@@ -161,11 +165,12 @@ export default function App({
     validate: (value) => (WRITE_SIDE_VIEWS.includes(value) ? value : 'scratch'),
   });
   const [writePromptsQuery, setWritePromptsQuery] = useState('');
-  const writeSideTab = writeSideView === 'scratch' ? 'scratch' : 'prompts';
+  const writeSideTab = ['scratch', 'chat'].includes(writeSideView) ? writeSideView : 'prompts';
   // The prompt list last shown, so Prompts reopens where it was left.
-  const [writePromptsView, setWritePromptsView] = useState(() => (writeSideView === 'scratch' ? 'all' : writeSideView));
+  const [writePromptsView, setWritePromptsView] = useState(() => (['all', 'recent', 'favorites'].includes(writeSideView) ? writeSideView : 'all'));
   const scratchToggleRef = useRef(null);
   const promptsToggleRef = useRef(null);
+  const chatToggleRef = useRef(null);
   const [draftRecovery, setDraftRecovery] = useState(loadDraftRecovery);
   const [resultContextRevision, setResultContextRevision] = useState(0);
   const appShellRef = useRef(null);
@@ -239,6 +244,9 @@ export default function App({
   const m = T[colorMode];
   const telemetry = useTelemetryState({ notify });
   const billing = useBillingState({ notify, telemetry, clerkUser, clerkGetToken });
+  // Account sync (docs/ACCOUNT_SYNC_DESIGN.md). Off unless VITE_PL_ACCOUNT_SYNC=on.
+  const accountSync = useAccountSync({ clerkUser, clerkGetToken });
+  const [showAccountSync, setShowAccountSync] = useState(false);
   const telemetryConsentPending = telemetry.consentGiven == null;
   // "Ask me later" hides the consent bar for this browser session without
   // recording a choice; nothing is sent while consent is still pending.
@@ -288,12 +296,17 @@ export default function App({
   const followUpSuggestions = useFollowUpSuggestions({
     raw: editorState.raw, enhanced: editorState.enhanced, source: followUpSource,
   });
+  const chat = usePromptChat({
+    prompt: editorState.raw, ownerId: persistenceFlow.editingId, revision: resultContextRevision,
+    visible: writeScratchOpen && writeSideTab === 'chat' && tab === 'editor' && primaryView === 'create' && workspaceView === 'editor',
+  });
   const ed = {
     ...editorState,
     ...persistenceFlow,
     ...executionFlow,
     doSave: (overrides = {}) => persistenceFlow.doSave(executionFlow.refreshEvalRuns, overrides),
     clearEditor: () => {
+      chat.clear();
       executionFlow.clearExecutionState();
       persistenceFlow.clearPersistenceState();
       editorState.clearEditorState();
@@ -439,6 +452,7 @@ export default function App({
       }
       setShowSettings(true);
     },
+    onRouteResultTab: setResultTab,
   });
 
   useEffect(() => {
@@ -591,12 +605,12 @@ export default function App({
   const writeScratchMode = viewportWidth >= 1100 ? 'column' : 'overlay';
   const closeWriteScratch = () => {
     setWriteScratchOpen(false);
-    const toggle = writeSideTab === 'prompts' ? promptsToggleRef : scratchToggleRef;
+    const toggle = writeSideTab === 'chat' ? chatToggleRef : writeSideTab === 'prompts' ? promptsToggleRef : scratchToggleRef;
     setTimeout(() => toggle.current?.focus(), 0);
   };
   const showWriteSideTab = (nextTab) => {
     if (nextTab === 'prompts') setWriteSideView(writePromptsView);
-    else setWriteSideView('scratch');
+    else setWriteSideView(nextTab === 'chat' ? 'chat' : 'scratch');
   };
   // A context-bar toggle opens the panel on its tab, switches an open panel
   // to it, or closes the panel when that tab is already showing.
@@ -720,6 +734,9 @@ export default function App({
   // ── Keyboard shortcuts (driven by navigationRegistry) ──
   useEffect(() => {
     const h = e => {
+      // A focused control that already handled the key (the Scratch editor's
+      // Cmd/Ctrl+K link, a dialog's own Escape) wins over the global map.
+      if (e.defaultPrevented) return;
       const shortcut = matchShortcut(e);
       if (!shortcut) return;
       e.preventDefault();
@@ -998,6 +1015,16 @@ export default function App({
     openCreateView('editor');
     notify(payload.selectionOnly ? 'Scratch selection opened in Write.' : 'Scratch note opened in Write.');
   };
+  const handleUseChatReply = message => {
+    if (chat.loading || message.ownerKey !== chat.ownerKey || message.draft !== raw || !chat.messages.some(item => item.id === message.id)) return;
+    if (raw.trim() || enhanced.trim() || variants.length || notes.trim() || editingId) preserveDraftForUndo('chat-handoff');
+    dismissSaveReceipt();
+    clearEditor();
+    setRaw(message.content);
+    setSaveTitle(suggestTitleFromText(message.content));
+    openCreateView('editor');
+    notify('Chat reply opened as a new prompt. Previous draft is available through Undo.');
+  };
   const [composerRecovery, setComposerRecovery] = useState(null);
   const clearComposer = () => {
     setComposerRecovery(composerBlocks.map(block => ({ ...block })));
@@ -1212,6 +1239,17 @@ export default function App({
           {batchProgress.active && <button type="button" onClick={cancelBatch}>Stop batch</button>}
         </aside>
       )}
+      <AccountSyncBar sync={accountSync} m={m} onOpen={(focus) => setShowAccountSync(focus || true)} />
+      <AccountSyncPanel
+        sync={accountSync}
+        m={m}
+        open={Boolean(showAccountSync)}
+        focus={showAccountSync === 'conflicts' ? 'conflicts' : undefined}
+        onClose={() => setShowAccountSync(false)}
+        onSignOut={clerkUser && clerkAccountActions?.signOut
+          ? () => { setShowAccountSync(false); clerkAccountActions.signOut(); }
+          : accountSync.signOut ? () => { setShowAccountSync(false); accountSync.signOut(); } : undefined}
+      />
 
       {telemetryConsentPending && !telemetryPromptDeferred && (
         <div className={`pl-consent-bar ${m.surface} ${m.border} border-b px-4 py-3`} data-telemetry-consent role="region" aria-label="Usage analytics">
@@ -1263,7 +1301,8 @@ export default function App({
             openSavePanel={openSavePanel} openSection={openSection}
             accentTextClass={m.textAlt} accentHoverTextClass="hover:underline" accentBadgeClass={m.btn}
             scratchPanel={writeScratchAvailable ? { open: writeScratchOpen && writeSideTab === 'scratch', onToggle: () => toggleWriteSideTab('scratch'), buttonRef: scratchToggleRef } : null}
-            promptsPanel={writeScratchAvailable ? { open: writeScratchOpen && writeSideTab === 'prompts', onToggle: () => toggleWriteSideTab('prompts'), buttonRef: promptsToggleRef } : null} />
+            promptsPanel={writeScratchAvailable ? { open: writeScratchOpen && writeSideTab === 'prompts', onToggle: () => toggleWriteSideTab('prompts'), buttonRef: promptsToggleRef } : null}
+            chatPanel={writeScratchAvailable ? { open: writeScratchOpen && writeSideTab === 'chat', onToggle: () => toggleWriteSideTab('chat'), buttonRef: chatToggleRef } : null} />
         </div>
       )}
 
@@ -1291,7 +1330,10 @@ export default function App({
               aboveMobileNav={compact}
               width={writeScratchWidth}
             >
-              {writeSideTab === 'scratch' ? (
+              {writeSideTab === 'chat' ? (
+                <PromptChatPanel chat={chat} prompt={raw} m={m} colorMode={colorMode}
+                  onUseReply={handleUseChatReply} onOpenSettings={openSettings} />
+              ) : writeSideTab === 'scratch' ? (
                 <ScratchSidePanel
                   m={m}
                   colorMode={colorMode}
@@ -1572,10 +1614,12 @@ export default function App({
         <SavePanel
           m={m} primaryModKey={primaryModKey} saveTargetId={saveTargetId}
           saveTitle={saveTitle} setSaveTitle={setSaveTitle}
+          titleSourceText={saveSourceText}
           saveCollection={saveCollection} setSaveCollection={setSaveCollection}
           saveTags={saveTags} setSaveTags={setSaveTags}
           changeNote={changeNote} setChangeNote={setChangeNote}
           collections={lib.collections}
+          libraryTags={lib.allLibTags} tagSourceText={saveSourceText}
           showNewColl={showNewColl} setShowNewColl={setShowNewColl}
           newCollName={newCollName} setNewCollName={setNewCollName}
           commitNewCollection={commitNewCollection}
@@ -1745,10 +1789,10 @@ export default function App({
       {lib.importPreview && <WorkspaceImportModal m={m} preview={lib.importPreview} applying={lib.importApplying}
         onChoice={lib.chooseImportResolution} onApply={lib.confirmImport} onRetry={lib.retryImport} onClose={lib.cancelImportPreview} />}
       <PiiWarningModal m={m}
-        piiWarning={piiWarning || abTest.piiWarning || followUpSuggestions.piiWarning}
-        piiRedactAndSend={piiWarning ? piiRedactAndSend : abTest.piiWarning ? abTest.piiRedactAndSend : followUpSuggestions.piiRedactAndSend}
-        piiSendAnyway={piiWarning ? piiSendAnyway : abTest.piiWarning ? abTest.piiSendAnyway : followUpSuggestions.piiSendAnyway}
-        piiCancel={piiWarning ? piiCancel : abTest.piiWarning ? abTest.piiCancel : followUpSuggestions.piiCancel} />
+        piiWarning={piiWarning || abTest.piiWarning || followUpSuggestions.piiWarning || chat.piiWarning}
+        piiRedactAndSend={piiWarning ? piiRedactAndSend : abTest.piiWarning ? abTest.piiRedactAndSend : followUpSuggestions.piiWarning ? followUpSuggestions.piiRedactAndSend : chat.piiRedactAndSend}
+        piiSendAnyway={piiWarning ? piiSendAnyway : abTest.piiWarning ? abTest.piiSendAnyway : followUpSuggestions.piiWarning ? followUpSuggestions.piiSendAnyway : chat.piiSendAnyway}
+        piiCancel={piiWarning ? piiCancel : abTest.piiWarning ? abTest.piiCancel : followUpSuggestions.piiWarning ? followUpSuggestions.piiCancel : chat.piiCancel} />
 
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
       {!isExtension && (

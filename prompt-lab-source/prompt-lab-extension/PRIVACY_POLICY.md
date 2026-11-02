@@ -1,6 +1,6 @@
 # Privacy Policy — Prompt Lab
 
-**Effective date:** 2026-03-12
+**Effective date:** 2026-10-30
 
 ## Scope
 
@@ -26,6 +26,14 @@ The extension's Capture Page button reads the selected text, title, and URL of t
 ## Telemetry and Tracking
 
 Prompt Lab can send limited product telemetry to developer-controlled endpoints, only after you choose Allow analytics (it is off by default). This includes event names, app surface, plan, anonymous device/session identifiers, and an optional contact email if you provide one in Settings. Prompt text, model responses, and provider API keys are not included in telemetry payloads.
+
+## Retention and Deletion
+
+A device profile and an optional contact email record expire 180 days after the last event from that device or contact. The shared event list holds at most the 2,000 most recent events, carries no contact email, and expires 180 days after the last event written to it.
+
+When you turn analytics off in Settings, or choose not to allow analytics after previously allowing it, Prompt Lab asks its server to delete the device profile, the contact record created from that device, and that device's entries in the event list. If the request cannot reach the server, the extension keeps it and tries again the next time it opens. Aggregate event counts that contain no device identifier or email address are kept.
+
+To ask for deletion another way, email <avbydave@gmail.com> with the subject "Prompt Lab data deletion". Please do not post personal details in public GitHub issues.
 
 ## Billing
 

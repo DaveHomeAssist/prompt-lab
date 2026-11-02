@@ -1,12 +1,11 @@
 # Prompt Lab Pro billing policy
 
-Status: **Draft, not yet published.** This is the proposed customer policy for
-the two open billing-acceptance items (commercial refund and access policy, and
-the six-hour entitlement cache). It needs the owner's approval and a legal
-review before it is published on promptlab.tools or relied on with customers.
-Sections marked "Operator notes" are internal. The customer-facing draft is
-`prompt-lab-web/public/terms.html` (served at `/terms`, marked DRAFT,
-`noindex`, and not linked from the site until it is approved).
+Status: **Final draft, publishes with the Terms of Service.** This is the
+customer policy for Prompt Lab Pro billing (refunds, cancellation, disputes and
+the six-hour entitlement cache). Sections marked "Operator notes" are internal.
+The customer-facing text is `prompt-lab-web/public/terms.html` (served at
+`/terms`, linked from the landing footer and the checkout dialog). Keep the two
+in step; `tests/landingTerms.test.mjs` checks the shared wording.
 
 ## Customer policy
 
@@ -30,7 +29,7 @@ are not charged again. Cancelling does not by itself refund the current period.
 
 - **14-day refund.** You can ask for a full refund within 14 days of your first
   Prompt Lab Pro payment (monthly or annual) or within 14 days of an annual
-  renewal payment. Email [hi@promptlab.tools](mailto:hi@promptlab.tools) from the address on your account.
+  renewal payment. Email [avbydave@gmail.com](mailto:avbydave@gmail.com) from the address on your account.
 - **A full refund ends Pro.** When we refund a payment in full, we cancel the
   subscription at the same time and Pro ends on your devices at their next
   billing check (see "Pro status on your devices").
@@ -132,6 +131,17 @@ values above against `billingPolicy.js`.
 - The entitlement cache is a client convenience, not a security boundary. A user
   who edits local storage can show Pro locally. Any future server-provided Pro
   feature must check the entitlement on the server.
+- Desktop has no sign-in, so it never re-checks the cached entitlement
+  (`pl2-billing`) with the server: a cached Pro is trusted there with no time
+  limit, and an owner-status cache is never revalidated on any surface. Desktop
+  also journals the plan and entitlement fields of the cache in IndexedDB
+  (`settingsJournal.js`, `BILLING_ENTITLEMENT_FIELDS` in `billing.js`: plan,
+  status, billing period, product name, `lastValidatedAt`, `lastVerifiedAt` and
+  the two disabled flags) so they survive WebView2 Local Storage loss. The cache
+  has no separate expiry field; the two timestamps anchor revalidation and the
+  offline grace. The journal restores only values this device already had, so
+  it grants nothing new. The account email, name, Stripe customer, subscription
+  and price ids, the portal link and error text are never journaled.
 - In-app Pro feature gates apply only to the hosted web app (built with
   `VITE_PROMPTLAB_PRO_GATES=on`; `areFeatureGatesActive()` in
   `prompt-lab-extension/src/lib/billing.js`). There, Free accounts cannot use

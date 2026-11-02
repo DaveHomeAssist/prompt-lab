@@ -369,16 +369,16 @@ test('owner entitlement ignores email, username, and unsafe metadata grants', as
   const mutableGrantEnv = {
     PROMPTLAB_OWNER_EMAILS: 'owner@example.com',
     PROMPTLAB_PRO_OWNER_EMAILS: 'owner@example.com',
-    PROMPTLAB_OWNER_USERNAMES: 'daverobertson',
-    PROMPTLAB_PRO_OWNER_USERNAMES: 'daverobertson',
+    PROMPTLAB_OWNER_USERNAMES: 'test-owner',
+    PROMPTLAB_PRO_OWNER_USERNAMES: 'test-owner',
   };
 
   assert.equal(lookupOwnerEntitlement({
     clerkUserId: 'user_unlisted',
     clerkEmail: 'owner@example.com',
     clerkClaims: {
-      username: 'daverobertson',
-      unsafe_metadata: { username: 'daverobertson' },
+      username: 'test-owner',
+      unsafe_metadata: { username: 'test-owner' },
     },
   }, mutableGrantEnv), null);
 });
@@ -553,7 +553,12 @@ test('an unverified token email cannot claim an unbound legacy Stripe customer',
       headers: { Authorization: `Bearer ${jwks.tokenFor({ claims: { email_verified: false } })}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'validate' }),
     }));
-    assert.equal(response.status, 400);
+    // INT-06: a license check without a verified email finds nothing and
+    // answers Free; it never reads the email list or creates a customer.
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.plan, 'free');
+    assert.equal(body.customerId, '');
     assert.equal(calls.some(({ url, init }) => url.includes('/customers?') || init.method === 'POST'), false);
   } finally {
     await jwks.close();

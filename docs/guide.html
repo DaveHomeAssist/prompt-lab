@@ -1030,7 +1030,8 @@ code {
   const allowedIntents = new Set(['open', 'free', 'upgrade', 'sample']);
   const allowedDestinations = new Set(['app', 'demo', 'setup', 'source', 'guide', 'privacy']);
   const allowedPeriods = new Set(['monthly', 'annual']);
-  const allowedDemoModes = new Set(['balanced', 'concise', 'detailed']);
+  // Strategy samples, plus the retired mode samples so attribution saved before this release still validates.
+  const allowedDemoModes = new Set(['expanded', 'refined', 'rebuilt', 'balanced', 'concise', 'detailed']);
   const eventFields = {
     'landing.cta_clicked': ['placement', 'intent', 'destination', 'period'],
     'landing.demo_completed': ['placement', 'intent', 'destination', 'demoMode', 'resultCount'],

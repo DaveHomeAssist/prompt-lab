@@ -49,6 +49,11 @@ for (const page of LANDING_PAGES) {
     assert.match(html, /id="billingAnnual" value="annual" checked/);
     assert.doesNotMatch(html, /id="billingMonthly"[^>]*\schecked/);
     assert.match(html, /period=annual&amp;source=landing-pricing" class="pricing-btn filled" id="proCta"/);
+    // CA-03: the Pro CTA names the plan and price for both periods.
+    assert.match(html, new RegExp(escape(`id="proCta" data-period="annual" data-analytics-id="landing.pricing.pro">Get Pro, $${annual}/year &rarr;</a>`)));
+    assert.match(html, new RegExp(escape(`'Get Pro, $${annual}/year \\u2192' : 'Get Pro, $${monthly}/month \\u2192'`)));
+    assert.match(html, new RegExp(escape(`<p class="pricing-note">You'll confirm in Prompt Lab before Stripe Checkout. Nothing is charged here.</p>`)));
+    assert.doesNotMatch(html, /Continue to PromptLab/);
     assert.match(html, /selected \? selected\.value : 'annual'/);
     assert.match(html, new RegExp(`proPrice\\.textContent\\s*=\\s*'${escape(annual)}'`));
     assert.match(html, new RegExp(`proPrice\\.textContent\\s*=\\s*'${escape(monthly)}'`));
@@ -80,6 +85,21 @@ test('terms and billing policy state the configured prices', () => {
   assert.doesNotMatch(terms, /Pro adds[^.]*diff/i, 'terms must not sell the diff viewer as Pro');
   const policy = read('docs/billing-policy.md').replace(/\s+/g, ' ');
   assert.ok(policy.includes(PRICE_COPY.termsSentence), `billing policy must say "${PRICE_COPY.termsSentence}"`);
+});
+
+// AUD-038: the pilot companion board is public, so its launch-price line must
+// show the current offer and mention the old annual price only as legacy.
+test('pilot companion board states the current prices', () => {
+  const board = flatten(read('prompt-lab-web/public/companion/index.html'));
+  assert.ok(board.includes('Launch prices'), 'companion launch-price line not found');
+  assert.ok(
+    board.includes(`Current prices: ${PRICE_COPY.monthly} monthly and ${PRICE_COPY.annual} annual.`),
+    'companion must state the current monthly and annual prices',
+  );
+  const legacyMentions = board.split(PRICE_COPY.legacyAnnual).length - 1;
+  assert.equal(legacyMentions, 2, 'the legacy annual price appears only in the legacy-renewal sentence');
+  assert.match(board, new RegExp(`bought at the earlier ${escape(PRICE_COPY.legacyAnnual)} price keep renewing`));
+  assert.doesNotMatch(board, /Proposed October 18/);
 });
 
 test('app sources take prices from shared/pricing.js, not literals', () => {

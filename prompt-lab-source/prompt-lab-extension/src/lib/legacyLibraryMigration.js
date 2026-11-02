@@ -4,8 +4,39 @@ import { getLibraryEntrySignature, mergeLibraryEntries } from './libraryMatching
 import { ensureString } from './utils.js';
 
 export const LEGACY_WEB_APP_ORIGIN = 'https://prompt-lab-tawny.vercel.app';
+export const APEX_WEB_APP_ORIGIN = 'https://promptlab.tools';
+export const WWW_WEB_APP_ORIGIN = 'https://www.promptlab.tools';
 export const LEGACY_LIBRARY_BRIDGE_PATH = '/legacy-library-bridge.html';
+// The tawny source keeps the original key so people who were already checked
+// are not asked again. Every other source gets its own suffixed key.
 export const LEGACY_LIBRARY_CHECK_KEY = 'pl2-legacy-web-library-checked';
+export const LEGACY_LIBRARY_ATTEMPTS_KEY = 'pl2-legacy-web-library-attempts';
+// An unreachable www bridge is retried on later loads, up to this many times.
+export const MAX_UNREACHABLE_ATTEMPTS = 3;
+
+// S-06: www.promptlab.tools and promptlab.tools are the same site, so a www
+// iframe inside the apex app reads www's real (unpartitioned) localStorage.
+// That makes www the one source worth merging into a non-empty apex library.
+// tawny is cross-site: modern browsers hand its iframe partitioned storage
+// (S-24), so it keeps its original empty-library-only behavior.
+export const LEGACY_LIBRARY_SOURCES = Object.freeze([
+  Object.freeze({
+    id: 'www', origin: WWW_WEB_APP_ORIGIN, label: 'www.promptlab.tools',
+    checkKey: `${LEGACY_LIBRARY_CHECK_KEY}:www`, attemptsKey: `${LEGACY_LIBRARY_ATTEMPTS_KEY}:www`,
+    mergeIntoExisting: true, retryUnreachable: true,
+  }),
+  Object.freeze({
+    id: 'tawny', origin: LEGACY_WEB_APP_ORIGIN, label: 'your legacy web library',
+    checkKey: LEGACY_LIBRARY_CHECK_KEY, attemptsKey: `${LEGACY_LIBRARY_ATTEMPTS_KEY}:tawny`,
+    mergeIntoExisting: false, retryUnreachable: false,
+  }),
+]);
+export const DEFAULT_LEGACY_SOURCE = LEGACY_LIBRARY_SOURCES.find(source => source.id === 'tawny');
+
+export function getLegacyLibrarySource(idOrSource) {
+  if (idOrSource && typeof idOrSource === 'object') return idOrSource;
+  return LEGACY_LIBRARY_SOURCES.find(source => source.id === idOrSource) || DEFAULT_LEGACY_SOURCE;
+}
 
 const REQUEST_TYPE = 'pl2:request-legacy-library';
 const RESPONSE_TYPE = 'pl2:legacy-library-payload';
@@ -33,10 +64,14 @@ export function isSeedOnlyLibrary(library) {
   return normalizedLibrary.every((entry) => seedSignatures.has(getLibraryEntrySignature(entry)));
 }
 
-export function shouldAttemptLegacyWebMigration(currentOrigin = '', protocol = '') {
-  if (!/^https?:$/i.test(protocol) || !currentOrigin || currentOrigin === LEGACY_WEB_APP_ORIGIN) {
+export function shouldAttemptLegacyWebMigration(currentOrigin = '', protocol = '', sourceId = DEFAULT_LEGACY_SOURCE) {
+  const source = getLegacyLibrarySource(sourceId);
+  if (!/^https?:$/i.test(protocol) || !currentOrigin || currentOrigin === source.origin) {
     return false;
   }
+  // Only the apex reads www. www never requests itself, and previews,
+  // desktop (tauri.localhost) and other hosts are not framed by www's bridge.
+  if (source.id === 'www') return currentOrigin === APEX_WEB_APP_ORIGIN && /^https:$/i.test(protocol);
 
   try {
     const hostname = new URL(currentOrigin).hostname;
@@ -55,12 +90,13 @@ export function parseLegacyLibraryPayload(messageData) {
   };
 }
 
-export function requestLegacyLibraryPayload({ currentOrigin, timeoutMs = 2500 } = {}) {
+export function requestLegacyLibraryPayload({ currentOrigin, source: sourceId = DEFAULT_LEGACY_SOURCE, timeoutMs = 2500 } = {}) {
+  const source = getLegacyLibrarySource(sourceId);
   if (typeof window === 'undefined' || typeof document === 'undefined') {
     return Promise.resolve(null);
   }
 
-  if (!shouldAttemptLegacyWebMigration(currentOrigin || window.location.origin, window.location.protocol)) {
+  if (!shouldAttemptLegacyWebMigration(currentOrigin || window.location.origin, window.location.protocol, source)) {
     return Promise.resolve(null);
   }
 
@@ -78,7 +114,7 @@ export function requestLegacyLibraryPayload({ currentOrigin, timeoutMs = 2500 } 
     };
 
     const handleMessage = (event) => {
-      if (event.origin !== LEGACY_WEB_APP_ORIGIN) return;
+      if (event.origin !== source.origin || event.source !== iframe.contentWindow) return;
       const payload = parseLegacyLibraryPayload(event.data);
       if (!payload) return;
       cleanup(payload);
@@ -86,12 +122,12 @@ export function requestLegacyLibraryPayload({ currentOrigin, timeoutMs = 2500 } 
 
     const timer = window.setTimeout(() => cleanup(null), timeoutMs);
 
-    iframe.src = `${LEGACY_WEB_APP_ORIGIN}${LEGACY_LIBRARY_BRIDGE_PATH}`;
+    iframe.src = `${source.origin}${LEGACY_LIBRARY_BRIDGE_PATH}`;
     iframe.style.display = 'none';
     iframe.setAttribute('aria-hidden', 'true');
     iframe.addEventListener('load', () => {
       try {
-        iframe.contentWindow?.postMessage({ type: REQUEST_TYPE }, LEGACY_WEB_APP_ORIGIN);
+        iframe.contentWindow?.postMessage({ type: REQUEST_TYPE }, source.origin);
       } catch {
         cleanup(null);
       }

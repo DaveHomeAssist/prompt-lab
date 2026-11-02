@@ -3,6 +3,7 @@ export const config = { runtime: 'edge' };
 import {
   assertTelemetryConsent,
   buildTelemetryConfig,
+  deleteTelemetryRecords,
   enforceTelemetryRateLimit,
   jsonResponse,
   normalizeTelemetryEvent,
@@ -26,6 +27,47 @@ function telemetryDisabledResponse(message, request) {
   }, 200, {}, request);
 }
 
+// PRIV-02: POST /api/telemetry?action=withdraw deletes this device's stored
+// records. It is honoured even when telemetry collection is switched off, so
+// records written earlier can still be deleted. It needs no consent flag and
+// stores nothing.
+function isWithdrawalRequest(request) {
+  try {
+    return new URL(request.url).searchParams.get('action') === 'withdraw';
+  } catch {
+    return false;
+  }
+}
+
+async function handleWithdrawal(request) {
+  try {
+    const body = await parseJsonBody(request);
+    const telemetryConfig = buildTelemetryConfig();
+    const rateLimit = await enforceTelemetryRateLimit(request, telemetryConfig);
+    if (rateLimit.limited) {
+      return jsonResponse(
+        { error: 'Telemetry rate limit exceeded.' },
+        429,
+        { 'Retry-After': String(rateLimit.retryAfterSeconds), 'X-RateLimit-Remaining': '0' },
+        request,
+      );
+    }
+    const result = await deleteTelemetryRecords({
+      deviceId: body?.deviceId,
+      contactEmail: body?.contactEmail,
+    }, telemetryConfig);
+    return jsonResponse({ ...result, withdrawn: true }, 200, {}, request);
+  } catch (error) {
+    const status = isExternalFetchTimeout(error)
+      ? 504
+      : (error instanceof TelemetryRequestError ? error.status : 500);
+    const message = error instanceof TelemetryRequestError
+      ? error.message
+      : 'Could not delete telemetry records.';
+    return jsonResponse({ error: message }, status, {}, request);
+  }
+}
+
 export default async function handler(request) {
   // Same origin policy as /api/proxy: unlisted (or missing) origins are
   // rejected before any body is read, and never receive Allow-Origin.
@@ -35,6 +77,10 @@ export default async function handler(request) {
   if (request.method === 'OPTIONS') return optionsResponse(request);
   if (request.method !== 'POST') {
     return jsonResponse({ error: 'Method not allowed.' }, 405, {}, request);
+  }
+
+  if (isWithdrawalRequest(request)) {
+    return handleWithdrawal(request);
   }
 
   if (!isFeatureEnabled('PROMPTLAB_TELEMETRY_ENABLED')) {
