@@ -52,7 +52,8 @@ const FORMER_REDIRECTS = {
   '/privatepolicy': '/privacy.html', '/privacy': '/privacy.html', '/privacy/': '/privacy.html',
   '/pricing': '/#pricing', '/pricing/': '/#pricing',
   '/login': '/app/', '/signin': '/app/', '/sign-in': '/app/', '/signup': '/app/', '/sign-up': '/app/',
-  '/settings': '/app/settings', '/account': '/app/account',
+  // The app's own hash routes (what redirectAppPathToHash makes of /app/settings).
+  '/settings': '/app/#/settings', '/account': '/app/#/account',
 };
 
 const PAGES = ['/', '/app/', '/app/index.html', '/terms.html', '/privacy.html', '/guide.html', '/api/billing/checkout'];

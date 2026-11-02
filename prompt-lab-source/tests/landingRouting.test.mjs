@@ -24,8 +24,9 @@ test('sign-in style addresses go to the app (which shows sign-in when signed out
 });
 
 test('/settings and /account open the matching dialog route in the app', async () => {
-  assert.equal(await refreshTarget('/settings'), '/app/settings');
-  assert.equal(await refreshTarget('/account'), '/app/account');
+  // The hash routes the app makes of /app/settings and /app/account.
+  assert.equal(await refreshTarget('/settings'), '/app/#/settings');
+  assert.equal(await refreshTarget('/account'), '/app/#/account');
 });
 
 test('a branded 404 page links back into Prompt Lab', async () => {
