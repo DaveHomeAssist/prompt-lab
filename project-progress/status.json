@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-11-02T12:24:42.505Z",
+  "snapshotAt": "2026-11-02T14:46:34.481Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -16,7 +16,7 @@
     {
       "label": "Screenflow production acceptance",
       "state": "Verified",
-      "detail": "November2: SF-01 through SF-04 merged in PR311 as8a13ce3 after all16 df2615f checks passed. Vercel production dpl_HWVRNZVxJPgEw5jRrJiASQw8rRja READY on exact merge and promptlab.tools alias. Production smoke41443801045 passed2/2 at375x812 and1440x900: live shared link, independent save, original unchanged, displaced draft restore, no stale receipt, immediate refresh and failed-write retry. Both disposable sessions revoked. Synthetic local fixtures and application APIs blocked; no paid inference. Candidate CI1732 shared/150files,231 legacy,118 hosted/one existing skip,25 landing and all6 Desktop jobs pass. SF-02 validated sign-in/sign-up destinations and SF-03 navigation/cancellation/partial-summary persistence are covered by source and mocked browser tests. Post-merge Desktop41443637356 and Landing41443637523 remain active. Other project acceptance and human/native gates remain separate.",
+      "detail": "November2: SF-01 through SF-04 merged in PR311 as8a13ce3 after all16 df2615f checks passed. Vercel production dpl_HWVRNZVxJPgEw5jRrJiASQw8rRja READY on exact merge and promptlab.tools alias. Production smoke41443801045 passed2/2 at375x812 and1440x900: live shared link, independent save, original unchanged, displaced draft restore, no stale receipt, immediate refresh and failed-write retry. Both disposable sessions revoked. Synthetic local fixtures and application APIs blocked; no paid inference. Candidate CI1732 shared/150files,231 legacy,118 hosted/one existing skip,25 landing and all6 Desktop jobs pass. SF-02 validated sign-in/sign-up destinations and SF-03 navigation/cancellation/partial-summary persistence are covered by source and mocked browser tests. Exact-merge post-release Extension41443637293, Landing41443637523 and all6 Desktop41443637356 jobs passed. All four scoped issues are Done with write/readback. Retain regressions; no remaining repair action. Other project acceptance and human/native gates remain separate.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/41443801045"
     },
     {
@@ -1583,11 +1583,11 @@
     },
     {
       "inPlan": false,
-      "nextAction": "Finish post-merge CI and final records reconciliation.",
-      "verification": "November2: SF-01 through SF-04 merged in PR311 as8a13ce3 after all16 df2615f checks passed. Vercel production dpl_HWVRNZVxJPgEw5jRrJiASQw8rRja READY on exact merge and promptlab.tools alias. Production smoke41443801045 passed2/2 at375x812 and1440x900: live shared link, independent save, original unchanged, displaced draft restore, no stale receipt, immediate refresh and failed-write retry. Both disposable sessions revoked. Synthetic local fixtures and application APIs blocked; no paid inference. Candidate CI1732 shared/150files,231 legacy,118 hosted/one existing skip,25 landing and all6 Desktop jobs pass. SF-02 validated sign-in/sign-up destinations and SF-03 navigation/cancellation/partial-summary persistence are covered by source and mocked browser tests. Post-merge Desktop41443637356 and Landing41443637523 remain active. Other project acceptance and human/native gates remain separate.",
+      "nextAction": null,
+      "verification": "November2: SF-01 through SF-04 merged in PR311 as8a13ce3 after all16 df2615f checks passed. Vercel production dpl_HWVRNZVxJPgEw5jRrJiASQw8rRja READY on exact merge and promptlab.tools alias. Production smoke41443801045 passed2/2 at375x812 and1440x900: live shared link, independent save, original unchanged, displaced draft restore, no stale receipt, immediate refresh and failed-write retry. Both disposable sessions revoked. Synthetic local fixtures and application APIs blocked; no paid inference. Candidate CI1732 shared/150files,231 legacy,118 hosted/one existing skip,25 landing and all6 Desktop jobs pass. SF-02 validated sign-in/sign-up destinations and SF-03 navigation/cancellation/partial-summary persistence are covered by source and mocked browser tests. Exact-merge post-release Extension41443637293, Landing41443637523 and all6 Desktop41443637356 jobs passed. All four scoped issues are Done with write/readback. Retain regressions; no remaining repair action. Other project acceptance and human/native gates remain separate.",
       "id": "409255fc8f4481e78dfff5b0abd252e8",
       "title": "SF-01 Preserve shared prompt identity and displaced draft",
-      "status": "In progress",
+      "status": "Done",
       "severity": "High",
       "area": "Import",
       "type": "Bug",
@@ -1595,11 +1595,11 @@
     },
     {
       "inPlan": false,
-      "nextAction": "Finish post-merge CI and final records reconciliation.",
-      "verification": "November2: SF-01 through SF-04 merged in PR311 as8a13ce3 after all16 df2615f checks passed. Vercel production dpl_HWVRNZVxJPgEw5jRrJiASQw8rRja READY on exact merge and promptlab.tools alias. Production smoke41443801045 passed2/2 at375x812 and1440x900: live shared link, independent save, original unchanged, displaced draft restore, no stale receipt, immediate refresh and failed-write retry. Both disposable sessions revoked. Synthetic local fixtures and application APIs blocked; no paid inference. Candidate CI1732 shared/150files,231 legacy,118 hosted/one existing skip,25 landing and all6 Desktop jobs pass. SF-02 validated sign-in/sign-up destinations and SF-03 navigation/cancellation/partial-summary persistence are covered by source and mocked browser tests. Post-merge Desktop41443637356 and Landing41443637523 remain active. Other project acceptance and human/native gates remain separate.",
+      "nextAction": null,
+      "verification": "November2: SF-01 through SF-04 merged in PR311 as8a13ce3 after all16 df2615f checks passed. Vercel production dpl_HWVRNZVxJPgEw5jRrJiASQw8rRja READY on exact merge and promptlab.tools alias. Production smoke41443801045 passed2/2 at375x812 and1440x900: live shared link, independent save, original unchanged, displaced draft restore, no stale receipt, immediate refresh and failed-write retry. Both disposable sessions revoked. Synthetic local fixtures and application APIs blocked; no paid inference. Candidate CI1732 shared/150files,231 legacy,118 hosted/one existing skip,25 landing and all6 Desktop jobs pass. SF-02 validated sign-in/sign-up destinations and SF-03 navigation/cancellation/partial-summary persistence are covered by source and mocked browser tests. Exact-merge post-release Extension41443637293, Landing41443637523 and all6 Desktop41443637356 jobs passed. All four scoped issues are Done with write/readback. Retain regressions; no remaining repair action. Other project acceptance and human/native gates remain separate.",
       "id": "409255fc8f4481349b10d5ccdc40e13c",
       "title": "SF-02 Preserve incoming authentication destinations",
-      "status": "In progress",
+      "status": "Done",
       "severity": "Medium",
       "area": "Background",
       "type": "Bug",
@@ -1607,11 +1607,11 @@
     },
     {
       "inPlan": false,
-      "nextAction": "Finish post-merge CI and final records reconciliation.",
-      "verification": "November2: SF-01 through SF-04 merged in PR311 as8a13ce3 after all16 df2615f checks passed. Vercel production dpl_HWVRNZVxJPgEw5jRrJiASQw8rRja READY on exact merge and promptlab.tools alias. Production smoke41443801045 passed2/2 at375x812 and1440x900: live shared link, independent save, original unchanged, displaced draft restore, no stale receipt, immediate refresh and failed-write retry. Both disposable sessions revoked. Synthetic local fixtures and application APIs blocked; no paid inference. Candidate CI1732 shared/150files,231 legacy,118 hosted/one existing skip,25 landing and all6 Desktop jobs pass. SF-02 validated sign-in/sign-up destinations and SF-03 navigation/cancellation/partial-summary persistence are covered by source and mocked browser tests. Post-merge Desktop41443637356 and Landing41443637523 remain active. Other project acceptance and human/native gates remain separate.",
+      "nextAction": null,
+      "verification": "November2: SF-01 through SF-04 merged in PR311 as8a13ce3 after all16 df2615f checks passed. Vercel production dpl_HWVRNZVxJPgEw5jRrJiASQw8rRja READY on exact merge and promptlab.tools alias. Production smoke41443801045 passed2/2 at375x812 and1440x900: live shared link, independent save, original unchanged, displaced draft restore, no stale receipt, immediate refresh and failed-write retry. Both disposable sessions revoked. Synthetic local fixtures and application APIs blocked; no paid inference. Candidate CI1732 shared/150files,231 legacy,118 hosted/one existing skip,25 landing and all6 Desktop jobs pass. SF-02 validated sign-in/sign-up destinations and SF-03 navigation/cancellation/partial-summary persistence are covered by source and mocked browser tests. Exact-merge post-release Extension41443637293, Landing41443637523 and all6 Desktop41443637356 jobs passed. All four scoped issues are Done with write/readback. Retain regressions; no remaining repair action. Other project acceptance and human/native gates remain separate.",
       "id": "409255fc8f448189a6c6e63df67e8155",
       "title": "SF-03 Cancel test case batches with partial completion",
-      "status": "In progress",
+      "status": "Done",
       "severity": "Medium",
       "area": "Editor",
       "type": "Bug",
@@ -1619,11 +1619,11 @@
     },
     {
       "inPlan": false,
-      "nextAction": "Finish post-merge CI and final records reconciliation.",
-      "verification": "November2: SF-01 through SF-04 merged in PR311 as8a13ce3 after all16 df2615f checks passed. Vercel production dpl_HWVRNZVxJPgEw5jRrJiASQw8rRja READY on exact merge and promptlab.tools alias. Production smoke41443801045 passed2/2 at375x812 and1440x900: live shared link, independent save, original unchanged, displaced draft restore, no stale receipt, immediate refresh and failed-write retry. Both disposable sessions revoked. Synthetic local fixtures and application APIs blocked; no paid inference. Candidate CI1732 shared/150files,231 legacy,118 hosted/one existing skip,25 landing and all6 Desktop jobs pass. SF-02 validated sign-in/sign-up destinations and SF-03 navigation/cancellation/partial-summary persistence are covered by source and mocked browser tests. Post-merge Desktop41443637356 and Landing41443637523 remain active. Other project acceptance and human/native gates remain separate.",
+      "nextAction": null,
+      "verification": "November2: SF-01 through SF-04 merged in PR311 as8a13ce3 after all16 df2615f checks passed. Vercel production dpl_HWVRNZVxJPgEw5jRrJiASQw8rRja READY on exact merge and promptlab.tools alias. Production smoke41443801045 passed2/2 at375x812 and1440x900: live shared link, independent save, original unchanged, displaced draft restore, no stale receipt, immediate refresh and failed-write retry. Both disposable sessions revoked. Synthetic local fixtures and application APIs blocked; no paid inference. Candidate CI1732 shared/150files,231 legacy,118 hosted/one existing skip,25 landing and all6 Desktop jobs pass. SF-02 validated sign-in/sign-up destinations and SF-03 navigation/cancellation/partial-summary persistence are covered by source and mocked browser tests. Exact-merge post-release Extension41443637293, Landing41443637523 and all6 Desktop41443637356 jobs passed. All four scoped issues are Done with write/readback. Retain regressions; no remaining repair action. Other project acceptance and human/native gates remain separate.",
       "id": "409255fc8f44816b9c0ac1cb28ae0c80",
       "title": "SF-04 Recover draft checkpoints across exit and storage failure",
-      "status": "In progress",
+      "status": "Done",
       "severity": "Medium",
       "area": "Editor",
       "type": "Bug",

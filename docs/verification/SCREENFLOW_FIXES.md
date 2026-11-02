@@ -48,6 +48,8 @@ that merge with the `promptlab.tools` alias.
 | SF-03 | Unit tests cover abort, late success, reset, unrelated editor history and failed history refresh. Hosted browser cases verify Stop after navigation, retained completed/canceled history and partial summary after reload. | Mocked provider responses; no paid cancellation run. |
 | SF-04 | Unit tests cover exit flush, failed and stale asynchronous acknowledgments. Hosted and production cases verify immediate refresh, visible quota failure, retained buffer and retry/reload. | Browser lifecycle coverage, not native power-loss acceptance. |
 
-Post-merge CI remains separately tracked. The source repairs and scoped
+Exact-merge Extension CI 41443637293, Landing CI 41443637523 and all six
+Desktop Build 41443637356 jobs passed. All four scoped issue dispositions
+were set to Done and read back. The source repairs and scoped
 production smoke do not establish global product readiness, installed upgrade,
 signing or human acceptance. No navigation redesign or new product scope.
