@@ -253,6 +253,11 @@ export default function usePromptLibrary(notify) {
     if (libraryResult.importedCount > 0) {
       libraryRef.current = libraryResult.library;
       setLibrary(libraryResult.library);
+    }
+    // Write even when nothing new was imported: an earlier attempt in this
+    // session may have merged rows into memory whose write was refused, and a
+    // zero-import retry must not acknowledge the source until they are stored.
+    if (libraryResult.importedCount > 0 || payload.library.length > 0) {
       persisted = persistRecords(storageKeys.library, libraryRef.current);
     }
     if (nextCollections !== previousCollections) {

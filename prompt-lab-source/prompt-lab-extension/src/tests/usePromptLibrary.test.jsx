@@ -601,6 +601,26 @@ describe('usePromptLibrary', () => {
       expect(notify).toHaveBeenCalledWith('Prompts from www.promptlab.tools could not be saved yet. Prompt Lab will try again next time.');
     });
 
+    it('does not acknowledge www on a zero-import retry while the earlier merge is still unsaved', async () => {
+      localStorage.setItem(storageKeys.library, JSON.stringify([makeEntry({ id: 'apex-1' })]));
+      legacyBridgeMocks.requestLegacyLibraryPayload.mockResolvedValue(payloadFrom([makeEntry({ id: 'www-1', title: 'From www', original: 'Www body' })]));
+      const original = Storage.prototype.setItem;
+      const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (key, value) {
+        if (key === storageKeys.library) throw new DOMException('Storage quota exceeded', 'QuotaExceededError');
+        return original.call(this, key, value);
+      });
+      const notify = vi.fn();
+      const { result } = await mountUntilSettled(notify);
+      // The rows are merged in memory but the write was refused.
+      expect(result.current.library.map((entry) => entry.title)).toContain('From www');
+      let outcome;
+      await act(async () => { outcome = await result.current.recoverLegacyWebLibrary({ force: true }); });
+      setItem.mockRestore();
+      expect(outcome).toEqual({ importedCount: 0, reason: 'unsaved' });
+      expect(localStorage.getItem(`${LEGACY_LIBRARY_CHECK_KEY}:www`)).toBeNull();
+      expect(notify).not.toHaveBeenCalledWith('Legacy web library is already merged.');
+    });
+
     it('gives up on an unreachable www bridge after three loads', async () => {
       legacyBridgeMocks.requestLegacyLibraryPayload.mockResolvedValue(null);
       for (let load = 1; load <= 3; load += 1) {
