@@ -87,6 +87,21 @@ test('terms and billing policy state the configured prices', () => {
   assert.ok(policy.includes(PRICE_COPY.termsSentence), `billing policy must say "${PRICE_COPY.termsSentence}"`);
 });
 
+// AUD-038: the pilot companion board is public, so its launch-price line must
+// show the current offer and mention the old annual price only as legacy.
+test('pilot companion board states the current prices', () => {
+  const board = flatten(read('prompt-lab-web/public/companion/index.html'));
+  assert.ok(board.includes('Launch prices'), 'companion launch-price line not found');
+  assert.ok(
+    board.includes(`Current prices: ${PRICE_COPY.monthly} monthly and ${PRICE_COPY.annual} annual.`),
+    'companion must state the current monthly and annual prices',
+  );
+  const legacyMentions = board.split(PRICE_COPY.legacyAnnual).length - 1;
+  assert.equal(legacyMentions, 2, 'the legacy annual price appears only in the legacy-renewal sentence');
+  assert.match(board, new RegExp(`bought at the earlier ${escape(PRICE_COPY.legacyAnnual)} price keep renewing`));
+  assert.doesNotMatch(board, /Proposed October 18/);
+});
+
 test('app sources take prices from shared/pricing.js, not literals', () => {
   for (const file of [
     'prompt-lab-extension/src/modals/BillingModal.jsx',
