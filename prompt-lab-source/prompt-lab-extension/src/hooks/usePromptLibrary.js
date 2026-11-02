@@ -1012,10 +1012,14 @@ export default function usePromptLibrary(notify) {
   };
 
   // Suite summaries live in metadata so they round-trip export/import without touching version history.
-  const recordSuiteResult = (entryId, suite) => updateLibraryEntry(entryId, entry => ({
-    ...entry,
-    metadata: { ...(entry.metadata || {}), suite },
-  }));
+  const recordSuiteResult = async (entryId, suite) => {
+    const saved = await saveEntryDetails(entryId, entry => ({
+      ...entry,
+      metadata: { ...(entry.metadata || {}), suite },
+    }));
+    if (!saved) throw new Error('The batch summary could not be saved. Completed runs remain in history.');
+    return true;
+  };
 
   const removeEntriesByPackId = (packId) => {
     const id = ensureString(packId).trim();

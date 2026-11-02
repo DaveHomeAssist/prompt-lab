@@ -45,6 +45,19 @@ describe('usePromptLibrary', () => {
     legacyBridgeMocks.shouldAttemptLegacyWebMigration.mockReturnValue(true);
   });
 
+  it('acknowledges a partial suite summary before an immediate reload', async () => {
+    localStorage.setItem(storageKeys.library, JSON.stringify([makeEntry()]));
+    const hook = renderHook(() => usePromptLibrary(vi.fn()));
+    await waitFor(() => expect(hook.result.current.libReady).toBe(true));
+    const suite = { status: 'canceled', verdict: null, completed: 1, total: 3, passed: 0, failed: 0 };
+    await act(async () => { await hook.result.current.recordSuiteResult('entry-1', suite); });
+    expect(JSON.parse(localStorage.getItem(storageKeys.library))[0].metadata.suite).toEqual(suite);
+    hook.unmount();
+    const reloaded = renderHook(() => usePromptLibrary(vi.fn()));
+    await waitFor(() => expect(reloaded.result.current.libReady).toBe(true));
+    expect(reloaded.result.current.library[0].metadata.suite).toEqual(suite);
+  });
+
   it('filters by collection and tag, sorts by most used, and derives quick inject entries', async () => {
     localStorage.setItem(storageKeys.library, JSON.stringify([
       makeEntry({ id: 'entry-1', title: 'Alpha', collection: 'Ops', tags: ['alpha'], useCount: 1 }),

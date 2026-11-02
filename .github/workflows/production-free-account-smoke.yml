@@ -15,6 +15,7 @@ on:
         options:
           - all
           - library
+          - screenflow
           - activation
           - create-workspace
           - scratch
@@ -96,6 +97,8 @@ jobs:
         run: |
           if [ "$SMOKE_SCOPE" = "library" ]; then
             npm run test:e2e:production-free -- production-library.spec.js production-library-restart.spec.js
+          elif [ "$SMOKE_SCOPE" = "screenflow" ]; then
+            npm run test:e2e:production-free -- production-screenflow.spec.js
           elif [ "$SMOKE_SCOPE" = "activation" ]; then
             npm run test:e2e:production-free -- production-activation.spec.js
           elif [ "$SMOKE_SCOPE" = "create-workspace" ]; then
