@@ -39,7 +39,8 @@ for (const viewport of [{ width: 375, height: 812 }, { width: 1440, height: 900 
       sessionId = await page.evaluate(() => window.Clerk?.session?.id || '');
       expect(sessionId).toMatch(/^sess_/);
       const payload = Buffer.from(JSON.stringify({ title: 'Shared fixture', original: 'Independent incoming fixture' })).toString('base64');
-      await page.goto(`${appUrl.origin}/app/#share=${payload}`);
+      await expect.poll(() => page.evaluate(() => Array.isArray(JSON.parse(localStorage.getItem('pl2-library')).find(row => row.id === 'screenflow-prior')?.versions))).toBe(true);
+      await page.evaluate(hash => { window.location.hash = hash; }, `share=${payload}`);
       const dialog = page.getByRole('dialog', { name: 'Save as new prompt' });
       await expect(dialog).toBeVisible();
       await expect.poll(() => page.evaluate(() => Array.isArray(JSON.parse(localStorage.getItem('pl2-library')).find(row => row.id === 'screenflow-prior')?.versions))).toBe(true);
