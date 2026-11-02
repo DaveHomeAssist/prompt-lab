@@ -5,7 +5,7 @@ import { LIBRARY_JOURNAL_DB, LIBRARY_JOURNAL_STORE } from '../../lib/libraryJour
 export function createFakeIndexedDb() {
   const databases = new Map();
   const transactions = [];
-  const state = { failCommits: false, holdCommits: false, hangOpen: false };
+  const state = { failCommits: false, holdCommits: false, hangOpen: false, openDelayMs: 0 };
   const later = (callback) => Promise.resolve().then(callback);
   const request = () => ({ result: undefined, error: null });
 
@@ -49,7 +49,8 @@ export function createFakeIndexedDb() {
   function open(name, version) {
     const req = request();
     if (state.hangOpen) return req;
-    later(() => {
+    const run = state.openDelayMs > 0 ? (callback) => setTimeout(callback, state.openDelayMs) : later;
+    run(() => {
       let data = databases.get(name);
       const upgrade = !data || data.version < version;
       if (!data) databases.set(name, data = { version, stores: new Map() });

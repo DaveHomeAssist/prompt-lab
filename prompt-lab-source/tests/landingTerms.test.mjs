@@ -13,6 +13,7 @@ const billingModal = await read('../prompt-lab-extension/src/modals/BillingModal
 const vercel = JSON.parse(await read('../vercel.json'));
 const sitemap = await read('../prompt-lab-web/public/sitemap.xml');
 const landing = await read('../prompt-lab-web/index.html');
+const publisher = await read('../scripts/publish-landing.mjs');
 
 const text = terms.replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ');
 
@@ -22,6 +23,10 @@ test('terms page is served at /terms', () => {
     'vercel.json needs a /terms rewrite',
   );
   assert.match(terms, /<link rel="canonical" href="https:\/\/promptlab\.tools\/terms\.html">/);
+});
+
+test('the Pages publisher includes the public terms page', () => {
+  assert.match(publisher, /\['terms\.html', 'terms\.html'\]/);
 });
 
 test('terms are final: no draft label, indexable and linked from the site and checkout', () => {

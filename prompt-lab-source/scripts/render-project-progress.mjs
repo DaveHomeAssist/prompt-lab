@@ -20,7 +20,7 @@ for (const row of data.issues) {
   assert.match(row.id, /^[a-f0-9]{32}$/);
   for (const key of ['title', 'area', 'type', 'verification']) assert.ok(typeof row[key] === 'string' && row[key].trim(), `Missing ${key}`);
   assert.ok(['Done', 'In progress', 'Not started'].includes(row.status), 'Refresh status mapping from the live schema');
-  assert.ok(['High', 'Medium', 'Low'].includes(row.severity));
+  assert.ok(['High', 'Medium', 'Low', 'Unknown'].includes(row.severity));
   assert.equal(typeof row.inPlan, 'boolean');
   validUrl(row.url);
 }

@@ -199,6 +199,8 @@ const PROVIDERS = Object.freeze({
     label: 'Anthropic',
     defaultModel: 'claude-sonnet-4-6',
     apiKeyField: 'apiKey',
+    // Every settings field that holds a secret (R-27). Never journaled, logged or exported.
+    secretFields: ['apiKey'],
     modelField: 'anthropicModel',
     settingsKeys: ['apiKey', 'anthropicModel'],
     capabilities: ['chat', 'system'],
@@ -260,6 +262,7 @@ const PROVIDERS = Object.freeze({
     label: 'Ollama',
     defaultModel: 'llama3.2:3b',
     defaultBaseUrl: 'http://localhost:11434',
+    secretFields: [],
     modelField: 'ollamaModel',
     settingsKeys: ['ollamaBaseUrl', 'ollamaModel'],
     capabilities: ['chat', 'system', 'local'],
@@ -311,6 +314,8 @@ const PROVIDERS = Object.freeze({
     label: 'OpenAI',
     defaultModel: 'gpt-4o',
     apiKeyField: 'openaiApiKey',
+    // Every settings field that holds a secret (R-27). Never journaled, logged or exported.
+    secretFields: ['openaiApiKey'],
     modelField: 'openaiModel',
     settingsKeys: ['openaiApiKey', 'openaiModel'],
     capabilities: ['chat', 'system'],
@@ -363,6 +368,8 @@ const PROVIDERS = Object.freeze({
     label: 'Gemini',
     defaultModel: 'gemini-2.5-flash',
     apiKeyField: 'geminiApiKey',
+    // Every settings field that holds a secret (R-27). Never journaled, logged or exported.
+    secretFields: ['geminiApiKey'],
     modelField: 'geminiModel',
     settingsKeys: ['geminiApiKey', 'geminiModel'],
     capabilities: ['chat', 'system', 'json_mode'],
@@ -437,6 +444,8 @@ const PROVIDERS = Object.freeze({
     label: 'OpenRouter',
     defaultModel: 'anthropic/claude-sonnet-4.6',
     apiKeyField: 'openrouterApiKey',
+    // Every settings field that holds a secret (R-27). Never journaled, logged or exported.
+    secretFields: ['openrouterApiKey'],
     modelField: 'openrouterModel',
     settingsKeys: ['openrouterApiKey', 'openrouterModel'],
     capabilities: ['chat', 'system'],
@@ -499,6 +508,26 @@ export const PROVIDER_SETTINGS_KEYS = Object.freeze([
   'provider',
   ...VALID_PROVIDERS.flatMap((id) => PROVIDERS[id].settingsKeys),
 ]);
+
+/** Every provider's secret settings fields (R-27: explicit per provider). Never journal, log or export them. */
+export const PROVIDER_SECRET_FIELDS = Object.freeze([...new Set(
+  VALID_PROVIDERS.flatMap((id) => [...(PROVIDERS[id].secretFields || []), PROVIDERS[id].apiKeyField].filter(Boolean)),
+)]);
+
+/**
+ * Provider settings fields known to hold no secret: the provider id and each
+ * provider's model field and base URL. Nothing else is journaled, so a new
+ * settings key stays out until it is listed here on purpose (a guard test
+ * requires every settingsKeys entry to be a model field, a base URL or a
+ * listed secret field).
+ */
+export const PROVIDER_NON_SECRET_FIELDS = Object.freeze([...new Set([
+  'provider',
+  ...VALID_PROVIDERS.flatMap((id) => [
+    PROVIDERS[id].modelField,
+    ...(PROVIDERS[id].defaultBaseUrl ? [`${id}BaseUrl`] : []),
+  ]),
+])].filter((field) => field && !PROVIDER_SECRET_FIELDS.includes(field)));
 
 /** Backward-compatible DEFAULTS object. */
 export const DEFAULTS = Object.freeze(

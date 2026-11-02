@@ -6,6 +6,8 @@
  * handlers that were previously scattered across App.jsx and useUiState.js.
  */
 
+import { formatShortcut, matchShortcutIn, shortcutsInScope } from './shortcutMap.js';
+
 // ── Primary views ────────────────────────────────────────────────────
 
 export const PRIMARY_VIEWS = Object.freeze([
@@ -140,44 +142,22 @@ export function stateToRoute(primaryView, workspaceView, runsView, options = {})
 
 // ── Keyboard shortcuts ──────────────────────────────────────────────
 
-/**
- * Shortcut descriptors.
- * `mod` = true means Cmd (Mac) / Ctrl (other).
- * `key` is the KeyboardEvent.key value.
- * `id` is used to look up the handler at runtime.
- * `excludeInputs` prevents firing when focus is in an input/textarea.
- */
-export const SHORTCUTS = Object.freeze([
-  { id: 'enhance', key: 'Enter', mod: true, label: 'Enhance', hint: '⌘↵' },
-  { id: 'save', key: 's', mod: true, label: 'Save', hint: '⌘S' },
-  { id: 'cmdPalette', key: 'k', mod: true, label: 'Command Palette', hint: '⌘K' },
-  { id: 'shortcuts', key: '?', mod: false, excludeInputs: true, label: 'Shortcuts', hint: '?' },
-  { id: 'escape', key: 'Escape', mod: false, label: 'Close Panel', hint: 'Esc' },
-  { id: 'navWrite', key: '1', alt: true, label: 'Go to Write', hint: 'Alt 1' },
-  { id: 'navLibrary', key: '2', alt: true, label: 'Go to Library', hint: 'Alt 2' },
-  { id: 'navCompose', key: '3', alt: true, label: 'Go to Compose', hint: 'Alt 3' },
-  { id: 'navSplit', key: '4', alt: true, label: 'Go to Dual Pane', hint: 'Alt 4' },
-  { id: 'navEvaluate', key: '5', alt: true, label: 'Go to Evaluate', hint: 'Alt 5' },
-  { id: 'navScratch', key: '6', alt: true, label: 'Go to Scratch', hint: 'Alt 6' },
-  { id: 'toggleScratchPanel', key: '\\', mod: true, label: 'Toggle the panel beside Write (Scratch and Prompts)', hint: '⌘\\' },
-]);
+// Shortcut descriptors now live in ./shortcutMap.js (the single shortcut
+// config shared by the web app, extension and desktop app). SHORTCUTS keeps
+// its old shape for callers: global-scope entries with a display hint.
+const HINT_OVERRIDES = { enhance: '⌘↵', save: '⌘S', cmdPalette: '⌘K', shortcuts: '?', escape: 'Esc', toggleScratchPanel: '⌘\\' };
+export const SHORTCUTS = Object.freeze(shortcutsInScope('global').map((shortcut) => Object.freeze({
+  ...shortcut,
+  hint: HINT_OVERRIDES[shortcut.id] || formatShortcut(shortcut, { mac: false }).join(' '),
+})));
 
 /**
- * Match a KeyboardEvent against the shortcut registry.
+ * Match a KeyboardEvent against the global shortcuts.
  * Returns the matching shortcut descriptor, or null.
  */
 export function matchShortcut(event) {
-  const mod = event.metaKey || event.ctrlKey;
-  for (const shortcut of SHORTCUTS) {
-    if (shortcut.key !== event.key) continue;
-    if (shortcut.alt && !event.altKey) continue;
-    if (!shortcut.alt && event.altKey) continue;
-    if (shortcut.mod && !mod) continue;
-    if (!shortcut.mod && shortcut.key !== 'Escape' && mod) continue;
-    if (shortcut.excludeInputs && ['INPUT', 'TEXTAREA'].includes(event.target.tagName)) continue;
-    return shortcut;
-  }
-  return null;
+  const match = matchShortcutIn('global', event);
+  return match ? SHORTCUTS.find((shortcut) => shortcut.id === match.id) : null;
 }
 
 // ── Command palette actions ─────────────────────────────────────────

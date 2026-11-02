@@ -3,7 +3,7 @@
 // own in-memory localStorage; each user is a Clerk-style `sub` claim.
 import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
-import { createSyncEngine } from '../../prompt-lab-extension/src/lib/sync/syncEngine.js';
+import { createSyncEngine, jsonbTextBytes } from '../../prompt-lab-extension/src/lib/sync/syncEngine.js';
 import { markLibraryDeleted } from '../../prompt-lab-extension/src/lib/libraryDeletion.js';
 import { readLocalSnapshot, restoreLocalSnapshot } from '../../prompt-lab-extension/src/lib/sync/syncBackup.js';
 import { exportAccountData } from '../../prompt-lab-extension/src/lib/sync/supabaseTransport.js';
@@ -384,7 +384,10 @@ test('R-11: the device that loses a conflict takes the winner and keeps its edit
   assert.equal((await g2.sync()).pending, 0);
 });
 
-test('R-11: an edit made while the losing push is in flight is kept and pushed', async () => {
+// R-16: whichever side loses a later conflict must survive as a live row or a conflict copy.
+const survives = async (sub, id, title) => (await serverTitle(sub, id)) === title || (await conflictTitles(sub)).includes(title);
+
+test('R-11/R-16: an edit made while the losing push is in flight is kept, and the winner is not lost', async () => {
   const H = 'user_He2e';
   const h1 = device('h1', H);
   let editAfterPush = false;
@@ -403,10 +406,148 @@ test('R-11: an edit made while the losing push is in flight is kept and pushed',
   editAfterPush = true;
   assert.equal((await h2.sync()).conflicts, 1);
   assert.ok((await conflictTitles(H)).includes('Desktop edit'));
-  await h2.sync();
-  assert.equal(await serverTitle(H, 'hp1'), 'Typed during push', 'a newer edit is not overwritten by the winner');
-  await h1.sync();
-  assert.equal(read(h1, 'pl2-library').find((item) => item.id === 'hp1').title, 'Typed during push');
+  await h2.sync(); await h1.sync(); await h2.sync();
+  assert.ok(await survives(H, 'hp1', 'Typed during push'), 'the newer edit is kept');
+  assert.ok(await survives(H, 'hp1', 'Laptop 3'), 'the winner is kept (live or as a conflict copy)');
+  const live = await serverTitle(H, 'hp1');
+  assert.equal(read(h1, 'pl2-library').find((item) => item.id === 'hp1').title, live);
+  assert.equal(read(h2, 'pl2-library').find((item) => item.id === 'hp1').title, live);
+});
+
+// Fire Watch re-review 4 probes: a device loses a conflict whose winner was
+// saved between its pull and its push, so the winner has to be fetched.
+function lostPushDevice(sub, id, winnerDevice, hooks = {}) {
+  const storage = new MemoryStorage();
+  const base = pgTransport(sub);
+  const control = { editBeforePush: false, failFetch: false, fetches: 0 };
+  const transport = {
+    ...base,
+    push: async (deviceId, changes) => {
+      if (control.editBeforePush) {
+        control.editBeforePush = false;
+        for (const title of ['Laptop 4', 'Laptop 5', 'WINNER']) {
+          write(winnerDevice, 'pl2-library', [entry(id, title, '2026-10-30T10:08:00Z')]);
+          assert.equal((await winnerDevice.sync()).status, 'synced');
+        }
+        control.failFetch = hooks.failFetchOnce || false;
+      }
+      return base.push(deviceId, changes);
+    },
+    fetchItems: async (keys) => {
+      control.fetches += 1;
+      if (control.failFetch) { control.failFetch = false; throw Object.assign(new Error('Network unavailable.'), { status: 0 }); }
+      const rows = await base.fetchItems(keys);
+      await hooks.afterFetch?.(storage);
+      return rows;
+    },
+  };
+  return { storage, control, sync: () => createSyncEngine({ storage, transport, userId: sub, deviceId: `${id}-loser`, now, random: () => 0.5 }).syncOnce() };
+}
+async function setUpLostPush(sub, id, hooks) {
+  const winner = device(`${id}-winner`, sub);
+  const loser = lostPushDevice(sub, id, winner, hooks);
+  write(winner, 'pl2-library', [entry(id, 'Original')]);
+  await winner.sync(); await loser.sync();
+  for (const n of [1, 2, 3]) { write(winner, 'pl2-library', [entry(id, `Laptop ${n}`, `2026-10-30T10:0${n}:00Z`)]); await winner.sync(); }
+  await loser.sync();
+  write(loser, 'pl2-library', [entry(id, 'LOSER', '2026-10-30T10:05:00Z')]);
+  loser.control.editBeforePush = true;
+  return { winner, loser };
+}
+
+test('R-16 probe E1: an edit typed during the winner fetch does not erase the winner', async () => {
+  const S = 'user_E1e2e';
+  let typeAgain = true;
+  const { winner, loser } = await setUpLostPush(S, 'e1', { afterFetch: (storage) => {
+    if (!typeAgain) return;
+    typeAgain = false;
+    storage.setItem('pl2-library', JSON.stringify([entry('e1', 'LOSER typed again', '2026-10-30T10:09:00Z')]));
+  } });
+  await loser.sync();
+  assert.ok((await conflictTitles(S)).includes('LOSER'));
+  await loser.sync(); await winner.sync(); await loser.sync();
+  assert.ok(await survives(S, 'e1', 'WINNER'), 'the winner survives live or as a conflict copy');
+  assert.ok(await survives(S, 'e1', 'LOSER typed again'), 'the newer edit survives too');
+  const live = await serverTitle(S, 'e1');
+  assert.equal(read(winner, 'pl2-library')[0].title, live);
+  assert.equal(JSON.parse(loser.storage.getItem('pl2-library'))[0].title, live);
+});
+
+test('R-16 probe E2: a failed winner fetch, then offline edits, does not erase the winner', async () => {
+  const S = 'user_E2e2e';
+  const { winner, loser } = await setUpLostPush(S, 'e2', { failFetchOnce: true });
+  assert.equal((await loser.sync()).status, 'offline');
+  networkDown = true;
+  try {
+    loser.storage.setItem('pl2-library', JSON.stringify([entry('e2', 'LOSER edited offline', '2026-10-30T10:09:00Z')]));
+    assert.equal((await loser.sync()).status, 'offline');
+  } finally { networkDown = false; }
+  fakeNow += 10 * 60 * 1000;
+  await loser.sync(); await loser.sync(); await winner.sync(); await loser.sync();
+  assert.ok(await survives(S, 'e2', 'WINNER'), 'the winner survives live or as a conflict copy');
+  assert.ok(await survives(S, 'e2', 'LOSER edited offline'), 'the offline edit survives too');
+  const live = await serverTitle(S, 'e2');
+  assert.equal(read(winner, 'pl2-library')[0].title, live);
+  assert.equal(JSON.parse(loser.storage.getItem('pl2-library'))[0].title, live);
+});
+
+test('R-17: a pending lost record for an erased item is dropped and the prompt uploads again', async () => {
+  const S = 'user_E7e2e';
+  const { loser } = await setUpLostPush(S, 'e7', { failFetchOnce: true });
+  assert.equal((await loser.sync()).status, 'offline');
+  const lostKeys = () => Object.keys(JSON.parse(loser.storage.getItem(`pl2-sync-state:${S}`)).lost || {});
+  assert.deepEqual(lostKeys(), ['prompt:e7'], 'a pending record exists');
+  // "Delete my synced data" from another device.
+  await asUser(S, 'select public.sync_delete_my_data() as r');
+  fakeNow += 10 * 60 * 1000;
+  assert.equal((await loser.sync()).status, 'synced');
+  assert.deepEqual(lostKeys(), []);
+  assert.equal(await serverTitle(S, 'e7'), 'LOSER', 'the local prompt uploaded again');
+  const fetches = loser.control.fetches;
+  await loser.sync();
+  const saved = fakeNow; fakeNow += 25 * 60 * 60 * 1000;
+  try { assert.equal((await loser.sync()).status, 'synced'); } finally { fakeNow = saved; }
+  assert.equal(loser.control.fetches, fetches, 'no more fetches for the erased item');
+});
+
+test('R-17: the manifest check also drops a pending lost record the account no longer has', async () => {
+  const S = 'user_E8e2e';
+  const { loser } = await setUpLostPush(S, 'e8', { failFetchOnce: true });
+  assert.equal((await loser.sync()).status, 'offline');
+  await asUser(S, 'select public.sync_delete_my_data() as r');
+  // The manifest check runs first when it is due; it alone should drop the
+  // record, so the fetch-first step has nothing left to fetch.
+  const fetches = loser.control.fetches;
+  const saved = fakeNow; fakeNow += 25 * 60 * 60 * 1000;
+  try { assert.equal((await loser.sync()).status, 'synced'); } finally { fakeNow = saved; }
+  assert.equal(loser.control.fetches, fetches, 'no fetch for the erased item');
+  assert.deepEqual(Object.keys(JSON.parse(loser.storage.getItem(`pl2-sync-state:${S}`)).lost || {}), []);
+  assert.equal(await serverTitle(S, 'e8'), 'LOSER');
+});
+
+test('R-18: a prompt with U+0000 or a lone surrogate does not block its batch', async () => {
+  const S = 'user_R18e2e';
+  const d = device('r18', S);
+  write(d, 'pl2-library', [entry('bad', 'Nul\u0000here', undefined, { notes: 'lone \ud800 surrogate', tags: ['ok\udc00'] }), entry('fine', 'Fine one')]);
+  const first = await d.sync();
+  assert.equal(first.status, 'synced', first.error);
+  assert.equal(first.pending, 0);
+  const rows = await inspect(S, `select item_id, payload from public.sync_items where kind = 'prompt' order by item_id`);
+  assert.deepEqual(rows.map((row) => row.item_id), ['bad', 'fine']);
+  assert.equal(rows[0].payload.entry.title, 'Nul\uFFFDhere');
+  assert.equal(rows[0].payload.entry.notes, 'lone \uFFFD surrogate');
+  assert.equal(read(d, 'pl2-library').find((item) => item.id === 'bad').title, 'Nul\u0000here', 'the local copy is unchanged');
+  const second = await d.sync();
+  assert.equal(second.pushed, 0, 'no re-push loop');
+  assert.equal(second.pending, 0);
+});
+
+test('re-review 4 Low: numbers are measured the way jsonb::text prints them', async () => {
+  const values = [{ a: 1e21 }, { b: 1e-7 }, { c: -2.5e-10 }, { d: 1.5e300 }, { e: 123.456 }, { f: 0 }, { g: -7 }, { h: [1e21, 5e-324, 2 ** 53] }, { i: 1.25e22 }];
+  for (const value of values) {
+    const [{ n }] = (await db.query('select octet_length($1::jsonb::text)::int as n', [JSON.stringify(value)])).rows;
+    assert.equal(jsonbTextBytes(value), n, JSON.stringify(value));
+  }
 });
 
 test('R-12: batches are sized the way the server counts jsonb (spaces after : and ,)', async () => {

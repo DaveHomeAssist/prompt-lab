@@ -27,8 +27,8 @@ Assumptions and Resolved Missing Information:
 
 Canonical Records and Source Map:
 - Repository: https://github.com/DaveHomeAssist/prompt-lab
-- Primary checkout: /Users/daverobertson/Code/prompt-lab
-- Shared workspace contract: /Users/daverobertson/Code/ops-hub/90-governance/WORKSPACE_OPERATING_RULES.md; read it before project AGENTS.md instructions.
+- Primary checkout: <repo-root>
+- Shared workspace contract: ~/Code/ops-hub/90-governance/WORKSPACE_OPERATING_RULES.md; read it before project AGENTS.md instructions.
 - Canonical hub: https://app.notion.com/p/31f255fc8f44807abbd8d0dd4d62cb89
 - Project roadmap: https://app.notion.com/p/341255fc8f448048adfdf1c25e1de580
 - Selected Issue Backlog: https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f
@@ -298,7 +298,7 @@ Long-Lead Tasks:
 
 4. NEXT ACTIONS
 
-1. In /Users/daverobertson/Code/prompt-lab, run git status --short --branch and record the existing modifications and any .agent-claim without changing them.
+1. In <repo-root>, run git status --short --branch and record the existing modifications and any .agent-claim without changing them.
 2. Run gh api repos/DaveHomeAssist/prompt-lab/branches/main --jq '.commit.sha' and record the current main SHA beside the historical 5401444f23e56c3843b69e242ada5811573e3f3e baseline.
 3. Fetch the selected Issue Backlog and its 14 linked pages through the Notion connector; produce the A-N acceptance checklist with current statuses and unresolved criteria.
 4. Have the release engineer inventory Xcode, supported macOS/Windows test environments, and signing access from the current packaging matrix; return a single access/gate checklist without exposing credentials.

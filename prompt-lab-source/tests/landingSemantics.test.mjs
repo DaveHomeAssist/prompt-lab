@@ -210,7 +210,7 @@ test('public landing surfaces declare a restrictive content security policy', ()
   ];
   const requiredDirectives = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline'",
+    "script-src 'self'",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data:",
     "font-src 'self'",
@@ -228,6 +228,10 @@ test('public landing surfaces declare a restrictive content security policy', ()
     const policy = attributeValue(policyTag, 'content') ?? '';
     for (const directive of requiredDirectives) {
       assert.ok(policy.includes(directive), `${pageName} CSP is missing ${directive}`);
+    }
+    // R-36: pages without inline scripts must not allow them.
+    if (['privacy', 'terms', 'privacy redirect'].includes(pageName)) {
+      assert.doesNotMatch(/script-src[^;]*/.exec(policy)?.[0] ?? '', /'unsafe-inline'/, `${pageName} script-src must not allow 'unsafe-inline'`);
     }
     if (pageName !== 'privacy redirect') {
       assert.match(policy, /script-src[^;]*https:\/\/www\.googletagmanager\.com/);

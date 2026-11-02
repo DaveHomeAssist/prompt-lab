@@ -369,16 +369,16 @@ test('owner entitlement ignores email, username, and unsafe metadata grants', as
   const mutableGrantEnv = {
     PROMPTLAB_OWNER_EMAILS: 'owner@example.com',
     PROMPTLAB_PRO_OWNER_EMAILS: 'owner@example.com',
-    PROMPTLAB_OWNER_USERNAMES: 'daverobertson',
-    PROMPTLAB_PRO_OWNER_USERNAMES: 'daverobertson',
+    PROMPTLAB_OWNER_USERNAMES: 'test-owner',
+    PROMPTLAB_PRO_OWNER_USERNAMES: 'test-owner',
   };
 
   assert.equal(lookupOwnerEntitlement({
     clerkUserId: 'user_unlisted',
     clerkEmail: 'owner@example.com',
     clerkClaims: {
-      username: 'daverobertson',
-      unsafe_metadata: { username: 'daverobertson' },
+      username: 'test-owner',
+      unsafe_metadata: { username: 'test-owner' },
     },
   }, mutableGrantEnv), null);
 });

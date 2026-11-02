@@ -719,6 +719,9 @@ export default function App({
   // ── Keyboard shortcuts (driven by navigationRegistry) ──
   useEffect(() => {
     const h = e => {
+      // A focused control that already handled the key (the Scratch editor's
+      // Cmd/Ctrl+K link, a dialog's own Escape) wins over the global map.
+      if (e.defaultPrevented) return;
       const shortcut = matchShortcut(e);
       if (!shortcut) return;
       e.preventDefault();
@@ -1199,11 +1202,12 @@ export default function App({
       />
 
       <PendingWritesNotice m={m} />
-      <AccountSyncBar sync={accountSync} m={m} onOpen={() => setShowAccountSync(true)} />
+      <AccountSyncBar sync={accountSync} m={m} onOpen={(focus) => setShowAccountSync(focus || true)} />
       <AccountSyncPanel
         sync={accountSync}
         m={m}
-        open={showAccountSync}
+        open={Boolean(showAccountSync)}
+        focus={showAccountSync === 'conflicts' ? 'conflicts' : undefined}
         onClose={() => setShowAccountSync(false)}
         onSignOut={clerkUser && clerkAccountActions?.signOut
           ? () => { setShowAccountSync(false); clerkAccountActions.signOut(); }

@@ -81,9 +81,12 @@ export function corsRejectionResponse(request) {
   if (isAllowedCorsOrigin(origin)) return null;
   return new Response(JSON.stringify({ error: 'Origin is not allowed.' }), {
     status: 403,
+    // Security pass 2026-11-01: a rejected origin gets no
+    // Access-Control-Allow-Origin at all (not the literal 'null', which a
+    // sandboxed iframe's Origin: null would match) and no allow-lists.
     headers: {
       'Content-Type': 'application/json',
-      ...createCorsHeaders({ 'Access-Control-Allow-Origin': 'null' }),
+      Vary: 'Origin',
     },
   });
 }

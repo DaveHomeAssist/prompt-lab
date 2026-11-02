@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
-import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
+import net from 'node:net';
+import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -36,12 +37,20 @@ const driver = process.platform === 'win32'
 let driverOutput = '';
 let driverError;
 driver.on('error', error => { driverError = error; });
-for (const stream of [driver.stdout, driver.stderr]) stream.on('data', chunk => { driverOutput = (driverOutput + chunk).slice(-32_000); });
+// Counted separately because driverOutput is a capped tail.
+let driverGtkInitFailures = 0;
+for (const stream of [driver.stdout, driver.stderr]) stream.on('data', chunk => {
+  driverOutput = (driverOutput + chunk).slice(-32_000);
+  driverGtkInitFailures += String(chunk).split('Failed to initialize gtk backend').length - 1;
+});
 let session;
 let fixture;
 let nativeApp;
 let nativeAppPid;
 let launchNumber = 0;
+// R-22: once launch 1 of the exercise phase seeds the synthetic settings and
+// sync keys, every later launch (and every retention launch) must still have them.
+let seededSettings = phase === 'retention';
 let nativeAppError;
 let nativeOutput = '';
 const events = [];
@@ -90,7 +99,10 @@ async function command(method, route, body) {
     body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(method === 'POST' && route === '/session' ? 120_000 : 30_000),
   });
   const result = await response.json();
-  if (!response.ok || result.value?.error) throw new Error(`${route}: ${result.value?.error || response.status} ${result.value?.message || ''}`);
+  // W3C errors carry {error, message, stacktrace}. A script result that merely has an
+  // `error` field (for example a journal boot outcome) is data, not a driver error.
+  const w3cError = result.value && typeof result.value === 'object' && typeof result.value.error === 'string' && 'stacktrace' in result.value;
+  if (!response.ok || w3cError) throw new Error(`${route}: ${result.value?.error || response.status} ${result.value?.message || ''}`);
   return result.value;
 }
 async function waitFor(probe, label, timeout = 20_000) {
@@ -105,6 +117,14 @@ async function waitFor(probe, label, timeout = 20_000) {
   throw new Error(`Timed out: ${label}${last ? ` (${last.message})` : ''}`);
 }
 const execute = (script, args = []) => command('POST', `/session/${session}/execute/sync`, { script, args });
+// Synthetic account-sync keys (sync is off in CI), so the Windows fallback's
+// intact check compares real pl2-sync-* data instead of an empty set.
+const SYNC_FIXTURE_KEYS = {
+  'pl2-sync-device-id': 'native-acceptance-device',
+  'pl2-sync-owner': 'user_nativeAcceptance',
+  'pl2-sync-state:user_nativeAcceptance': JSON.stringify({ initialized: true, cursor: 42, clock: 7, lastManifestAt: 0, shadow: { 'prompt:native-fixture': { version: 3, hash: 'fixture' } }, oversize: {}, lost: {} }),
+  'pl2-sync-queue:user_nativeAcceptance': JSON.stringify([]),
+};
 const readLibrary = () => execute('return JSON.parse(localStorage.getItem("pl2-library") || "[]");');
 // Library row ids, the saved source row, and every account-sync key (pl2-sync-*) as stored.
 const readDurableLocalState = (parentId) => execute(`
@@ -112,6 +132,22 @@ const readDurableLocalState = (parentId) => execute(`
   const sync = Object.keys(localStorage).filter(key => key.startsWith('pl2-sync-')).sort();
   return { ids: library.map(row => row.id).sort(), parent: library.find(row => row.id === arguments[0]) || null,
     sync: Object.fromEntries(sync.map(key => [key, localStorage.getItem(key)])) };`, [parentId]);
+const SEEDED_SETTINGS = { provider: 'ollama', consent: 'denied', billingPlan: 'pro' };
+const readSeededSettings = () => execute(`
+  const read = key => { try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch { return 'unreadable'; } };
+  const sync = Object.keys(localStorage).filter(key => key.startsWith('pl2-sync-')).sort();
+  return { sync: Object.fromEntries(sync.map(key => [key, localStorage.getItem(key)])),
+    settings: { provider: read('pl2-provider-settings')?.provider ?? null, consent: localStorage.getItem('pl_telemetry_consent'),
+      billingPlan: read('pl2-billing')?.plan ?? null } };`);
+// R-22: the fixture sync keys and seeded settings hold exactly on this launch,
+// on every platform, whether Local Storage kept them or a journal restored them.
+async function assertSeededSettings(context) {
+  const state = await readSeededSettings();
+  (evidence.seededSettingsChecks ||= []).push({ launch: launchNumber, context, ...state.settings, syncKeys: Object.keys(state.sync) });
+  assert.deepEqual(state.sync, SYNC_FIXTURE_KEYS, `Seeded sync keys are intact (${context})`);
+  assert.deepEqual(state.settings, SEEDED_SETTINGS, `Seeded provider, consent and billing settings are intact (${context})`);
+  console.log(`[native-acceptance] launch ${launchNumber} seeded sync keys and settings intact (${context})`);
+}
 const describeNode = `const describeNode = node => {
   if (!(node instanceof Element)) return node ? String(node.nodeName || node) : null;
   const testId = node.getAttribute('data-testid');
@@ -303,9 +339,56 @@ async function click(selector, using) {
     await command('POST', `/session/${session}/element/${selectId}/value`, { text: '\uE00C' });
   }
 }
+// Focus an input for typing. Waits up to 10 s until it is in view, its
+// position is stable and nothing covers its centre, then clicks it. A brief
+// layout shift (for example the Library rail heading reflowing when its web
+// font loads) is waited out, and an intercepted click is retried twice. An
+// overlay that stays on top fails the run and names the cover (R-23): typing
+// into an input a user cannot reach would hide a real UI bug.
+async function focusForTyping(selector, id) {
+  const ref = { 'element-6066-11e4-a52e-4f735466cecf': id };
+  await waitFor(() => command('GET', `/session/${session}/element/${id}/enabled`), `${selector} enabled`);
+  let lastHit = null;
+  const waitUnobscured = async () => {
+    let previousRect;
+    await waitFor(async () => {
+      const hit = await execute(`
+        const target = arguments[0];
+        target.scrollIntoView({block:'nearest', inline:'nearest', behavior:'instant'});
+        const box = target.getBoundingClientRect();
+        const x = (Math.max(0, box.left) + Math.min(innerWidth, box.right)) / 2;
+        const y = (Math.max(0, box.top) + Math.min(innerHeight, box.bottom)) / 2;
+        const cover = document.elementFromPoint(x, y);
+        return { uncovered: target.contains(cover), x, y, cover: cover?.tagName + '.' + cover?.className };
+      `, [ref]);
+      lastHit = hit;
+      if (!hit.uncovered) recordDiagnostic('fillOcclusion', { selector, ...hit });
+      const rect = JSON.stringify(await command('GET', `/session/${session}/element/${id}/rect`));
+      const stable = rect === previousRect;
+      previousRect = rect;
+      return stable && hit.uncovered;
+    }, `${selector} position stable and unobscured`, 10_000).catch((error) => {
+      throw new Error(`${selector} stayed covered or moving for 10 s; cover: ${lastHit?.cover ?? 'unknown'} at (${lastHit?.x}, ${lastHit?.y}) (${error.message})`);
+    });
+  };
+  for (let attempt = 1; ; attempt += 1) {
+    await waitUnobscured();
+    try {
+      await command('POST', `/session/${session}/element/${id}/click`, {});
+      break;
+    } catch (error) {
+      const message = String(error?.message || error);
+      if (!/click intercepted|not clickable/i.test(message) || attempt > 2) {
+        throw new Error(`${selector} click failed after ${attempt} attempt(s); last cover: ${lastHit?.cover ?? 'unknown'} (${message})`);
+      }
+      recordDiagnostic('fillClickRetry', { selector, attempt, error: message.slice(0, 300) });
+    }
+  }
+  assert.ok(await execute('return document.activeElement === arguments[0];', [ref]), `${selector} is focused before typing`);
+}
 async function fill(selector, text) {
   const id = await element(selector);
-  await command('POST', `/session/${session}/element/${id}/click`, {});
+  await focusForTyping(selector, id);
   // WebKit's element clear does not update React's controlled input state.
   // Ctrl+A / Backspace produces the same input events as operator replacement.
   await command('POST', `/session/${session}/element/${id}/value`, { text: '\uE009a\uE000\uE003' });
@@ -370,6 +453,68 @@ async function openCreate() {
   }
   await click('//*[@data-testid="nav-create"] | //nav[@aria-label="Primary mobile navigation"]//button[normalize-space(.)="Write"]', 'xpath');
 }
+// Linux runs under `xvfb-run -a`. #302 (run 41358152026) failed when the
+// relaunched app panicked with "Failed to initialize gtk backend!" and
+// WebKitWebDriver then sat on POST /session until its 120 s deadline. Before
+// every Linux launch, prove the X display the app will inherit is still
+// there: DISPLAY is set, its socket exists, it accepts a connection, and the
+// Xvfb process is alive. Each probe is kept as evidence.
+function xvfbProcesses() {
+  try {
+    return spawnSync('ps', ['-eo', 'pid=,args='], { encoding: 'utf8', timeout: 5_000 }).stdout
+      .split('\n').map(line => line.trim()).filter(line => /\bXvfb\b/.test(line));
+  } catch { return []; }
+}
+async function probeLinuxDisplay() {
+  const display = process.env.DISPLAY || '';
+  const number = /^:(\d+)/.exec(display)?.[1];
+  const socketPath = number === undefined ? '' : `/tmp/.X11-unix/X${number}`;
+  const probe = { at: new Date().toISOString(), launch: launchNumber, display, socketPath, xauthority: Boolean(process.env.XAUTHORITY), xvfb: xvfbProcesses() };
+  probe.socketExists = Boolean(socketPath) && await stat(socketPath).then(() => true, () => false);
+  probe.accepts = probe.socketExists && await new Promise((resolve) => {
+    const socket = net.createConnection(socketPath);
+    const finish = (ok) => { socket.destroy(); resolve(ok); };
+    socket.setTimeout(2_000, () => finish(false));
+    socket.once('connect', () => finish(true));
+    socket.once('error', () => finish(false));
+  });
+  probe.ok = Boolean(display) && probe.socketExists && probe.accepts && probe.xvfb.length > 0;
+  return probe;
+}
+async function waitForLinuxDisplay(context) {
+  const started = Date.now();
+  let probe;
+  for (;;) {
+    probe = await probeLinuxDisplay();
+    if (probe.ok || Date.now() - started > 15_000) break;
+    await delay(250);
+  }
+  probe.context = context;
+  probe.waitedMs = Date.now() - started;
+  (evidence.linuxDisplayProbes ||= []).push(probe);
+  console.log(`[native-acceptance] launch ${launchNumber} X display ${probe.display || '(unset)'} ${probe.ok ? 'ready' : 'NOT READY'} before ${context} (socket ${probe.socketExists ? 'present' : 'missing'}, ${probe.accepts ? 'accepting' : 'not accepting'}, ${probe.xvfb.length} Xvfb process(es), waited ${probe.waitedMs} ms)`);
+  if (!probe.ok) throw new Error(`X display is not usable before ${context}: ${JSON.stringify(probe)}`);
+  return probe;
+}
+async function createNativeSession(capabilities) {
+  if (process.platform !== 'linux') return command('POST', '/session', { capabilities: { alwaysMatch: capabilities } });
+  await waitForLinuxDisplay('POST /session');
+  const gtkFailuresBefore = driverGtkInitFailures;
+  try {
+    return await command('POST', '/session', { capabilities: { alwaysMatch: capabilities } });
+  } catch (error) {
+    const gtkInitFailed = driverGtkInitFailures > gtkFailuresBefore;
+    const after = await probeLinuxDisplay();
+    (evidence.linuxDisplayProbes ||= []).push({ ...after, context: 'after failed POST /session' });
+    // Exactly one retry, and only for the GTK-init panic while the display is
+    // provably healthy. Any other failure, or a dead display, fails as before.
+    if (!gtkInitFailed || !after.ok || evidence.gtkInitRetry) throw error;
+    evidence.gtkInitRetry = { launch: launchNumber, firstError: error.message, displayAfterFailure: after, at: new Date().toISOString() };
+    console.error(`[native-acceptance] !!! GTK INIT FAILURE on launch ${launchNumber} with a healthy X display (${after.display}); retrying POST /session ONCE. This is recorded in evidence.gtkInitRetry and must be investigated if it recurs. !!!`);
+    await waitForLinuxDisplay('POST /session retry after GTK init failure');
+    return command('POST', '/session', { capabilities: { alwaysMatch: capabilities } });
+  }
+}
 async function openSession() {
   let capabilities = { 'tauri:options': tauriOptions };
   if (process.platform === 'win32') {
@@ -380,24 +525,59 @@ async function openSession() {
     });
     nativeApp.on('error', error => { nativeAppError = error; });
     for (const stream of [nativeApp.stdout, nativeApp.stderr]) stream.on('data', chunk => { nativeOutput = (nativeOutput + chunk).slice(-32_000); });
-    const privileges = await waitFor(async () => JSON.parse(await readFile(privilegesFile, 'utf8')), 'standard user app launch');
+    // The launcher compiles its C# helper with Add-Type before it starts the
+    // app, which took ~20 s on a cold windows-latest runner (#302: the file
+    // landed at +20.1 s, just after the old 20 s default). Wait up to 120 s,
+    // stop at once if the launcher itself exits, and log the elapsed time.
+    const launcherStarted = Date.now();
+    const privileges = await waitFor(async () => {
+      if (nativeApp.exitCode !== null) {
+        // waitFor() rethrows nativeAppError on its next poll, so this fails
+        // fast instead of retrying until the timeout.
+        nativeAppError = new Error(`Standard-user launcher exited with ${nativeApp.exitCode} before writing ${path.basename(privilegesFile)}: ${nativeOutput.slice(-2000)}`);
+        throw nativeAppError;
+      }
+      return JSON.parse(await readFile(privilegesFile, 'utf8'));
+    }, 'standard user app launch', 120_000).catch((error) => {
+      error.message += ` [launcher ${nativeApp.exitCode === null ? 'still running' : `exit ${nativeApp.exitCode}`}; output: ${nativeOutput.slice(-1500) || 'none'}]`;
+      throw error;
+    });
+    const launcherElapsedMs = Date.now() - launcherStarted;
+    (evidence.standardUserLaunchWaits ||= []).push({ launch: launchNumber, elapsedMs: launcherElapsedMs });
+    console.log(`[native-acceptance] launch ${launchNumber} standard-user launcher wrote privileges after ${launcherElapsedMs} ms`);
     assert.equal(privileges.childIntegrity, 'S-1-16-8192');
     assert.equal(privileges.childAdministrator, false);
     assert.equal(privileges.ownedObjectAccess, true);
     assert.ok(Number.isSafeInteger(privileges.childPid) && privileges.childPid > 1);
     nativeAppPid = privileges.childPid;
     (evidence.nativeProcessPrivileges ||= []).push(privileges);
-    await waitFor(async () => {
-      if (nativeApp.exitCode !== null) throw new Error(`Installed app exited with ${nativeApp.exitCode}`);
-      const response = await fetch('http://127.0.0.1:9222/json/version', { signal: AbortSignal.timeout(1500) });
-      if (!response.ok) return false;
-      const version = await response.json();
-      evidence.debuggingVersion = version;
-      return Boolean(version.webSocketDebuggerUrl);
-    }, 'installed WebView2 debugging endpoint');
+    // A cold first launch on a loaded Windows runner can take well over the
+    // default 20 s to open WebView2's debugging port (#289, ca3ed29). Allow
+    // 90 s on every launch and log how long it took; the readiness test is
+    // unchanged (the port answers /json/version with a debugger URL).
+    const portWaitStarted = Date.now();
+    let portPolls = 0;
+    let portReady = false;
+    try {
+      await waitFor(async () => {
+        portPolls += 1;
+        if (nativeApp.exitCode !== null) throw new Error(`Installed app exited with ${nativeApp.exitCode}`);
+        const response = await fetch('http://127.0.0.1:9222/json/version', { signal: AbortSignal.timeout(1500) });
+        if (!response.ok) return false;
+        const version = await response.json();
+        evidence.debuggingVersion = version;
+        portReady = Boolean(version.webSocketDebuggerUrl);
+        return portReady;
+      }, 'installed WebView2 debugging endpoint', 90_000);
+    } finally {
+      const elapsedMs = Date.now() - portWaitStarted;
+      (evidence.debuggingPortWaits ||= []).push({ launch: launchNumber, elapsedMs, polls: portPolls, ready: portReady });
+      console.log(`[native-acceptance] launch ${launchNumber} WebView2 debugging endpoint ${portReady ? 'ready' : 'not ready'} after ${elapsedMs} ms (${portPolls} polls)`);
+    }
     capabilities = { browserName: 'webview2', 'ms:edgeOptions': { debuggerAddress: '127.0.0.1:9222' } };
   }
-  const result = await command('POST', '/session', { capabilities: { alwaysMatch: capabilities } });
+  if (process.platform === 'linux') launchNumber += 1;
+  const result = await createNativeSession(capabilities);
   session = result.sessionId;
   assert.ok(session, 'Native session created');
   await command('POST', `/session/${session}/window/rect`, { width: 1180, height: 900 });
@@ -410,6 +590,8 @@ async function openSession() {
     return { ...(mark ? mark.detail : { action: 'not recorded' }), setup: {
       provider: read('pl2-provider-settings')?.provider ?? null, billingPlan: read('pl2-billing')?.plan ?? null,
     } };`).catch(error => ({ error: error.message })) });
+  { const boot = evidence.libraryJournalBoots.at(-1);
+    console.log(`[native-acceptance] launch ${launchNumber} library journal boot: ${boot.action || 'unknown'}, ${boot.attempts ?? '?'} attempt(s)${boot.error ? `, ${boot.error}` : ''}`); }
   // Inspect after startup only. A readonly IndexedDB transaction before close
   // can wait behind a pending write and accidentally give it time to commit.
   (evidence.libraryJournalsAtBoot ||= []).push({ launch: launchNumber, ...await readLibraryJournal().catch(error => ({ error: error.message })) });
@@ -417,11 +599,44 @@ async function openSession() {
     boot: await execute(`return performance.getEntriesByName('prompt-lab:scratch-journal-boot').at(-1)?.detail || null;`),
     record: await readScratchJournal().catch(error => ({ error: error.message })),
   });
+  { const boot = evidence.scratchJournalsAtBoot.at(-1).boot;
+    console.log(`[native-acceptance] launch ${launchNumber} scratch journal boot: ${boot?.action || 'not recorded'}, ${boot?.attempts ?? '?'} attempt(s)${boot?.error ? `, ${boot.error}` : ''}`); }
+  (evidence.settingsJournalBoots ||= []).push({ launch: launchNumber,
+    ...(await execute(`return performance.getEntriesByName('prompt-lab:settings-journal-boot').at(-1)?.detail || { action: 'not recorded' };`)
+      .catch(error => ({ error: error.message }))) });
+  { const boot = evidence.settingsJournalBoots.at(-1);
+    console.log(`[native-acceptance] launch ${launchNumber} settings journal boot: ${boot.action || 'unknown'}, ${boot.attempts ?? '?'} attempt(s)${boot.error ? `, ${boot.error}` : ''}`); }
+  if (seededSettings) await assertSeededSettings(`${phase} launch ${launchNumber}`);
   // WebView2 can restore a compact native window despite the driver rect request.
   // Readiness and navigation must follow the app's actual responsive surface.
   (evidence.viewports ||= []).push(await execute(`return {width: innerWidth, height: innerHeight, compact: Boolean(document.querySelector('[aria-label="Primary mobile navigation"]'))};`));
   await openCreate();
   await waitFor(() => execute('return Boolean(document.querySelector("[data-testid=prompt-input]"));'), 'Create editor visible');
+}
+// Read-only PowerShell probes on a loaded Windows runner can take far longer
+// than usual to start (the a698d24/d83e4b9 runs timed out at 30 s). Give each
+// attempt 90 s and retry up to twice; every attempt is logged and kept as
+// evidence. Callers still assert on the final attempt's status and output.
+function runPowerShellWithRetry(label, script, env = {}, { timeout = 90_000, retries = 2 } = {}) {
+  const attempts = [];
+  let result;
+  for (let attempt = 1; attempt <= retries + 1; attempt += 1) {
+    const started = Date.now();
+    result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], {
+      encoding: 'utf8', timeout, env: { ...process.env, ...env },
+    });
+    const record = {
+      attempt, ms: Date.now() - started, status: result.status, signal: result.signal,
+      error: result.error ? { code: result.error.code, message: result.error.message } : null,
+      stderr: String(result.stderr || '').slice(-500),
+    };
+    attempts.push(record);
+    console.log(`[native-acceptance] ${label}: attempt ${attempt}/${retries + 1} ${result.status === 0 ? 'ok' : 'failed'} in ${record.ms} ms` +
+      (result.status === 0 ? '' : ` (status ${result.status}, signal ${result.signal}, ${record.error?.code || 'no spawn error'})`));
+    if (result.status === 0) break;
+  }
+  (evidence.powershellAttempts ||= {})[label] = [...(evidence.powershellAttempts?.[label] || []), ...attempts];
+  return Object.assign(result, { attempts });
 }
 async function closeSession() {
   let browserPids = [];
@@ -429,7 +644,7 @@ async function closeSession() {
   if (session) shutdown.libraryBeforeClose = await readLibrary().catch(error => ({ error: error.message }));
   (evidence.nativeShutdowns ||= []).push(shutdown);
   if (nativeAppPid) {
-    const probe = spawnSync('powershell.exe', ['-NoProfile', '-Command', `
+    const probe = runPowerShellWithRetry('owned WebView2 process discovery', `
       $processes = @(Get-CimInstance Win32_Process -Filter "Name='msedgewebview2.exe'")
       $roots = @($processes | Where-Object { $_.ParentProcessId -eq [int]$env:PL_NATIVE_OWNED_PID } |
         Select-Object -ExpandProperty ProcessId)
@@ -442,11 +657,11 @@ async function closeSession() {
         $parents = $children
       } while ($parents.Count)
       @{ roots = $roots; all = @($owned | Sort-Object) } | ConvertTo-Json -Compress
-    `], { encoding: 'utf8', timeout: 30_000, env: { ...process.env, PL_NATIVE_OWNED_PID: String(nativeAppPid) } });
+    `, { PL_NATIVE_OWNED_PID: String(nativeAppPid) });
     shutdown.processDiscovery = {
       status: probe.status, signal: probe.signal,
       error: probe.error ? { code: probe.error.code, message: probe.error.message } : null,
-      stderr: probe.stderr,
+      stderr: probe.stderr, attempts: probe.attempts,
     };
     assert.equal(probe.status, 0, `Owned WebView2 process discovery failed: ${JSON.stringify(shutdown.processDiscovery)}`);
     const owned = JSON.parse(probe.stdout.trim());
@@ -507,6 +722,48 @@ async function closeSession() {
     }
     if (closingSession && closeNativeWindowFirst) await command('DELETE', `/session/${closingSession}`);
   }
+}
+// R-22: prove the desktop journals natively. Close the app, move WebView2's
+// Local Storage folder out of the profile (to the app, it is deleted), relaunch
+// and require both journals to restore the Library, sync keys and settings.
+// The original folder is put back afterwards so retention runs on the profile
+// the exercise left, as before. WebView2's profile path is Windows-only here.
+async function relaunchWithoutLocalStorage(expectedLibrary) {
+  if (process.platform !== 'win32') {
+    const skipped = { ran: false, reason: `${process.platform}: the Local Storage folder path is only known for WebView2 (Windows)` };
+    console.log(`[native-acceptance] Local Storage loss relaunch skipped: ${skipped.reason}`);
+    return skipped;
+  }
+  const folder = path.join(evidence.userDataFolder, 'EBWebView', 'Default', 'Local Storage');
+  const aside = `${folder}.rr6-aside`;
+  const moveWithRetry = async (from, to) => {
+    for (let attempt = 1; ; attempt += 1) {
+      try { await rename(from, to); return attempt; } catch (error) {
+        if (!['EBUSY', 'EPERM', 'EACCES'].includes(error.code) || attempt >= 50) throw error;
+        await delay(200);
+      }
+    }
+  };
+  await closeSession();
+  await stat(folder);
+  await rm(aside, { recursive: true, force: true });
+  const moveAttempts = await moveWithRetry(folder, aside);
+  console.log(`[native-acceptance] Local Storage moved out of the profile (attempt ${moveAttempts}); relaunching`);
+  await openSession();
+  const libraryBoot = evidence.libraryJournalBoots.at(-1);
+  const settingsBoot = evidence.settingsJournalBoots.at(-1);
+  const restoredIds = (await readLibrary()).map(row => row.id);
+  const result = { ran: true, launch: launchNumber, libraryBoot: libraryBoot.action, settingsBoot: settingsBoot.action, ids: restoredIds.length };
+  console.log(`[native-acceptance] Local Storage loss relaunch: library ${libraryBoot.action}, settings ${settingsBoot.action}, ${restoredIds.length} Library rows`);
+  assert.equal(libraryBoot.action, 'restore', 'The Library journal restored after Local Storage was deleted');
+  assert.equal(settingsBoot.action, 'restore', 'The settings journal restored after Local Storage was deleted');
+  assert.deepEqual(restoredIds, expectedLibrary.map(row => row.id), 'The restored Library has every row, in order');
+  // openSession already asserted the seeded sync keys and settings on this launch.
+  await closeSession();
+  await rm(folder, { recursive: true, force: true });
+  await moveWithRetry(aside, folder);
+  result.originalRestored = true;
+  return result;
 }
 async function startFixture(mode, responseKind = 'enhancement') {
   if (fixture) { fixture.closeAllConnections(); await new Promise(resolve => fixture.close(resolve)); }
@@ -586,18 +843,33 @@ async function exerciseFollowUp(parentId) {
     const panel = document.querySelector('[data-testid=follow-up-panel]');
     return { value: select?.value ?? null, hasOption: Boolean(select?.querySelector('option[value="' + arguments[1] + '"]')),
       savedRun: Boolean(panel?.innerText.includes('Saved run output. ')) };`, [sourceSelect, source.id]);
+  const readSavedRunExists = async () => {
+    const found = await command('POST', `/session/${session}/execute/async`, { script: `
+      const id = arguments[0], done = arguments[arguments.length - 1];
+      const request = indexedDB.open('prompt_lab_local', 4);
+      request.onerror = () => done({ error: String(request.error) });
+      request.onsuccess = () => {
+        const db = request.result;
+        const get = db.transaction('eval_runs', 'readonly').objectStore('eval_runs').get(id);
+        get.onsuccess = () => { db.close(); done({ ok: Boolean(get.result) }); };
+        get.onerror = () => { db.close(); done({ error: String(get.error) }); };
+      };`, args: [source.id] });
+    if (found.error) throw new Error(`Saved run lookup failed: ${found.error}`);
+    return found.ok;
+  };
   async function selectReopenedSource() {
     await element(sourceSelect);
-    let reseeded = false;
+    let reloaded = false;
     await waitFor(async () => {
       let state = await sourceState();
       if (!state.hasOption) {
-        if (!reseeded) {
-          reseeded = true;
-          const again = await seedSourceRun();
-          assert.equal(again.ok, true, JSON.stringify(again));
-          recordDiagnostic('followUpSourceReseeded', true);
-          // Saved runs reload when the editor tab is opened again.
+        // Re-review 4: never re-seed here. A saved run missing after the
+        // restart is an IndexedDB loss and fails the run; a run that is stored
+        // but not listed yet gets one reload of the editor's saved runs.
+        assert.equal(await readSavedRunExists(), true, 'The saved run survived the restart in IndexedDB');
+        if (!reloaded) {
+          reloaded = true;
+          recordDiagnostic('followUpSourceReloaded', true);
           await click('[data-testid="nav-library"]');
           await openCreate();
         }
@@ -640,6 +912,10 @@ async function exerciseFollowUp(parentId) {
     // back exactly: every Library row and the account-sync keys.
     assert.equal(process.platform, 'win32', 'The open draft must survive a restart outside Windows');
     assert.deepEqual(await readDurableLocalState(parent.id), durableBefore, 'Library and sync state are intact after the restart');
+    // Sync is off in CI, so launch 1 seeds fixture pl2-sync-* keys; they must
+    // still hold exactly what was written before the hard restarts.
+    assert.deepEqual(durableBefore.sync, SYNC_FIXTURE_KEYS, 'Seeded sync keys survived the hard restarts');
+    assert.equal(await readSavedRunExists(), true, 'The saved run survived the restart in IndexedDB');
     recordDiagnostic('followUpDraftReopened', { parentId: parent.id, input: await execute('return document.querySelector("[data-testid=prompt-input]")?.value || "";') });
     await click('[data-testid="nav-library"]');
     await fill('[data-testid="library-search"]', parent.title);
@@ -857,8 +1133,10 @@ try {
     // The Library matrix needs the synthetic Pro entitlement in later launches.
     // Seed it with the other launch-1 settings, which every later launch already
     // depends on, rather than only in the launch that also tests persistence.
-    await execute('localStorage.setItem("pl_telemetry_consent", "denied"); localStorage.setItem("pl2-provider-settings", JSON.stringify({provider:"ollama",ollamaBaseUrl:"http://127.0.0.1:11434",ollamaModel:"promptlab-fixture"})); localStorage.setItem("pl2-billing", JSON.stringify({plan:"pro",status:"active",productName:"Prompt Lab Pro"})); return true;');
+    await execute('localStorage.setItem("pl_telemetry_consent", "denied"); localStorage.setItem("pl2-provider-settings", JSON.stringify({provider:"ollama",ollamaBaseUrl:"http://127.0.0.1:11434",ollamaModel:"promptlab-fixture"})); localStorage.setItem("pl2-billing", JSON.stringify({plan:"pro",status:"active",productName:"Prompt Lab Pro"})); for (const [key, value] of Object.entries(arguments[0])) localStorage.setItem(key, value); return true;', [SYNC_FIXTURE_KEYS]);
+    seededSettings = true;
     await refreshPage();
+    await assertSeededSettings('exercise after seeding');
     await startFixture('success');
     await fill('[data-testid="prompt-input"]', 'Summarize this synthetic native acceptance note.');
     await enhance('fixture enhancement', () => execute('return document.body.innerText.includes("Fixture enhanced prompt");'));
@@ -995,6 +1273,7 @@ try {
     const afterImport = await readLibrary();
     evidence.libraryMatrix.order = afterImport.map(row => row.id);
     evidence.libraryMatrix.entries = afterImport.filter(row => evidence.libraryMatrix.entries.some(entry => entry.id === row.id));
+    evidence.localStorageLossRestore = await relaunchWithoutLocalStorage(afterImport);
   }
   evidence.status = 'passed';
 } catch (error) {

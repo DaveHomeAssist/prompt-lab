@@ -78,7 +78,7 @@ export async function startScratchJournal({ storage = localStorage, idb = global
   } catch (error) {
     activeJournal = null;
     logWarn('scratch journal restore', error);
-    outcome = { action: 'unavailable', error: error?.message || String(error) };
+    outcome = { action: 'unavailable', error: error?.message || String(error), attempts: error?.attempts ?? 1 };
     if (current === operation) publish(UNAVAILABLE);
   }
   try { performance.mark(SCRATCH_JOURNAL_BOOT_MARK, { detail: outcome }); } catch { /* Diagnostics only. */ }

@@ -22,6 +22,19 @@ function writeJson(storage, key, value, notifyWrite) {
 }
 
 /** Current local items as Map<key, { kind, item_id, payload }>. */
+// R-18: Postgres jsonb refuses U+0000 and lone UTF-16 surrogates, and one such
+// string fails the whole push batch on every retry. Payloads read for sync
+// replace them with U+FFFD; the local copy is left as it is.
+const UNSAFE_TEXT = /\u0000|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g;
+const safeText = (text) => text.replace(UNSAFE_TEXT, '\uFFFD');
+/** Copy of a JSON value with every string (and key) safe for Postgres jsonb. */
+export function wireSafe(value) {
+  if (typeof value === 'string') return safeText(value);
+  if (Array.isArray(value)) return value.map(wireSafe);
+  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [safeText(key), wireSafe(item)]));
+  return value;
+}
+
 export function readLocalItems(storage) {
   const deletion = readLibraryDeletionState(storage);
   const items = new Map();
@@ -30,18 +43,18 @@ export function readLocalItems(storage) {
     const key = itemKey('prompt', entry.id);
     // An active copy beats a stale trash copy with the same id.
     if (items.has(key) && state === 'trash') return;
-    items.set(key, { kind: 'prompt', item_id: entry.id, payload: { state, entry: stripLocal(entry) } });
+    items.set(key, { kind: 'prompt', item_id: entry.id, payload: wireSafe({ state, entry: stripLocal(entry) }) });
   };
   filterDeletedLibraryRecords(readArray(storage, storageKeys.library), deletion).forEach((entry) => add(entry, 'active'));
   filterDeletedLibraryRecords(readArray(storage, storageKeys.trash), deletion).forEach((entry) => add(entry, 'trash'));
   items.set(itemKey('structure', STRUCTURE_ID), {
     kind: 'structure',
     item_id: STRUCTURE_ID,
-    payload: {
+    payload: wireSafe({
       collections: readArray(storage, storageKeys.collections),
       folders: readArray(storage, storageKeys.folders),
       loadedPacks: readArray(storage, storageKeys.loadedPacks),
-    },
+    }),
   });
   return items;
 }

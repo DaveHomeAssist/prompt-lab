@@ -96,7 +96,7 @@ The hosted web deployment is split into a landing route and an app route:
 - `mobileProvider.js` imports shared Anthropic/provider helpers from the extension source
 - Vite builds `mobile/index.html` as a third web entry and Vercel rewrites `/mobile` to it
 - The prototype is a public evaluation surface, not an App Store or installed mobile release
-- `mobile.promptlab.tools` has a host rewrite in `vercel.json`, but the verified public route is `https://promptlab.tools/mobile/`; separate subdomain DNS is not configured
+- The phone web app is served at `https://promptlab.tools/mobile/`. `mobile.promptlab.tools` is retired: it has no DNS record or `vercel.json` rewrite, and it is not a trusted API origin or Clerk authorized party
 
 ### Native iPhone/iPad path
 
@@ -279,6 +279,13 @@ Persistence contracts (post 2026-08 behavioral-audit remediation):
   with value `1`; the marker contains no title or body. Clear Library appends a
   `pl2-library-clear:<counter>:<uuid>` key. A logical counter and deterministic
   UUID tie-break order concurrent clears without trusting wall-clock time.
+  The marker's value is `{"at": <ISO time>, "ids": [...]}`: when the Clear
+  happened and the ids (no titles or bodies) of the prompts and trash it
+  removed; if that does not fit, the time alone. Older markers hold the ISO
+  time or `1`. Only the desktop journal's failed-boot merge reads it, to tell
+  rows saved after the Clear from rows a Local Storage rollback brought back:
+  by id when the list is there (no device clock compare, R-34), otherwise by
+  time.
   Live/trash records carry `metadata.libraryGeneration`; missing values mean
   the original generation. Readers, storage-event adoption, and delayed writes
   exclude deleted IDs and records from earlier clear generations.

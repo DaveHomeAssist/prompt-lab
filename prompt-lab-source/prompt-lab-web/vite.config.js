@@ -3,6 +3,7 @@ import { buildIdentity } from '../scripts/build-identity.mjs';
 import { diagnosticSourceMaps } from '../scripts/diagnostic-sourcemaps.mjs';
 import { accountSyncWebCsp } from '../scripts/account-sync-build.mjs';
 import { previewClerkCsp } from '../scripts/preview-clerk-csp.mjs';
+import { inlineScriptCspHashes } from '../scripts/inline-script-csp-hashes.mjs';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
@@ -10,10 +11,12 @@ import { resolve } from 'path';
 const versionErrors = checkVersions().errors;
 if (versionErrors.length) throw new Error(versionErrors.join('\n'));
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   appType: 'mpa',
+  // inlineScriptCspHashes runs last and swaps script-src 'unsafe-inline' for
+  // per-build sha256 hashes (scripts/inline-script-csp-hashes.mjs).
   // accountSyncWebCsp is a no-op unless VITE_PL_ACCOUNT_SYNC=on (docs/ACCOUNT_SYNC_DESIGN.md).
-  plugins: [react(), diagnosticSourceMaps('web'), previewClerkCsp(), accountSyncWebCsp()],
+  plugins: [react(), diagnosticSourceMaps('web'), previewClerkCsp(), accountSyncWebCsp(), inlineScriptCspHashes()],
   define: {
     ...buildIdentity(),
     'import.meta.env.VITE_WEB_MODE': JSON.stringify('true'),
@@ -25,6 +28,12 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      // AUD-007: builds keep the workbench in its own lazy chunk; the dev
+      // server imports it eagerly so the app is ready by the load event.
+      '@promptlab/workbench-loader': resolve(
+        __dirname,
+        command === 'serve' ? 'app/workbenchLoader.dev.js' : 'app/workbenchLoader.js',
+      ),
       // The web app imports source files from ../prompt-lab-extension/src.
       // Alias runtime deps used by that sibling source to the web package's
       // installed copy so isolated Vercel builds resolve them consistently.
@@ -51,4 +60,4 @@ export default defineConfig({
     port: 5174,
     strictPort: true,
   },
-});
+}));
