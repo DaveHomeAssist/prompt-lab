@@ -11,7 +11,7 @@ import { resolve } from 'path';
 const versionErrors = checkVersions().errors;
 if (versionErrors.length) throw new Error(versionErrors.join('\n'));
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   appType: 'mpa',
   // inlineScriptCspHashes runs last and swaps script-src 'unsafe-inline' for
   // per-build sha256 hashes (scripts/inline-script-csp-hashes.mjs).
@@ -28,6 +28,12 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      // AUD-007: builds keep the workbench in its own lazy chunk; the dev
+      // server imports it eagerly so the app is ready by the load event.
+      '@promptlab/workbench-loader': resolve(
+        __dirname,
+        command === 'serve' ? 'app/workbenchLoader.dev.js' : 'app/workbenchLoader.js',
+      ),
       // The web app imports source files from ../prompt-lab-extension/src.
       // Alias runtime deps used by that sibling source to the web package's
       // installed copy so isolated Vercel builds resolve them consistently.
@@ -54,4 +60,4 @@ export default defineConfig({
     port: 5174,
     strictPort: true,
   },
-});
+}));
