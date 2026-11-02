@@ -1,12 +1,11 @@
 # Prompt Lab Pro billing policy
 
-Status: **Draft, not yet published.** This is the proposed customer policy for
-the two open billing-acceptance items (commercial refund and access policy, and
-the six-hour entitlement cache). It needs the owner's approval and a legal
-review before it is published on promptlab.tools or relied on with customers.
-Sections marked "Operator notes" are internal. The customer-facing draft is
-`prompt-lab-web/public/terms.html` (served at `/terms`, marked DRAFT,
-`noindex`, and not linked from the site until it is approved).
+Status: **Final draft, publishes with the Terms of Service.** This is the
+customer policy for Prompt Lab Pro billing (refunds, cancellation, disputes and
+the six-hour entitlement cache). Sections marked "Operator notes" are internal.
+The customer-facing text is `prompt-lab-web/public/terms.html` (served at
+`/terms`, linked from the landing footer and the checkout dialog). Keep the two
+in step; `tests/landingTerms.test.mjs` checks the shared wording.
 
 ## Customer policy
 
@@ -30,7 +29,7 @@ are not charged again. Cancelling does not by itself refund the current period.
 
 - **14-day refund.** You can ask for a full refund within 14 days of your first
   Prompt Lab Pro payment (monthly or annual) or within 14 days of an annual
-  renewal payment. Email [hi@promptlab.tools](mailto:hi@promptlab.tools) from the address on your account.
+  renewal payment. Email [avbydave@gmail.com](mailto:avbydave@gmail.com) from the address on your account.
 - **A full refund ends Pro.** When we refund a payment in full, we cancel the
   subscription at the same time and Pro ends on your devices at their next
   billing check (see "Pro status on your devices").

@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Ic from '../icons';
 import { PRICE_COPY } from '../../../shared/pricing.js';
+
+// Absolute so the link also works from the extension and desktop builds.
+const TERMS_URL = 'https://promptlab.tools/terms';
 import {
   BILLING_FEATURES,
   getFeatureMeta,
@@ -365,7 +368,16 @@ export default function BillingModal({
           <p data-testid="billing-terms" className={`mt-2 text-[11px] leading-relaxed ${m.textMuted}`}>
             New Pro subscriptions renew automatically at {PRICE_COPY.monthlyPerPeriod} or {PRICE_COPY.annualPerPeriod} until you cancel. Existing annual subscriptions retain their current price. Cancel anytime in Manage Purchases;
             Pro stays active until the end of the period you paid for. Full refunds are available within 14 days of
-            your first payment or an annual renewal, and a refund ends Pro.
+            your first payment or an annual renewal, and a refund ends Pro. By subscribing you agree to the{' '}
+            <a
+              href={TERMS_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2"
+              data-testid="billing-terms-link"
+            >
+              Terms of Service
+            </a>.
           </p>
         )}
 

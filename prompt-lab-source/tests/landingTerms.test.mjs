@@ -13,9 +13,9 @@ const billingModal = await read('../prompt-lab-extension/src/modals/BillingModal
 const vercel = JSON.parse(await read('../vercel.json'));
 const sitemap = await read('../prompt-lab-web/public/sitemap.xml');
 const landing = await read('../prompt-lab-web/index.html');
+const publisher = await read('../scripts/publish-landing.mjs');
 
 const text = terms.replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ');
-const isDraft = /data-draft="true"/.test(terms);
 
 test('terms page is served at /terms', () => {
   assert.ok(
@@ -25,16 +25,36 @@ test('terms page is served at /terms', () => {
   assert.match(terms, /<link rel="canonical" href="https:\/\/promptlab\.tools\/terms\.html">/);
 });
 
-test('a draft terms page is labeled, unindexed and unlinked', () => {
-  assert.ok(isDraft, 'terms must remain a draft until separately approved');
-  assert.match(terms, /<title>[^<]*Draft[^<]*<\/title>/);
-  assert.match(terms, /<meta name="robots" content="noindex,nofollow">/);
-  assert.match(text, /DRAFT, not in effect\./);
-  assert.match(text, /not legal advice/);
-  assert.match(text, /does not make this draft effective or constitute acceptance of it/);
-  assert.doesNotMatch(text, /By using Prompt Lab or buying Prompt Lab Pro you agree/);
-  assert.doesNotMatch(sitemap, /terms\.html/, 'do not list a draft in the sitemap');
-  assert.doesNotMatch(landing, /href="[^"]*terms(\.html)?"/, 'do not link a draft from the landing page');
+test('the Pages publisher includes the public terms page', () => {
+  assert.match(publisher, /\['terms\.html', 'terms\.html'\]/);
+});
+
+test('terms are final: no draft label, indexable and linked from the site and checkout', () => {
+  assert.doesNotMatch(terms, /data-draft=/);
+  assert.doesNotMatch(terms, /class="legal-flag"/, 'resolve or move every legal note to DECISIONS');
+  assert.doesNotMatch(terms, /<title>[^<]*Draft[^<]*<\/title>/);
+  assert.doesNotMatch(terms, /noindex/);
+  assert.doesNotMatch(text, /DRAFT|not yet in effect|does not make this draft effective/i);
+  assert.match(text, /By creating an account on the hosted web app or subscribing to Prompt Lab Pro, you agree to these terms/);
+  assert.match(text, /Effective: /);
+  assert.match(sitemap, /<loc>https:\/\/promptlab\.tools\/terms\.html<\/loc>/);
+  assert.match(landing, /href="https:\/\/promptlab\.tools\/terms"/);
+  assert.match(billingModal, /https:\/\/promptlab\.tools\/terms/);
+});
+
+test('published terms have no open placeholders and name the operator and law', () => {
+  assert.doesNotMatch(terms, /data-decision=/);
+  assert.doesNotMatch(terms.replace(/<[^>]+>/g, ' '), /\[[A-Z][A-Z ]+[:\]]/, 'unfilled bracket placeholder');
+  assert.match(text, /run by David Robertson, an individual/);
+  assert.match(text, /laws of the State of New Jersey, USA/);
+  assert.match(text, /Effective: [A-Z][a-z]+ \d{1,2}, \d{4}/);
+});
+
+test('the only contact address is the public support email', () => {
+  assert.match(terms, /mailto:avbydave@gmail\.com/);
+  assert.match(policyDoc, /mailto:avbydave@gmail\.com/);
+  assert.doesNotMatch(terms, /hi@promptlab\.tools/);
+  assert.doesNotMatch(terms + policyDoc, /DaveRobertson/i);
 });
 
 test('terms cover every required topic', () => {
@@ -45,7 +65,6 @@ test('terms cover every required topic', () => {
     assert.match(terms, new RegExp(`<h2 id="${id}">`), `missing section #${id}`);
   }
   assert.match(text, /renews automatically until you cancel/);
-  assert.match(terms, /mailto:hi@promptlab\.tools/);
 });
 
 test('terms state the same prices as checkout', () => {
@@ -69,15 +88,6 @@ test('terms match the billing policy: refunds, disputes and device checks', () =
   assert.match(text, /browser scheduling, network availability and server updates/);
   assert.doesNotMatch(text, /up to 6 hours to appear|Refresh Status applies it immediately/);
   assert.match(text, new RegExp(`for up to ${BILLING_OFFLINE_GRACE_DAYS} days after its last successful check`));
-});
-
-test('clauses that need a legal review stay flagged while the page is a draft', () => {
-  if (!isDraft) return;
-  const flags = [...terms.matchAll(/<span class="legal-flag">([^<]*)<\/span>/g)].map((m) => m[1]);
-  const all = flags.join(' ');
-  for (const topic of [/withdrawal/i, /Automatic Renewal Law/, /click-to-cancel/, /VAT/, /hi@promptlab\.tools/]) {
-    assert.match(all, topic, `missing legal-check flag for ${topic}`);
-  }
 });
 
 test('library export is described as free on every plan, not as a Pro feature', () => {
