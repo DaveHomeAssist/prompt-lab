@@ -28,6 +28,14 @@
         'https://prompt-lab-tawny.vercel.app'
       ]);
 
+      // S-06: only a legacy host answers. On the apex itself the bridge would
+      // hand the apex its own library back, so it stays silent there.
+      var SOURCE_ORIGINS = new Set([
+        'https://www.promptlab.tools',
+        'https://prompt-lab-tawny.vercel.app'
+      ]);
+      if (!SOURCE_ORIGINS.has(window.location.origin)) return;
+
       function readJson(key) {
         try {
           var raw = window.localStorage.getItem(key);
@@ -38,7 +46,7 @@
       }
 
       window.addEventListener('message', function onMessage(event) {
-        if (!ALLOWED_ORIGINS.has(event.origin)) return;
+        if (!ALLOWED_ORIGINS.has(event.origin) || event.origin === window.location.origin) return;
         if (!event.data || event.data.type !== REQUEST_TYPE) return;
         if (!event.source || typeof event.source.postMessage !== 'function') return;
 
