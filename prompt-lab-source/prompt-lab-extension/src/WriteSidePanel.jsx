@@ -5,11 +5,12 @@ import { handleTabArrowKeys } from './hooks/useDialogA11y.js';
 const TABS = Object.freeze([
   { id: 'scratch', label: 'Scratch', name: 'Scratch notes beside Write' },
   { id: 'prompts', label: 'Prompts', name: 'Prompts beside Write' },
+  { id: 'chat', label: 'Chat', name: 'Chat beside Write' },
 ]);
 
 // The panel beside the Write editor: a resizable column on wide screens, or a
 // floating panel over the editor on narrow ones. Its tabs switch between
-// Scratch notes and saved prompts; `children` is the active tab's content.
+// Scratch notes, saved prompts and chat; `children` is the active tab's content.
 export default function WriteSidePanel({
   m = {},
   tab = 'scratch',
