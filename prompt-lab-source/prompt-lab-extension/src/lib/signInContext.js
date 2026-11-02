@@ -21,7 +21,7 @@ function validatedAppUrl(href) {
   const knownRoute = hash.startsWith('#/') && (Boolean(resolveRouteState(hash.slice(1))) || hash === '#/create');
   const sharedPayload = /^#(?:share|pack)=[A-Za-z0-9+/=_-]+$/.test(decodedHash);
   url.pathname = '/app/';
-  url.hash = knownRoute || sharedPayload ? hash : '';
+  url.hash = knownRoute ? hash : sharedPayload ? decodedHash : '';
   return url;
 }
 

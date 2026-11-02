@@ -45,6 +45,7 @@ describe('signed-out sign-in context (AUD-006)', () => {
   });
 
   it('normalizes path deep links and rejects unsafe fragments and protocols', () => {
+    expect(buildAuthRedirectUrls('https://promptlab.tools/app/#share=YWJj%3D', null).fallbackRedirectUrl).toBe('https://promptlab.tools/app/#share=YWJj=');
     expect(buildAuthRedirectUrls('https://promptlab.tools/app/library', null).fallbackRedirectUrl).toBe('https://promptlab.tools/app/#/library');
     for (const hash of ['#//evil.example', '#/unknown', '#share=<script>', '#https://evil.example']) {
       expect(buildAuthRedirectUrls(`https://promptlab.tools/app/${hash}`, null).fallbackRedirectUrl).toBe('https://promptlab.tools/app/');
