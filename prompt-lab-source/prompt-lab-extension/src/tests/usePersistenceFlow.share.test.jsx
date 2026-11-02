@@ -131,6 +131,20 @@ describe('usePersistenceFlow share + template paths', () => {
     expect(doSave).toHaveBeenCalledWith(expect.objectContaining({ editingId: null, raw: 'Shared body', title: 'Shared title' }));
   });
 
+  it('handles a shared link arriving after the editor has already mounted', async () => {
+    const preserve = vi.fn(() => true);
+    const { result, doSave } = renderPersistenceFlow({ raw: 'Live draft', onDisplaceDraft: preserve });
+    act(() => result.current.setEditingId('prior-record'));
+    await act(async () => {
+      window.location.hash = `#share=${encodeShare({ original: 'Incoming live share', title: 'Live share' })}`;
+      window.dispatchEvent(new Event('hashchange'));
+    });
+    await waitFor(() => expect(result.current.showSave).toBe(true));
+    expect(preserve).toHaveBeenCalledWith(expect.objectContaining({ editor: expect.objectContaining({ raw: 'Live draft' }), persistence: expect.objectContaining({ editingId: 'prior-record' }) }));
+    await act(async () => { await result.current.doSave(); });
+    expect(doSave).toHaveBeenCalledWith(expect.objectContaining({ editingId: null, raw: 'Incoming live share' }));
+  });
+
   it('keeps the current draft intact if recovery cannot be persisted', async () => {
     sessionGet.mockImplementationOnce((_key, cb) => cb({ raw: 'Keep this draft', editingId: 'original-record' }));
     window.location.hash = `#share=${encodeShare({ original: 'Shared body', title: 'Shared' })}`;

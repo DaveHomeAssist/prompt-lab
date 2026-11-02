@@ -45,6 +45,33 @@ for (const [width, height] of [[1440, 900], [375, 812]]) {
     await expect(page.getByTestId('prompt-input')).toHaveValue(PRIOR);
   });
 
+  test(`shared link arriving in an open editor preserves the live draft at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await prepare(page);
+    await page.goto('/app/');
+    const input = page.getByTestId('prompt-input');
+    await expect(input).toHaveValue(PRIOR);
+    await expect.poll(() => page.evaluate(() => Array.isArray(JSON.parse(localStorage.getItem('pl2-library')).find(row => row.id === 'prior')?.versions))).toBe(true);
+    await input.fill('Live edits made before opening the shared link.');
+    const payload = Buffer.from(JSON.stringify({ title: 'Live shared fixture', original: SHARED })).toString('base64');
+    await page.evaluate(hash => { window.location.hash = hash; }, `share=${payload}`);
+    const dialog = page.getByRole('dialog', { name: 'Save as new prompt' });
+    await expect(dialog).toBeVisible();
+    await expect(input).toHaveValue(SHARED);
+    await dialog.getByTestId('save-to-library').click();
+    await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('pl2-library')).length)).toBe(2);
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('pl2-library')).find(row => row.id === 'prior').original)).toBe('Saved prior body');
+    await page.getByRole('button', { name: 'Restore previous draft', exact: true }).click();
+    await expect(input).toHaveValue('Live edits made before opening the shared link.');
+    await expect(page).toHaveURL(/#\/$/);
+    await page.evaluate(hash => { window.location.hash = hash; }, `share=${payload}`);
+    await expect(dialog).toBeVisible();
+    await expect(input).toHaveValue(SHARED);
+    await dialog.getByRole('button', { name: 'Close save panel', exact: true }).click();
+    await page.getByRole('button', { name: 'Restore previous draft', exact: true }).click();
+    await expect(input).toHaveValue('Live edits made before opening the shared link.');
+  });
+
   test(`immediate refresh and failed checkpoint recovery at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height });
     await prepare(page);
