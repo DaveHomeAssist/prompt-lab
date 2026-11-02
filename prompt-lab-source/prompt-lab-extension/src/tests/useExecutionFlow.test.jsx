@@ -113,6 +113,7 @@ function renderExecutionFlow({
   const setTab = vi.fn();
 
   const hook = renderHook(() => {
+    const [activeEditingId, setEditingId] = useState(editingId);
     const [rawState, setRaw] = useState(raw);
     const [enhancedState, setEnhanced] = useState(enhanced);
     const [variants, setVariants] = useState([]);
@@ -138,7 +139,7 @@ function renderExecutionFlow({
         setNotes,
       },
       persistence: {
-        editingId,
+        editingId: activeEditingId,
         saveTitle: saveTitleState,
         setSaveTitle,
         setSaveTags,
@@ -149,6 +150,7 @@ function renderExecutionFlow({
 
     return {
       ...flow,
+      setEditingId,
       raw: rawState,
       setRaw,
       enhanced: enhancedState,
@@ -232,6 +234,22 @@ describe('useExecutionFlow', () => {
     expect(result.current.batchProgress).toMatchObject({ active: false, status: 'cancelled', completed: 1, total: 3 });
     expect(recordSuiteResult).toHaveBeenCalledWith('entry-1', expect.objectContaining({ status: 'canceled', verdict: null, completed: 1, total: 3 }));
     expect(notify).toHaveBeenCalledWith('Batch stopped: 1/3 completed, 0 failed.');
+  });
+
+  it('does not replace a newly opened prompt history when an older batch finishes', async () => {
+    testCasesByPrompt['entry-1'] = [{ id: 'case-1', promptId: 'entry-1', title: 'Case', input: 'Input' }];
+    const pending = createDeferred();
+    callModel.mockReturnValueOnce(pending.promise);
+    const recordSuiteResult = vi.fn();
+    const { result } = renderExecutionFlow({ recordSuiteResult });
+    let running;
+    act(() => { running = result.current.runAllCases(); });
+    await waitFor(() => expect(callModel).toHaveBeenCalledTimes(1));
+    act(() => result.current.setEditingId('entry-2'));
+    await act(async () => { pending.resolve({ text: 'Completed result' }); await running; });
+    expect(recordSuiteResult).toHaveBeenCalledWith('entry-1', expect.objectContaining({ completed: 1 }));
+    expect(refreshEvalRuns).not.toHaveBeenCalled();
+    expect(setShowEvalHistory).not.toHaveBeenCalled();
   });
 
   it('releases the batch gate and shows interruption if history refresh fails', async () => {

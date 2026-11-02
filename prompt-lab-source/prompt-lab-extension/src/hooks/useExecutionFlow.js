@@ -45,6 +45,8 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
   const [optimisticSaveVisible, setOptimisticSaveVisible] = useState(false);
   const [batchProgress, setBatchProgress] = useState({ active: false, completed: 0, total: 0, currentLabel: '' });
   const batchAbortRef = useRef(null);
+  const currentEditingIdRef = useRef(editingId);
+  currentEditingIdRef.current = editingId;
   useEffect(() => () => batchAbortRef.current?.abort(), []);
   const enhanceReqRef = useRef(0);
   const enhanceAbortRef = useRef(null);
@@ -408,8 +410,10 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
           passed, failed, completed, total: cases.length, lastRunAt: new Date().toISOString(),
         });
       }
-      await evalRunsHook.refreshEvalRuns(promptId);
-      evalRunsHook.setShowEvalHistory(true);
+      if (currentEditingIdRef.current === promptId) {
+        await evalRunsHook.refreshEvalRuns(promptId);
+        evalRunsHook.setShowEvalHistory(true);
+      }
     } catch (caught) {
       interrupted = true;
       logWarn('test case batch completion failed', caught);
