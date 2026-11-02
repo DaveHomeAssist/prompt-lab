@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-11-02T07:58:19.087Z",
+  "snapshotAt": "2026-11-02T08:27:57.462Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,14 +9,14 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "aad2b55ff519686f16e7497ae4c8de8825a0168c",
+  "mainSha": "fdd0abf6a56de9c785fb030ee9b3141eb20ec479",
   "overall": "Acceptance incomplete",
-  "nextAction": "Confirm Stripe upcoming-renewal emails and lead time in the live Dashboard; verify the authenticated purchase dialog. Terms release PR286 is published and public Terms/footer/sitemap plus deployed consent references pass. Other acceptance gates remain with their existing records.",
+  "nextAction": "Verify code block copying in a signed-in production session, then select the next November slice. Existing Stripe renewal notifications, purchase-dialog and broader platform/human acceptance remain with their owning records.",
   "evidence": [
     {
       "label": "November intake and code block copy slice",
       "state": "Open",
-      "detail": "2026-11-02: ten new Notion issues created and read back; existing Scratch editor and Agent authoring issues extended and read back. Complete104-row snapshot preserves14-item sprint membership. Scoped November brief records12 requests and later decisions. Dominic Node22.23.4:13 focused tests and extension build pass. Packaged Chromium clipboard paste, keyboard activation and no-page-overflow checks pass at375/1440/3840px in both themes. Initial browser fixture failed on mobile navigation and an ambiguous Write selector; corrected without application changes. PR checks and release acceptance pending. No inference or billing operations.",
+      "detail": "2026-11-02: ten new Notion issues created; existing Scratch editor and Agent authoring issues extended; writes read back. Complete104-row snapshot preserves14-item sprint membership. Scoped November brief records12 requests and later decisions. PR308 merged fdd0abf after all16 checks passed on identical application tree8d3661a:1700 shared tests/148files,231 legacy,108 hosted/one skip,25 landing, MSI/NSIS/DEB/AppImage acceptance and macOS universal packaging/diagnostics. Dominic Node22.23.4:13 focused tests and extension build pass; packaged Chromium clipboard paste, keyboard and no-page-overflow pass at375/1440/3840px, including supplemental actual-theme-toggle acceptance. Initial fixture navigation/selector failures retained. Production dpl_CnNtnuvbWrrZS2ESxBD4fKMvdaGv READY at exact merge; promptlab.tools alias and served App-CfyQwNf8.js revision/copy controls verified. Signed-in production clipboard use, physical/human acceptance and exact-merge post-push workflows remain separate pending gates. No inference or billing operations.",
       "url": "https://app.notion.com/p/40c255fc8f448150a92efe8b618c509c"
     },
     {
@@ -1794,8 +1794,8 @@
       "type": "Feature",
       "url": "https://app.notion.com/40c255fc8f448150a92efe8b618c509c",
       "inPlan": false,
-      "nextAction": "Finish browser and release acceptance.",
-      "verification": "Dominic Node22.23.4:13 focused tests, extension build and packaged Chromium clipboard/keyboard checks at375/1440/3840px in both themes pass. Release gates pending."
+      "nextAction": "Verify Copy code in a signed-in production session.",
+      "verification": "PR308 merged fdd0abf after16 passing checks; exact production deployment READY and served control verified. Dominic13 focused tests, extension build and actual clipboard/keyboard/theme/viewport acceptance pass. Signed-in production interaction remains unverified."
     },
     {
       "id": "40c255fc8f4481668168f6da751a37bb",
