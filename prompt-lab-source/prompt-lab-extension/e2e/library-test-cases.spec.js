@@ -112,7 +112,10 @@ for (const surface of surfaces) for (const width of [400, 1180]) {
       const runCases = page.getByRole('button', { name: 'Test Enhancer', exact: true });
       await expect(runCases).toBeEnabled();
       await runCases.click();
-      await expect(page.getByText(/Ran \d+\/1 test cases/)).toBeVisible({ timeout: 20_000 });
+      await expect(page.getByText('Batch finished: 1/1 completed, 1 failed.', { exact: true })).toBeVisible({ timeout: 20_000 });
+      await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('pl2-library')).find(row => row.id === 'alpha')?.metadata?.suite)).toMatchObject({
+        status: 'completed', completed: 1, failed: 1, total: 1, verdict: 'fail',
+      });
 
       // Delete
       cases = await openTestsTab(page, width);

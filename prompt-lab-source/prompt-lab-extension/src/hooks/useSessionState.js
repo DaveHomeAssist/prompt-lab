@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { sessionGet, sessionSet } from '../lib/platform.js';
 import { readGenerationOptions, restoreEditorMode } from '../lib/generationOptions.js';
 
@@ -16,10 +16,11 @@ export function hasExplicitRoute(hash) {
 }
 
 export function useSessionRestore(setters) {
+  const [restored, setRestored] = useState(false);
   useEffect(() => {
     const routeAtMount = typeof window !== 'undefined' ? window.location.hash : '';
     sessionGet(SESSION_KEY, (s) => {
-      if (!s) return;
+      if (!s) { setRestored(true); return; }
       if ('raw' in s) setters.setRaw(s.raw);
       if ('enhanced' in s) setters.setEnhanced(s.enhanced);
       if ('variants' in s) setters.setVariants(s.variants);
@@ -34,32 +35,76 @@ export function useSessionRestore(setters) {
       if ('saveCollection' in s && typeof setters.setSaveCollection === 'function') setters.setSaveCollection(s.saveCollection || '');
       if ('followUpOrigin' in s && typeof setters.setFollowUpOrigin === 'function') setters.setFollowUpOrigin(s.followUpOrigin);
       if ('sourceNoteId' in s && typeof setters.setSourceNoteId === 'function') setters.setSourceNoteId(s.sourceNoteId || '');
+      setRestored(true);
     });
   }, []);
+  return restored;
 }
 
-export function useSessionSave(state) {
+export function useSessionSave(input, enabled = true) {
+  const state = useMemo(() => input, [input.raw, input.enhanced, input.variants, input.notes,
+    input.resultMeta, input.tab, input.enhMode, input.editingId, input.editingVersionId,
+    input.saveTitle, input.saveTags, input.saveCollection, input.sourceNoteId, input.followUpOrigin]);
+  const latestRef = useRef(state);
+  latestRef.current = state;
+  const savedRef = useRef(null);
   const timerRef = useRef(null);
+  const [status, setStatus] = useState('pending');
+  const flush = () => {
+    clearTimeout(timerRef.current);
+    const snapshot = latestRef.current;
+    const acknowledge = (ok) => {
+      if (ok === false) throw new Error('Draft checkpoint failed');
+      if (latestRef.current === snapshot) {
+        savedRef.current = snapshot;
+        setStatus('saved');
+      }
+      return true;
+    };
+    try {
+      const result = sessionSet({ [SESSION_KEY]: snapshot });
+      if (result?.then) return result.then(acknowledge).catch(() => {
+        if (latestRef.current === snapshot) setStatus('failed');
+        return false;
+      });
+      return acknowledge(result);
+    } catch {
+      if (latestRef.current === snapshot) setStatus('failed');
+      return false;
+    }
+  };
+  // Keep exit handlers on the latest render without restarting the debounce.
+  const flushRef = useRef(flush);
+  flushRef.current = flush;
   useEffect(() => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => {
-      sessionSet({ [SESSION_KEY]: state });
-    }, DEBOUNCE_MS);
+    if (!enabled) return undefined;
+    setStatus('pending');
+    timerRef.current = setTimeout(() => { void flushRef.current(); }, DEBOUNCE_MS);
     return () => clearTimeout(timerRef.current);
-  }, [
-    state.raw,
-    state.enhanced,
-    state.variants,
-    state.notes,
-    state.resultMeta,
-    state.tab,
-    state.enhMode,
-    state.editingId,
-    state.editingVersionId,
-    state.saveTitle,
-    state.saveTags,
-    state.saveCollection,
-    state.sourceNoteId,
-    state.followUpOrigin,
-  ]);
+  }, [enabled, state.raw, state.enhanced, state.variants, state.notes, state.resultMeta,
+    state.tab, state.enhMode, state.editingId, state.editingVersionId, state.saveTitle,
+    state.saveTags, state.saveCollection, state.sourceNoteId, state.followUpOrigin]);
+  useEffect(() => {
+    if (!enabled) return undefined;
+    const flushOnExit = (event) => {
+      if (savedRef.current === latestRef.current) return;
+      const result = flushRef.current();
+      // Hosted storage acknowledges synchronously. Async extension writes must
+      // finish before an unguarded exit can be considered safe.
+      if (event.type === 'beforeunload' && result !== true) {
+        event.preventDefault();
+        event.returnValue = '';
+      }
+    };
+    const onHidden = () => { if (document.visibilityState === 'hidden') flushOnExit({ type: 'hidden' }); };
+    window.addEventListener('beforeunload', flushOnExit);
+    window.addEventListener('pagehide', flushOnExit);
+    document.addEventListener('visibilitychange', onHidden);
+    return () => {
+      window.removeEventListener('beforeunload', flushOnExit);
+      window.removeEventListener('pagehide', flushOnExit);
+      document.removeEventListener('visibilitychange', onHidden);
+    };
+  }, [enabled]);
+  return { status, retry: flush };
 }

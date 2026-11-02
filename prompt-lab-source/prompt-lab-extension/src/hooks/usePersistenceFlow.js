@@ -12,9 +12,8 @@ import { normalizeResultMeta } from '../lib/enhancementResult.js';
 import { normalizeFollowUpOrigin } from '../lib/followUpProvenance.js';
 import { linkScratchNoteToPrompt } from '../lib/sourceLink.js';
 
-function hasSharedPayloadHash() {
-  if (typeof window === 'undefined') return false;
-  return window.location.hash.startsWith('#pack=') || window.location.hash.startsWith('#share=');
+function hasSharedPayloadHash(hash = typeof window === 'undefined' ? '' : window.location.hash) {
+  return hash.startsWith('#pack=') || hash.startsWith('#share=');
 }
 
 /**
@@ -43,6 +42,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
   const [lastSaveReceipt, setLastSaveReceipt] = useState(null);
   const [showDiff, setShowDiff] = useState(false);
   const [sharedHashPending, setSharedHashPending] = useState(hasSharedPayloadHash);
+  const [sharedHash, setSharedHash] = useState(() => typeof window === 'undefined' ? '' : window.location.hash);
   const [showNewColl, setShowNewColl] = useState(false);
   const [newCollName, setNewCollName] = useState('');
   const [varVals, setVarValsState] = useState({});
@@ -53,6 +53,23 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
   const activeEntryRef = useRef(null);
   const varValsRef = useRef({});
   const sharedHashHandledRef = useRef(false);
+  const observedHashRef = useRef(sharedHash);
+  // HashRouter changes ordinary routes with history.replaceState, which does
+  // not emit hashchange. A later identical share link is still a new import.
+  const currentHash = typeof window === 'undefined' ? '' : window.location.hash;
+  if (!hasSharedPayloadHash(currentHash)) observedHashRef.current = currentHash;
+  useEffect(() => {
+    const onHashChange = () => {
+      const hash = window.location.hash;
+      if (hasSharedPayloadHash(hash) && hash === observedHashRef.current) return;
+      observedHashRef.current = hash;
+      sharedHashHandledRef.current = false;
+      setSharedHash(hash);
+      setSharedHashPending(hasSharedPayloadHash(hash));
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
   const pendingSaveRef = useRef(null);
   const saveContextRef = useRef(0);
   const editorTitleBeforeDetailsRef = useRef(null);
@@ -66,18 +83,18 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     setVarValsState(normalized);
   };
 
-  useSessionRestore({
+  const sessionRestored = useSessionRestore({
     setRaw, setEnhanced, setVariants, setNotes, setResultMeta, setTab, setEnhMode,
     setEditingId, setEditingVersionId, setSaveTitle, setSaveTags, setSaveCollection, setSourceNoteId, setFollowUpOrigin,
   });
-  useSessionSave({
+  const draftCheckpoint = useSessionSave({
     raw, enhanced, variants, notes, resultMeta, tab, enhMode,
     editingId, editingVersionId, saveTitle, saveTags, saveCollection, sourceNoteId, followUpOrigin,
-  });
+  }, sessionRestored);
 
   useEffect(() => {
-    if (sharedHashHandledRef.current) return;
-    const hash = window.location.hash;
+    if (!sessionRestored || sharedHashHandledRef.current) return;
+    const hash = sharedHash;
     if (hash.startsWith('#pack=')) {
       if (!lib.libReady) return;
       setSharedHashPending(false);
@@ -111,6 +128,21 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
       return;
     }
 
+    if (raw.trim() || enhanced.trim() || variants.length || notes.trim() || editingId) {
+      const snapshot = {
+        reason: 'shared-import',
+        editor: { raw, enhanced, variants, notes, resultMeta, enhMode, cursor: editor.cursor },
+        persistence: { editingId, editingVersionId, saveTitle, saveTags, saveCollection, changeNote, sourceNoteId, followUpOrigin },
+        resultTab: 'improved', workspaceView: 'editor',
+      };
+      if (!ui.onDisplaceDraft || ui.onDisplaceDraft(snapshot) === false) {
+        notify('Shared prompt was not loaded because the current draft could not be preserved.');
+        return;
+      }
+    }
+    clearPersistenceState();
+    setLastSaveReceipt(null);
+    setTab('editor');
     setRaw(normalized.original);
     setEnhanced(normalized.enhanced);
     setVariants(normalized.variants || []);
@@ -121,7 +153,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     setSourceNoteId(normalized.sourceNoteId || '');
     setShowSave(true);
     notify('Shared prompt loaded!');
-  }, [lib.libReady]);
+  }, [lib.libReady, sessionRestored, sharedHash, sharedHashPending]);
 
   const copy = async (text, msg = 'Copied!') => {
     const value = ensureString(text);
@@ -544,7 +576,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     lastSaveReceipt,
     dismissSaveReceipt: () => setLastSaveReceipt(null),
     showDiff, setShowDiff,
-    sharedHashPending,
+    sharedHashPending, draftCheckpoint,
     showNewColl, setShowNewColl,
     newCollName, setNewCollName,
     varVals, setVarVals,
