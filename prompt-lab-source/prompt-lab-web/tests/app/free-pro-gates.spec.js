@@ -59,7 +59,7 @@ test('Free accounts can save test cases but batch runs open the Pro dialog', asy
   await runCases.click();
   const gate = page.getByRole('dialog', { name: 'Batch runs is a Pro feature', exact: true });
   await expect(gate).toBeVisible();
-  await expect(page.getByText(/Ran \d+\/1 test cases/)).toHaveCount(0);
+  await expect(page.getByText(/Batch finished:/)).toHaveCount(0);
 });
 
 test('Free accounts see a Pro badge on locked navigation, not on free views', async ({ page }) => {
