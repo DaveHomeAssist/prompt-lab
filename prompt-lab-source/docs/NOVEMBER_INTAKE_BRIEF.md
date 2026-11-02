@@ -73,5 +73,8 @@ Recommendations remain Open, without blocking the first slice.
 - D-NOV-3 Smart groups: A (recommended) saved local filter rules, B semantic suggestions with explicit provider consent. A is deterministic and offline; B adds cost/privacy decisions.
 - D-NOV-4 Fonts: A (recommended) system sans, serif and monospace, B three bundled families. A avoids requests/dependencies; B fixes typography at a bundle cost.
 
-Next: finish N01 verification and delivery, then select the next bounded slice.
+## First slice delivery
 
+[PR308](https://github.com/DaveHomeAssist/prompt-lab/pull/308) merged as fdd0abf after all 16 checks passed on the identical application tree. The production deployment is READY and the served application carries the revision and copy control. Dominic Node 22.23.4 passed 13 focused tests, extension build and actual clipboard paste/keyboard checks at 375, 1440 and 3840 pixels, including actual light/dark switching. CI passed 1,700 shared tests, 231 legacy tests, 108 hosted browser checks with one skip, 25 landing checks, four desktop package acceptance jobs and macOS universal packaging/diagnostics. Signed-in production clipboard interaction and physical/human acceptance remain unverified; the issue stays In progress.
+
+Next: verify signed-in production copying, then select the next bounded slice.
