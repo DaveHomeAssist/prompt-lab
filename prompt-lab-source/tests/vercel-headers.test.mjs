@@ -4,7 +4,7 @@
 // simple-group sources.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
 const config = JSON.parse(readFileSync(new URL('../vercel.json', import.meta.url), 'utf8'));
 
@@ -105,9 +105,12 @@ test('hashed build assets are cached immutably, pages are not (AUD-024)', () => 
 test('/pricing and /privacy reach real content (AUD-023)', () => {
   // The privacy paths serve the policy itself (its canonical is /privacy.html),
   // never the public/privacy/ stub.
-  for (const path of ['/privacy', '/privacy/', '/privatepolicy']) {
+  for (const path of ['/privacy', '/privatepolicy']) {
     assert.deepEqual(rewriteFor(path), { source: path, destination: '/privacy.html' });
   }
+  // #307 Codex P2: under /privacy/ the policy's relative URLs (fonts, logo,
+  // nav) would resolve inside /privacy/, so that path serves the refresh stub.
+  assert.deepEqual(rewriteFor('/privacy/'), { source: '/privacy/', destination: '/privacy/index.html' });
   assert.match(stub('/privacy.html'), /<link rel="canonical" href="https:\/\/promptlab\.tools\/privacy\.html">/);
   for (const path of ['/pricing', '/pricing/']) assert.equal(rewriteFor(path)?.destination, '/go/pricing.html');
 });
@@ -121,14 +124,33 @@ test('former redirect paths get the security headers: no redirects, rewrites onl
     assert.equal(headers['strict-transport-security'], 'max-age=63072000; includeSubDomains', `${path} HSTS`);
     assert.equal(headers['x-frame-options'], 'DENY', `${path} X-Frame-Options`);
     if (rule.destination === target) continue;
-    // Destinations with a fragment or an app route use a no-script refresh page.
+    // Otherwise a no-script refresh page takes the visitor to the target.
     const html = stub(rule.destination);
-    assert.ok(html.includes(`<meta http-equiv="refresh" content="0; url=${target}">`), `${path} refreshes to ${target}`);
+    const refresh = /<meta http-equiv="refresh" content="0; url=([^"]+)">/.exec(html)?.[1];
+    const resolved = new URL(refresh, `https://promptlab.tools${path}`);
+    assert.equal(`${resolved.pathname}${resolved.hash}`, target, `${path} refreshes to ${target}`);
+    assert.doesNotMatch(html, /<script/i);
+    if (!rule.destination.startsWith('/go/')) continue;
     assert.ok(html.includes(`<a href="${target}">`), `${path} links to ${target}`);
     assert.match(html, /<meta name="robots" content="noindex,follow">/);
     assert.match(html, /<link rel="canonical" href="https:\/\/promptlab\.tools\//);
     assert.match(html, /content="default-src 'none'; base-uri 'none'; form-action 'none'"/);
-    assert.doesNotMatch(html, /<script/i);
+  }
+});
+
+test('a rewrite served under a directory path never breaks relative URLs (#307 Codex P2)', () => {
+  // Under /x/ the browser resolves relative URLs inside /x/, so the page must
+  // live in that directory (for example /x/index.html).
+  for (const rule of config.rewrites) {
+    if (!rule.source.endsWith('/') || !rule.destination.endsWith('.html')) continue;
+    // Pages generated at build time (not in public/) are left to their builders.
+    if (!existsSync(new URL(`../prompt-lab-web/public${rule.destination}`, import.meta.url))) continue;
+    const html = stub(rule.destination);
+    const relative = [...html.matchAll(/\s(?:src|href)="([^"]+)"/g)].map((m) => m[1])
+      .filter((url) => !/^(?:[a-z]+:|\/|#)/i.test(url));
+    if (!relative.length) continue;
+    assert.equal(rule.destination.slice(0, rule.destination.lastIndexOf('/') + 1), rule.source,
+      `${rule.source} serves ${rule.destination}, whose relative URLs (${relative.slice(0, 3).join(', ')}) would break`);
   }
 });
 

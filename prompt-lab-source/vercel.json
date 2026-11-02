@@ -59,7 +59,7 @@
   "rewrites": [
     { "source": "/privatepolicy", "destination": "/privacy.html" },
     { "source": "/privacy", "destination": "/privacy.html" },
-    { "source": "/privacy/", "destination": "/privacy.html" },
+    { "source": "/privacy/", "destination": "/privacy/index.html" },
     { "source": "/pricing", "destination": "/go/pricing.html" },
     { "source": "/pricing/", "destination": "/go/pricing.html" },
     { "source": "/login", "destination": "/go/app.html" },
