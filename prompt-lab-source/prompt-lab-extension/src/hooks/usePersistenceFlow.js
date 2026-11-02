@@ -66,17 +66,17 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     setVarValsState(normalized);
   };
 
-  useSessionRestore({
+  const sessionRestored = useSessionRestore({
     setRaw, setEnhanced, setVariants, setNotes, setResultMeta, setTab, setEnhMode,
     setEditingId, setEditingVersionId, setSaveTitle, setSaveTags, setSaveCollection, setSourceNoteId, setFollowUpOrigin,
   });
-  useSessionSave({
+  const draftCheckpoint = useSessionSave({
     raw, enhanced, variants, notes, resultMeta, tab, enhMode,
     editingId, editingVersionId, saveTitle, saveTags, saveCollection, sourceNoteId, followUpOrigin,
-  });
+  }, sessionRestored);
 
   useEffect(() => {
-    if (sharedHashHandledRef.current) return;
+    if (!sessionRestored || sharedHashHandledRef.current) return;
     const hash = window.location.hash;
     if (hash.startsWith('#pack=')) {
       if (!lib.libReady) return;
@@ -111,6 +111,21 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
       return;
     }
 
+    if (raw.trim() || enhanced.trim() || variants.length || notes.trim() || editingId) {
+      const snapshot = {
+        reason: 'shared-import',
+        editor: { raw, enhanced, variants, notes, resultMeta, enhMode, cursor: editor.cursor },
+        persistence: { editingId, editingVersionId, saveTitle, saveTags, saveCollection, changeNote, sourceNoteId, followUpOrigin },
+        resultTab: 'improved', workspaceView: 'editor',
+      };
+      if (!ui.onDisplaceDraft || ui.onDisplaceDraft(snapshot) === false) {
+        notify('Shared prompt was not loaded because the current draft could not be preserved.');
+        return;
+      }
+    }
+    clearPersistenceState();
+    setLastSaveReceipt(null);
+    setTab('editor');
     setRaw(normalized.original);
     setEnhanced(normalized.enhanced);
     setVariants(normalized.variants || []);
@@ -121,7 +136,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     setSourceNoteId(normalized.sourceNoteId || '');
     setShowSave(true);
     notify('Shared prompt loaded!');
-  }, [lib.libReady]);
+  }, [lib.libReady, sessionRestored]);
 
   const copy = async (text, msg = 'Copied!') => {
     const value = ensureString(text);
@@ -544,7 +559,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     lastSaveReceipt,
     dismissSaveReceipt: () => setLastSaveReceipt(null),
     showDiff, setShowDiff,
-    sharedHashPending,
+    sharedHashPending, draftCheckpoint,
     showNewColl, setShowNewColl,
     newCollName, setNewCollName,
     varVals, setVarVals,

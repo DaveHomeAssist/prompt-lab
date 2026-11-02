@@ -36,6 +36,7 @@ const {
   checkTraits: vi.fn(() => ({ passedTraits: [], failedTraits: [], excludedHits: [], verdict: null })),
 }));
 
+const testCasesByPrompt = {};
 const refreshEvalRuns = vi.fn(() => Promise.resolve());
 const setShowEvalHistory = vi.fn();
 
@@ -77,7 +78,7 @@ vi.mock('../hooks/useEvalRuns.js', () => ({
 
 vi.mock('../hooks/useTestCases.js', () => ({
   default: () => ({
-    testCasesByPrompt: {},
+    testCasesByPrompt,
     caseFormPromptId: null,
     editingCaseId: null,
     caseTitle: '',
@@ -105,6 +106,7 @@ function renderExecutionFlow({
   notes = '',
   editingId = 'entry-1',
   saveTitle = 'Existing Prompt',
+  recordSuiteResult = vi.fn(),
   library = [{ id: 'entry-1', goldenResponse: { text: 'Golden baseline' } }],
 } = {}) {
   const notify = vi.fn();
@@ -123,7 +125,7 @@ function renderExecutionFlow({
 
     const flow = useExecutionFlow({
       ui: { notify, setTab, tab: 'editor' },
-      lib: { library },
+      lib: { library, recordSuiteResult },
       editor: {
         raw: rawState,
         enhanced: enhancedState,
@@ -181,6 +183,7 @@ describe('useExecutionFlow', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    for (const key of Object.keys(testCasesByPrompt)) delete testCasesByPrompt[key];
     parseEnhancedPayload.mockImplementation((text) => ({
       enhanced: text,
       variants: [],
@@ -207,6 +210,38 @@ describe('useExecutionFlow', () => {
       text: 'Enhanced output',
     });
     scanSensitiveData.mockReturnValue({ matches: [], settings: {} });
+  });
+
+  it('stops an active batch, ignores late success, retains earlier results and releases the run gate', async () => {
+    testCasesByPrompt['entry-1'] = [1, 2, 3].map(n => ({ id: `case-${n}`, promptId: 'entry-1', title: `Case ${n}`, input: `Input ${n}` }));
+    const second = createDeferred();
+    callModel.mockResolvedValueOnce({ text: 'First result', provider: 'fixture', model: 'selected-model' }).mockReturnValueOnce(second.promise);
+    const recordSuiteResult = vi.fn();
+    const { result, notify } = renderExecutionFlow({ recordSuiteResult });
+    let running;
+    act(() => { running = result.current.runAllCases(); });
+    await waitFor(() => expect(callModel).toHaveBeenCalledTimes(2));
+    const signal = callModel.mock.calls[1][1].signal;
+    act(() => result.current.cancelBatch());
+    expect(signal.aborted).toBe(true);
+    await act(async () => { second.resolve({ text: 'Late result' }); await running; });
+    expect(callModel).toHaveBeenCalledTimes(2);
+    expect(savedRuns).toHaveLength(2);
+    expect(savedRuns[0]).toMatchObject({ output: 'First result', model: 'selected-model' });
+    expect(savedRuns[1]).toMatchObject({ status: 'canceled', testCaseId: 'case-2', model: 'claude-haiku-5-5' });
+    expect(result.current.batchProgress).toMatchObject({ active: false, status: 'cancelled', completed: 1, total: 3 });
+    expect(recordSuiteResult).toHaveBeenCalledWith('entry-1', expect.objectContaining({ status: 'canceled', verdict: null, completed: 1, total: 3 }));
+    expect(notify).toHaveBeenCalledWith('Batch stopped: 1/3 completed, 0 failed.');
+  });
+
+  it('releases the batch gate and shows interruption if history refresh fails', async () => {
+    testCasesByPrompt['entry-1'] = [{ id: 'case-1', promptId: 'entry-1', title: 'Case', input: 'Input' }];
+    refreshEvalRuns.mockRejectedValueOnce(new Error('Refresh unavailable'));
+    const { result } = renderExecutionFlow();
+    await act(async () => { await result.current.runAllCases(); });
+    expect(result.current.batchProgress).toMatchObject({ active: false, status: 'failed', completed: 1 });
+    await act(async () => { await result.current.runAllCases(); });
+    expect(callModel).toHaveBeenCalledTimes(2);
   });
 
   it.each(['Custom name', ''])('preserves the latest title when refinement completes (initial=%s)', async initialTitle => {

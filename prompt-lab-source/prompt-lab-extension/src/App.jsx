@@ -114,8 +114,10 @@ function persistDraftRecovery(snapshot) {
     } else {
       window.sessionStorage.removeItem(DRAFT_RECOVERY_STORAGE_KEY);
     }
+    return true;
   } catch (_error) {
-    // Recovery still works for the active page when session storage is unavailable.
+    // Other recovery actions can retain their active-page snapshot.
+    return false;
   }
 }
 
@@ -263,6 +265,11 @@ export default function App({
     ui: {
       ...ui,
       setABVariant: (side, promptText) => abTest.loadVariant(side, promptText),
+      onDisplaceDraft: (snapshot) => {
+        if (!persistDraftRecovery(snapshot)) return false;
+        setDraftRecovery(snapshot);
+        return true;
+      },
     },
     lib,
     editor: editorState,
@@ -312,7 +319,7 @@ export default function App({
     caseTraits, setCaseTraits, caseExclusions, setCaseExclusions,
     caseNotes, setCaseNotes, runningCases,
     openCaseForm, resetCaseForm, saveCaseForPrompt, removeCase,
-    loadCaseIntoEditor, runSingleCase, runAllCases,
+    loadCaseIntoEditor, runSingleCase, runAllCases, cancelBatch,
     showNewColl, setShowNewColl, newCollName, setNewCollName,
     varVals, setVarVals, showVarForm, setShowVarForm, pendingTemplate, applyTemplate, skipTemplate,
     editorLayout, setEditorLayout,
@@ -634,7 +641,7 @@ export default function App({
       .filter((input) => input && typeof input === 'object' && typeof input.key === 'string')
       .map((input) => [input.key, input])
   );
-  const recoveryActionLabel = draftRecovery?.reason === 'composer-handoff' ? 'Restore previous draft' : draftRecovery?.reason === 'discard-result'
+  const recoveryActionLabel = ['shared-import', 'composer-handoff'].includes(draftRecovery?.reason) ? 'Restore previous draft' : draftRecovery?.reason === 'discard-result'
     ? 'Restore discarded result'
     : draftRecovery?.reason === 'navigation'
       ? 'Restore previous draft'
@@ -1193,6 +1200,18 @@ export default function App({
       />
 
       <PendingWritesNotice m={m} />
+      {persistenceFlow.draftCheckpoint?.status === 'failed' && (
+        <aside role="alert" className={`flex flex-wrap items-center justify-between gap-2 border-b px-4 py-2 ${m.surface} ${m.border}`}>
+          <span>Draft recovery could not be saved. Keep this tab open and retry before leaving.</span>
+          <button type="button" onClick={() => persistenceFlow.draftCheckpoint.retry()}>Retry draft recovery</button>
+        </aside>
+      )}
+      {(batchProgress.active || batchProgress.status === 'cancelled' || batchProgress.status === 'failed') && (
+        <aside role="status" className={`flex flex-wrap items-center justify-between gap-2 border-b px-4 py-2 ${m.surface} ${m.border}`}>
+          <span>{batchProgress.active ? 'Running test cases' : batchProgress.status === 'cancelled' ? 'Batch stopped' : 'Batch interrupted'}: {batchProgress.completed}/{batchProgress.total} completed. {batchProgress.failed || 0} failed. {batchProgress.active ? '' : 'Completed results remain in run history.'}</span>
+          {batchProgress.active && <button type="button" onClick={cancelBatch}>Stop batch</button>}
+        </aside>
+      )}
 
       {telemetryConsentPending && !telemetryPromptDeferred && (
         <div className={`pl-consent-bar ${m.surface} ${m.border} border-b px-4 py-3`} data-telemetry-consent role="region" aria-label="Usage analytics">

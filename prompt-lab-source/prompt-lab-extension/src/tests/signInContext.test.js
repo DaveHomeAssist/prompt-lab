@@ -38,6 +38,20 @@ describe('signed-out sign-in context (AUD-006)', () => {
     expect(urls.signUpFallbackRedirectUrl).toBe('https://promptlab.tools/app/');
   });
 
+  it.each(['#/library', '#/compare', '#/split/write', '#/settings', '#share=eyJvcmlnaW5hbCI6ImhpIn0=', '#pack=YWJj'])('preserves a validated incoming destination for sign in and sign up: %s', hash => {
+    const urls = buildAuthRedirectUrls(`https://promptlab.tools/app/?stale=1${hash}`, null);
+    expect(urls.fallbackRedirectUrl).toBe(`https://promptlab.tools/app/${hash}`);
+    expect(urls.signUpFallbackRedirectUrl).toBe(urls.fallbackRedirectUrl);
+  });
+
+  it('normalizes path deep links and rejects unsafe fragments and protocols', () => {
+    expect(buildAuthRedirectUrls('https://promptlab.tools/app/library', null).fallbackRedirectUrl).toBe('https://promptlab.tools/app/#/library');
+    for (const hash of ['#//evil.example', '#/unknown', '#share=<script>', '#https://evil.example']) {
+      expect(buildAuthRedirectUrls(`https://promptlab.tools/app/${hash}`, null).fallbackRedirectUrl).toBe('https://promptlab.tools/app/');
+    }
+    expect(buildAuthRedirectUrls('javascript:alert(1)', null).fallbackRedirectUrl).toBeUndefined();
+  });
+
   it('keeps a Stripe return outcome through the sign-in redirect', () => {
     const success = buildAuthRedirectUrls('https://promptlab.tools/app/?billing=success&stale=1', null);
     expect(success.forceRedirectUrl).toBeUndefined();

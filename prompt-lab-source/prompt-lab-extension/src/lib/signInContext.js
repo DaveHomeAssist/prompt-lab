@@ -7,6 +7,23 @@
 import { buildLandingIntentRedirectUrl, normalizeLandingIntent } from './landingAttribution.js';
 import { PRICE_COPY } from '../../../shared/pricing.js';
 import { parseBillingReturn } from './billingReturn.js';
+import { resolveRouteState } from './navigationRegistry.js';
+import { appPathToHashUrl } from './appPathRoute.js';
+
+function validatedAppUrl(href) {
+  const source = new URL(String(href));
+  if (!['https:', 'http:'].includes(source.protocol) || source.username || source.password) throw new Error('Invalid app URL');
+  const mapped = appPathToHashUrl(source);
+  const url = mapped ? new URL(mapped, source.origin) : source;
+  const hash = url.hash;
+  let decodedHash = '';
+  try { decodedHash = decodeURIComponent(hash); } catch { /* Malformed fragment. */ }
+  const knownRoute = hash.startsWith('#/') && (Boolean(resolveRouteState(hash.slice(1))) || hash === '#/create');
+  const sharedPayload = /^#(?:share|pack)=[A-Za-z0-9+/=_-]+$/.test(decodedHash);
+  url.pathname = '/app/';
+  url.hash = knownRoute || sharedPayload ? hash : '';
+  return url;
+}
 
 const PLAN_COPY = {
   monthly: `the monthly plan (${PRICE_COPY.monthlyPerPeriod})`,
@@ -36,12 +53,13 @@ export function buildSignInContext(intent) {
 export function buildAuthRedirectUrls(href, intent) {
   let appUrl = '';
   try {
-    const url = new URL(String(href));
-    appUrl = `${url.origin}${url.pathname}`;
+    const url = validatedAppUrl(href);
+    appUrl = `${url.origin}${url.pathname}${url.hash}`;
   } catch {
     appUrl = '';
   }
-  let intentUrl = buildLandingIntentRedirectUrl(href, intent);
+  let intentUrl = '';
+  try { intentUrl = buildLandingIntentRedirectUrl(validatedAppUrl(href).toString(), intent); } catch { /* Invalid destinations stay unset. */ }
   // A Stripe return (?billing=success|cancelled) can land on the sign-in card
   // when the Clerk session expired during Checkout. Keep the recognized outcome
   // through the sign-in redirect so useBillingState still confirms it.

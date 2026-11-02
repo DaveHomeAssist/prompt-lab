@@ -20,6 +20,12 @@
       "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/41031608352"
     },
     {
+      "label": "Screenflow repair candidate",
+      "state": "Running",
+      "detail": "SF-01 through SF-04 are implemented on codex/screenflow-journey-fixes. Dominic Node 22: first full suite 1539 tests across 135 files, 231 legacy tests and extension build pass. Final focused tests 55 pass. Regression tests fail against the original source. Browser verification, exact-head CI, merge, deployment and live acceptance remain pending. Four scoped Issue Backlog records were created and read back; unrelated records retained.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/tree/codex/screenflow-journey-fixes"
+    },
+    {
       "label": "Artwork pins and Write recovery live",
       "state": "Verified",
       "detail": "October30 PR272 merged 6582ca603fe69dfa8c531667c55dccde626775e7 after all15 candidate checks passed on839b90d; source tree identical. Production dpl_5bzrouVWYFd6x83VSdEU5n6gwQtj READY at exact merge and alias verified. Signed-in production41018127500 passed4/4 at375/1440px, including pin/remove without changing assigned artwork, Write thumbnails and empty-search recovery. Dominic45 focused,14 artwork,16 Write and one additional uploaded-image pin/reuse/removal case passed; the image was uploaded once and saved artwork survived cache removal/reload. CI1525 shared/134files,231 legacy,102 hosted with one existing skip,25 landing and all six desktop jobs passed. Existing12-choice/256KiB cache remains local; pins survive Clear. No model inference or purchases. Next: reload PromptLab and use the new artwork controls.",
@@ -1542,7 +1548,7 @@
     {
       "inPlan": false,
       "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this snapshot.",
+      "verification": "SF-01 through SF-04 repair candidate. Focused tests and release verification in progress.",
       "id": "409255fc8f4481e78dfff5b0abd252e8",
       "title": "SF-01 Preserve shared prompt identity and displaced draft",
       "status": "In progress",
@@ -1554,7 +1560,7 @@
     {
       "inPlan": false,
       "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this snapshot.",
+      "verification": "SF-01 through SF-04 repair candidate. Focused tests and release verification in progress.",
       "id": "409255fc8f4481349b10d5ccdc40e13c",
       "title": "SF-02 Preserve incoming authentication destinations",
       "status": "In progress",
@@ -1566,7 +1572,7 @@
     {
       "inPlan": false,
       "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this snapshot.",
+      "verification": "SF-01 through SF-04 repair candidate. Focused tests and release verification in progress.",
       "id": "409255fc8f448189a6c6e63df67e8155",
       "title": "SF-03 Cancel test case batches with partial completion",
       "status": "In progress",
@@ -1578,7 +1584,7 @@
     {
       "inPlan": false,
       "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this snapshot.",
+      "verification": "SF-01 through SF-04 repair candidate. Focused tests and release verification in progress.",
       "id": "409255fc8f44816b9c0ac1cb28ae0c80",
       "title": "SF-04 Recover draft checkpoints across exit and storage failure",
       "status": "In progress",
