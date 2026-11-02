@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-11-02T10:16:47.808Z",
+  "snapshotAt": "2026-11-02T11:01:51.964Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "b4f08abe76dce712c47cd4a829c9a6437e5d2613",
+  "mainSha": "b4349f14941537f217207a64342104c78c596b23",
   "overall": "Acceptance incomplete",
-  "nextAction": "Deliver and live verify contextual Chat beside Write. Copy code signed-in production acceptance is complete. Other November items and existing platform/billing acceptance remain with their owning records.",
+  "nextAction": "Continue N03 bulk icon/tag/metadata editing from the prepared allowlist, preview and acknowledged-write contract. N01 Copy code and N02 contextual Chat are accepted. Other November and independent storage/billing/native/human gates remain with their owning records.",
   "evidence": [
+    {
+      "label": "Contextual Chat live acceptance",
+      "state": "Verified",
+      "detail": "November2: PR310 mergedb4349f14941537f217207a64342104c78c596b23 after all16 checks passed on5ffc4ad. Productiondpl_2zeKfSwxx4M2P5j1NoNDco1n64e4 READY exact merge and alias verified. Visible signed-in Owner Pro acceptance: two actual claude-sonnet-4-6 turns (91 input/7 output and132 input/15 output tokens), no call on open, unchecked context excludes original draft, follow-up user/assistant/user envelope, Copy code/Copy reply, close/reopen, explicit new-prompt handoff and Undo. Original draft/editing context restored exactly and survive reload; Library unchanged. Live375x812,1440x900,3840x1080: no page overflow, message/Send visible. Viewport reset and network observation disabled. Interrupted automation lost earlier clipboard backup; exact earlier restoration unverified, resumed empty clipboard restored/read back. No extra provider calls or settings changes. CI1713 shared/149files,231 legacy,110 hosted/one existing skip,25 landing and all6 Desktop jobs (MSI/NSIS/DEB/AppImage, macOS universal diagnostics) pass. Dominic25 focused,3 packaged and2 hosted flows plus build/docs pass. N01/N02 Done; N03 preparation recorded without implementation or sprint expansion. Complete104-row snapshot preserves14 sprint IDs. Broader installed upgrades, signing and human acceptance remain separate. Exact-main redundant workflows are tracked separately from passed candidate gates.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/310"
+    },
     {
       "label": "Signed-in Copy code acceptance and contextual chat candidate",
       "state": "Running",
@@ -1824,14 +1830,14 @@
     {
       "id": "40c255fc8f44816e8a27e0a1b10c6ee6",
       "title": "Chat with AI inside Prompt Lab",
-      "status": "In progress",
+      "status": "Done",
       "severity": "Medium",
       "area": "Editor",
       "type": "Feature",
       "url": "https://app.notion.com/40c255fc8f44816e8a27e0a1b10c6ee6",
       "inPlan": false,
-      "nextAction": "Finish regression and hosted browser checks, pass candidate CI, merge, deploy and verify signed-in production chat.",
-      "verification": "Dominic Node22:25 focused,1713 shared/149files,231 legacy, extension build,3 packaged browser flows and2 hosted chat flows pass. Candidate CI, merge, deployment and live chat acceptance pending."
+      "nextAction": "Retain the contextual chat regressions; continue N03 bulk editing.",
+      "verification": "PR310 merged b4349f1 after16 passing checks. Exact production deployment READY; signed-in two-turn Sonnet4.6 chat, excluded original context, clipboard copy, close/reopen, handoff/Undo and original draft after reload passed. Library unchanged. Three live viewport checks pass. Earlier clipboard backup lost on interruption; resumed empty clipboard restored. Broader installed/human acceptance separate."
     },
     {
       "id": "40c255fc8f44818b844ece5f2cd6336c",
@@ -1878,8 +1884,8 @@
       "type": "Feature",
       "url": "https://app.notion.com/40c255fc8f4481aeb3c9e2dce700ed1c",
       "inPlan": false,
-      "nextAction": "Scope the requested slice using the November intake brief.",
-      "verification": "Notion row read back; implementation acceptance pending."
+      "nextAction": "Define the existing-field patch allowlist, mixed-value preview and acknowledged apply with fresh-version validation; then implement the smallest N03 operation.",
+      "verification": "Source preparation recorded/read back. Existing bulk selection and Add tag confirmed. Icon assignment, tag removal and metadata preview/apply remain unimplemented; status Not started."
     },
     {
       "id": "40c255fc8f4481c9a715e8b5f7ffd58c",
