@@ -236,6 +236,21 @@ describe('useExecutionFlow', () => {
     expect(notify).toHaveBeenCalledWith('Batch stopped: 1/3 completed, 0 failed.');
   });
 
+  it('stops remaining batch requests when the editor is reset', async () => {
+    testCasesByPrompt['entry-1'] = [1, 2].map(n => ({ id: `case-${n}`, promptId: 'entry-1', title: `Case ${n}`, input: `Input ${n}` }));
+    const pending = createDeferred();
+    callModel.mockReturnValueOnce(pending.promise);
+    const { result } = renderExecutionFlow();
+    let running;
+    act(() => { running = result.current.runAllCases(); });
+    await waitFor(() => expect(callModel).toHaveBeenCalledTimes(1));
+    act(() => result.current.clearExecutionState());
+    expect(callModel.mock.calls[0][1].signal.aborted).toBe(true);
+    await act(async () => { pending.resolve({ text: 'Late result' }); await running; });
+    expect(callModel).toHaveBeenCalledTimes(1);
+    expect(result.current.batchProgress).toMatchObject({ active: false, status: 'cancelled', completed: 0, total: 2 });
+  });
+
   it('does not replace a newly opened prompt history when an older batch finishes', async () => {
     testCasesByPrompt['entry-1'] = [{ id: 'case-1', promptId: 'entry-1', title: 'Case', input: 'Input' }];
     const pending = createDeferred();

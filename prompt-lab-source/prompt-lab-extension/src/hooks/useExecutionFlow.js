@@ -431,6 +431,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
     return executeCases(cases, editingId, saveTitle || suggestTitleFromText(enhanced || raw), true);
   };
   const clearExecutionState = () => {
+    batchAbortRef.current?.abort();
     enhanceReqRef.current += 1;
     enhanceInFlightRef.current = false;
     enhanceAbortRef.current?.abort();
