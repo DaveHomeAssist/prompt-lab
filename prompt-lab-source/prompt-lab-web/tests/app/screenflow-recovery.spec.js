@@ -57,6 +57,7 @@ for (const [width, height] of [[1440, 900], [375, 812]]) {
     await page.evaluate(() => { window.failDraftCheckpoint = true; });
     await input.fill('Retain this draft after storage failure.');
     await expect(page.getByRole('alert').filter({ hasText: 'Draft recovery could not be saved' })).toBeVisible();
+    expect(await page.evaluate(() => ({ x: document.documentElement.scrollWidth > document.documentElement.clientWidth, y: document.documentElement.scrollHeight > document.documentElement.clientHeight }))).toEqual({ x: false, y: false });
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem('pl2-session-pl2-session')).raw)).toBe('Latest edit before immediate refresh.');
     expect(await page.evaluate(() => { const event = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(event); return event.defaultPrevented; })).toBe(true);
     await page.evaluate(() => { window.failDraftCheckpoint = false; });
@@ -104,6 +105,7 @@ for (const width of [1440, 375]) {
     releaseSecond();
     await expect(page.locator('aside[role="status"]').filter({ hasText: 'Batch stopped: 1/3 completed' })).toBeVisible();
     expect(requests).toBe(2);
+    expect(await page.evaluate(() => ({ x: document.documentElement.scrollWidth > document.documentElement.clientWidth, y: document.documentElement.scrollHeight > document.documentElement.clientHeight }))).toEqual({ x: false, y: false });
     const rows = await page.evaluate(async () => {
       const db = await new Promise(resolve => { const req = indexedDB.open('prompt_lab_local', 4); req.onsuccess = () => resolve(req.result); });
       return new Promise(resolve => { const req = db.transaction('eval_runs').objectStore('eval_runs').getAll(); req.onsuccess = () => { db.close(); resolve(req.result); }; });
