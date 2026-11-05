@@ -110,9 +110,55 @@ test('/pricing and /privacy reach real content (AUD-023)', () => {
   }
   // #307 Codex P2: under /privacy/ the policy's relative URLs (fonts, logo,
   // nav) would resolve inside /privacy/, so that path serves the refresh stub.
-  assert.deepEqual(rewriteFor('/privacy/'), { source: '/privacy/', destination: '/privacy/index.html' });
+  // R-41: the stub is refresh.html, not index.html. An index.html in that
+  // directory is also the filesystem match for /privacy (no trailing slash).
+  assert.deepEqual(rewriteFor('/privacy/'), { source: '/privacy/', destination: '/privacy/refresh.html' });
   assert.match(stub('/privacy.html'), /<link rel="canonical" href="https:\/\/promptlab\.tools\/privacy\.html">/);
   for (const path of ['/pricing', '/pricing/']) assert.equal(rewriteFor(path)?.destination, '/go/pricing.html');
+});
+
+// routing-utils getTransformedRoutes appends rewrites after `handle: filesystem`.
+// With trailingSlash left unset, Vercel serves <path>/index.html for both
+// /path and /path/. public/privacy/index.html was that file, so /privacy
+// returned the refresh stub (Fire Watch R-41) and the rewrite to /privacy.html
+// never ran. /privacy/ still rewrites to the stub: the full policy's relative
+// URLs would break under that slash (#307 Codex P2).
+function directoryIndex(path) {
+  const bare = path.endsWith('/') ? path.slice(0, -1) : path;
+  const index = new URL(`../prompt-lab-web/public${bare}/index.html`, import.meta.url);
+  return existsSync(index) ? `${bare}/index.html` : null;
+}
+
+function served(path) {
+  const index = directoryIndex(path);
+  if (index) return { via: 'filesystem', file: index };
+  const rule = rewriteFor(path);
+  assert.ok(rule, `${path} has a rewrite`);
+  return { via: 'rewrite', file: rule.destination };
+}
+
+test('/privacy serves the full policy; /privacy/ stays the refresh stub (R-41)', () => {
+  assert.equal(config.cleanUrls, undefined, 'cleanUrls would serve privacy.html at /privacy and redirect /privacy.html away');
+  assert.equal(config.trailingSlash, undefined, 'trailingSlash would redirect /privacy or /privacy/ before the rewrite');
+  assert.equal(directoryIndex('/privacy'), null, 'public/privacy/index.html is served for /privacy ahead of the rewrite');
+
+  const privacy = served('/privacy');
+  assert.deepEqual(privacy, { via: 'rewrite', file: '/privacy.html' });
+  const policy = stub(privacy.file);
+  assert.match(policy, /<h1>Privacy Policy<\/h1>/);
+  assert.match(policy, /Local-First Architecture/);
+  assert.match(policy, /Prompt Lab pages do not load Vercel Web Analytics or Vercel Speed Insights\./);
+  assert.doesNotMatch(policy, /http-equiv="refresh"/);
+
+  const slashed = served('/privacy/');
+  assert.deepEqual(slashed, { via: 'rewrite', file: '/privacy/refresh.html' });
+  const refresh = stub(slashed.file);
+  assert.match(refresh, /http-equiv="refresh" content="0; url=\.\.\/privacy\.html"/);
+  assert.match(refresh, /<a href="\.\.\/privacy\.html">/);
+  assert.doesNotMatch(refresh, /<h1>Privacy Policy<\/h1>/);
+
+  assert.equal(directoryIndex('/privatepolicy'), null);
+  assert.deepEqual(served('/privatepolicy'), { via: 'rewrite', file: '/privacy.html' });
 });
 
 test('former redirect paths get the security headers: no redirects, rewrites only (R-39)', () => {

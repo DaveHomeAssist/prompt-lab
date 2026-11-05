@@ -184,7 +184,11 @@ ${privacyRedirectMeta}
 async function writePrivacyPrettyRoute() {
   // The landing footer and CWS listing link to /privacy (no .html); GitHub
   // Pages serves directories, so publish a redirecting index alongside the
-  // canonical privacy.html.
+  // canonical privacy.html. This docs/ copy is Pages-only. Do not add
+  // prompt-lab-web/public/privacy/index.html: Vite copies public/ into the
+  // Vercel output, and that index is the filesystem match for /privacy, which
+  // runs before the rewrite to /privacy.html. The hosted /privacy/ stub is
+  // public/privacy/refresh.html.
   const privacyDir = join(docsDir, 'privacy');
   await mkdir(privacyDir, { recursive: true });
   await writeFile(

@@ -11,7 +11,7 @@ const landingHtml = readFileSync(join(webDir, 'index.html'), 'utf8');
 const guideHtml = readFileSync(join(webDir, 'public', 'guide.html'), 'utf8');
 const setupHtml = readFileSync(join(webDir, 'public', 'setup.html'), 'utf8');
 const privacyHtml = readFileSync(join(webDir, 'public', 'privacy.html'), 'utf8');
-const privacyRedirectHtml = readFileSync(join(webDir, 'public', 'privacy', 'index.html'), 'utf8');
+const privacyRedirectHtml = readFileSync(join(webDir, 'public', 'privacy', 'refresh.html'), 'utf8');
 const termsHtml = readFileSync(join(webDir, 'public', 'terms.html'), 'utf8');
 
 function escapeRegExp(value) {
@@ -272,9 +272,14 @@ test('landing conversion controls have unique stable analytics identifiers', () 
     'landing.surface.web',
   ]);
 
-  const privacyCta = landingHtml.match(/<a\b[^>]*href=["']\/privacy["'][^>]*>/i)?.[0];
+  // /privacy.html is the static policy file. A bare /privacy link is a directory
+  // in the Vite output (dist/privacy), and lychee requires an index.html there.
+  // That index would also be Vercel's filesystem match for /privacy, ahead of
+  // the rewrite to the policy. The rewrite still serves /privacy for other callers.
+  const privacyCta = landingHtml.match(/<a\b[^>]*href=["']\/privacy\.html["'][^>]*>/i)?.[0];
   assert.ok(privacyCta, 'Expected the privacy policy CTA');
   assert.equal(attributeValue(privacyCta, 'data-analytics-id'), 'landing.privacy.open_policy');
+  assert.doesNotMatch(landingHtml, /href=["']\/privacy\/?["']/);
 });
 
 test('landing task links resolve to canonical guide and setup headings', () => {
