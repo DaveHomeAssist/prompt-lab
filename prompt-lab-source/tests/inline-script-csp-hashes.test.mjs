@@ -66,7 +66,7 @@ test('inline event-handler attributes fail the build', () => {
 // R-36 (re-review 9): static legal pages in public/ are copied as is (the build
 // plugin skips them). They have no inline scripts, so script-src needs no
 // 'unsafe-inline'.
-for (const page of ['public/privacy.html', 'public/terms.html', 'public/privacy/index.html']) {
+for (const page of ['public/privacy.html', 'public/terms.html', 'public/privacy/refresh.html']) {
   test(`${page}: no inline scripts and no script-src 'unsafe-inline'`, () => {
     const html = read(page);
     const directive = scriptSrc(html);

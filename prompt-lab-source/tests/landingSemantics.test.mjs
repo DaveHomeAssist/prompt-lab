@@ -11,7 +11,7 @@ const landingHtml = readFileSync(join(webDir, 'index.html'), 'utf8');
 const guideHtml = readFileSync(join(webDir, 'public', 'guide.html'), 'utf8');
 const setupHtml = readFileSync(join(webDir, 'public', 'setup.html'), 'utf8');
 const privacyHtml = readFileSync(join(webDir, 'public', 'privacy.html'), 'utf8');
-const privacyRedirectHtml = readFileSync(join(webDir, 'public', 'privacy', 'index.html'), 'utf8');
+const privacyRedirectHtml = readFileSync(join(webDir, 'public', 'privacy', 'refresh.html'), 'utf8');
 const termsHtml = readFileSync(join(webDir, 'public', 'terms.html'), 'utf8');
 
 function escapeRegExp(value) {
