@@ -7,19 +7,26 @@ import test from 'node:test';
 // and anything else gets an app-styled 404 with links back into Prompt Lab.
 const read = (rel) => readFile(new URL(rel, import.meta.url), 'utf8');
 const vercel = JSON.parse(await read('../vercel.json'));
-const redirect = (source) => vercel.redirects.find((entry) => entry.source === source);
 const rewrite = (source) => vercel.rewrites.find((entry) => entry.source === source);
+// R-39: these are rewrites to no-script refresh pages, not redirects, so they
+// get the project's security headers (see vercel-headers.test.mjs).
+const refreshTarget = async (source) => {
+  const page = rewrite(source)?.destination;
+  assert.ok(page, `${source} needs a rewrite`);
+  const html = await read(`../prompt-lab-web/public${page}`);
+  return /<meta http-equiv="refresh" content="0; url=([^"]+)">/.exec(html)?.[1];
+};
 
-test('sign-in style addresses go to the app (which shows sign-in when signed out)', () => {
+test('sign-in style addresses go to the app (which shows sign-in when signed out)', async () => {
   for (const source of ['/login', '/signin', '/sign-in', '/signup', '/sign-up']) {
-    assert.equal(redirect(source)?.destination, '/app/', `${source} must redirect to /app/`);
-    assert.equal(redirect(source).permanent, false);
+    assert.equal(await refreshTarget(source), '/app/', `${source} must go to /app/`);
   }
 });
 
-test('/settings and /account open the matching dialog route in the app', () => {
-  assert.equal(redirect('/settings')?.destination, '/app/settings');
-  assert.equal(redirect('/account')?.destination, '/app/account');
+test('/settings and /account open the matching dialog route in the app', async () => {
+  // The hash routes the app makes of /app/settings and /app/account.
+  assert.equal(await refreshTarget('/settings'), '/app/#/settings');
+  assert.equal(await refreshTarget('/account'), '/app/#/account');
 });
 
 test('a branded 404 page links back into Prompt Lab', async () => {

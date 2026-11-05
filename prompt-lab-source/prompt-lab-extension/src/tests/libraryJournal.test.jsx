@@ -2,7 +2,7 @@ import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import usePromptLibrary from '../hooks/usePromptLibrary.js';
 import { saveJson, storageKeys } from '../lib/storage.js';
-import { LIBRARY_DELETED_PREFIX, filterDeletedLibraryRecords, markLibraryCleared, markLibraryDeleted, readLibraryDeletionState } from '../lib/libraryDeletion.js';
+import { CLEAR_MARKER_IDS_KEPT, LIBRARY_DELETED_PREFIX, filterDeletedLibraryRecords, markLibraryCleared, markLibraryDeleted, readLibraryDeletionState } from '../lib/libraryDeletion.js';
 import { createSyncEngine, queueKey, stateKey } from '../lib/sync/syncEngine.js';
 import { notifyLocalWrite } from '../lib/storage.js';
 import { startSettingsJournal } from '../lib/settingsJournal.js';
@@ -713,6 +713,8 @@ describe('re-review 8: failed-boot merge', () => {
 
 // Fire Watch re-review 9 probes C2, C3 (R-34) and D3 (R-35) as tests.
 describe('re-review 9: failed-boot merge without clock trust', () => {
+  // Marker ids are written on desktop only (R-38).
+  beforeEach(() => { window.__TAURI_INTERNALS__ = {}; vi.stubGlobal('indexedDB', idb); });
   const row = (id, updatedAt = '2026-11-01T10:00:00.000Z', extra = {}) => ({ id, title: id, updatedAt, ...extra });
   const stopAll = () => { for (const stop of stops.splice(0)) stop(); };
   const visible = (key) => filterDeletedLibraryRecords(JSON.parse(localStorage.getItem(key) || '[]'), readLibraryDeletionState(localStorage)).map(r => r.id);
@@ -797,6 +799,63 @@ describe('re-review 9: failed-boot merge without clock trust', () => {
     expect(localStorage.getItem(LIBRARY_JOURNAL_REMOVED_KEY)).toBeNull();
     await boot();
     expect(JSON.parse(localStorage.getItem(storageKeys.collections))).toEqual(['Work']);
+  });
+});
+
+// Fire Watch re-review 10, R-38: Clear-marker id lists are bounded.
+describe('re-review 10: Clear marker ids (R-38)', () => {
+  const stopAll = () => { for (const stop of stops.splice(0)) stop(); };
+  const failBoot = async () => { idb.state.openDelayMs = 80; const started = await boot({ timeoutMs: 10 }); idb.state.openDelayMs = 0; return started; };
+  const desktop = () => { window.__TAURI_INTERNALS__ = {}; vi.stubGlobal('indexedDB', idb); };
+  const markers = (entries) => Object.keys(entries).filter(key => key.startsWith('pl2-library-clear:')).sort().reverse()
+    .map(key => [key, entries[key]]);
+  // Each Clear removes `size` fresh prompts.
+  const clearTimes = (count, size) => {
+    for (let n = 0; n < count; n += 1) {
+      saveJson(storageKeys.library, Array.from({ length: size }, (_, i) => ({ id: `p${n}-${String(i).padStart(4, '0')}-${'x'.repeat(24)}`, title: 't' })));
+      markLibraryCleared(localStorage);
+    }
+  };
+
+  it('the web app and the extension write the Clear time only; desktop adds the ids', () => {
+    saveJson(storageKeys.library, [{ id: 'a' }]);
+    const web = markLibraryCleared(localStorage, ['b']);
+    expect(JSON.parse(localStorage.getItem(`pl2-library-clear:${web}`))).toEqual({ at: expect.any(String) });
+    desktop();
+    saveJson(storageKeys.library, [{ id: 'a' }]);
+    const shell = markLibraryCleared(localStorage, ['b']);
+    expect(JSON.parse(localStorage.getItem(`pl2-library-clear:${shell}`)).ids.sort()).toEqual(['a', 'b']);
+  });
+
+  it(`after a reconciled boot only the newest ${CLEAR_MARKER_IDS_KEPT} markers keep ids; a failed boot prunes nothing`, async () => {
+    desktop();
+    let j = await boot();
+    clearTimes(5, 2);
+    await settled(j.journal); stopAll();
+    j = await failBoot();
+    expect(markers(localEntries()).filter(([, v]) => JSON.parse(v).ids)).toHaveLength(5);
+    stopAll();
+    j = await boot();
+    await settled(j.journal);
+    const local = markers(localEntries());
+    expect(local).toHaveLength(5);
+    expect(local.map(([, v]) => Object.keys(JSON.parse(v)).sort().join())).toEqual(['at,ids', 'at,ids', 'at,ids', 'at', 'at']);
+    // The trimmed markers are committed, so a restore cannot bring the lists back.
+    expect(markers(journalRecord().entries)).toEqual(local);
+  });
+
+  it('repeated Clears of a large desktop Library stay within a fixed size', async () => {
+    desktop();
+    const j = await boot();
+    const size = 1000;
+    clearTimes(10, size);
+    await settled(j.journal); stopAll();
+    const one = JSON.stringify({ at: new Date().toISOString(), ids: Array.from({ length: size }, (_, i) => `p0-${String(i).padStart(4, '0')}-${'x'.repeat(24)}`) }).length;
+    await settled((await boot()).journal);
+    const bytes = (entries) => markers(entries).reduce((total, [key, value]) => total + key.length + value.length, 0);
+    const bound = CLEAR_MARKER_IDS_KEPT * (one + 128) + 10 * 128;
+    expect(bytes(localEntries())).toBeLessThanOrEqual(bound);
+    expect(bytes(journalRecord().entries)).toBeLessThanOrEqual(bound);
   });
 });
 

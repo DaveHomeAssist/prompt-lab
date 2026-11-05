@@ -4,7 +4,7 @@
 // simple-group sources.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
 const config = JSON.parse(readFileSync(new URL('../vercel.json', import.meta.url), 'utf8'));
 
@@ -39,9 +39,22 @@ function headersFor(path) {
   return result;
 }
 
-function redirectFor(path) {
-  return (config.redirects || []).find((rule) => rule.source === path);
+function rewriteFor(path) {
+  return (config.rewrites || []).find((rule) => rule.source === path);
 }
+const stub = (file) => readFileSync(new URL(`../prompt-lab-web/public${file}`, import.meta.url), 'utf8');
+
+// R-39: Vercel does not apply `headers` rules to `redirects` responses (live,
+// re-review 10: they sent the default HSTS without includeSubDomains, and
+// each STS header replaces the cached policy). These paths are rewrites, so
+// they get the headers above.
+const FORMER_REDIRECTS = {
+  '/privatepolicy': '/privacy.html', '/privacy': '/privacy.html', '/privacy/': '/privacy.html',
+  '/pricing': '/#pricing', '/pricing/': '/#pricing',
+  '/login': '/app/', '/signin': '/app/', '/sign-in': '/app/', '/signup': '/app/', '/sign-up': '/app/',
+  // The app's own hash routes (what redirectAppPathToHash makes of /app/settings).
+  '/settings': '/app/#/settings', '/account': '/app/#/account',
+};
 
 const PAGES = ['/', '/app/', '/app/index.html', '/terms.html', '/privacy.html', '/guide.html', '/api/billing/checkout'];
 
@@ -89,14 +102,56 @@ test('hashed build assets are cached immutably, pages are not (AUD-024)', () => 
   assert.ok(!config.headers.some((rule) => /immutable/.test(JSON.stringify(rule)) && rule.source !== '/assets/(.*)'));
 });
 
-test('/pricing and /privacy redirect to real content (AUD-023)', () => {
-  for (const path of ['/pricing', '/pricing/']) {
-    assert.deepEqual(redirectFor(path), { source: path, destination: '/#pricing', permanent: false });
+test('/pricing and /privacy reach real content (AUD-023)', () => {
+  // The privacy paths serve the policy itself (its canonical is /privacy.html),
+  // never the public/privacy/ stub.
+  for (const path of ['/privacy', '/privatepolicy']) {
+    assert.deepEqual(rewriteFor(path), { source: path, destination: '/privacy.html' });
   }
-  for (const path of ['/privacy', '/privacy/', '/privatepolicy']) {
-    assert.deepEqual(redirectFor(path), { source: path, destination: '/privacy.html', permanent: true });
+  // #307 Codex P2: under /privacy/ the policy's relative URLs (fonts, logo,
+  // nav) would resolve inside /privacy/, so that path serves the refresh stub.
+  assert.deepEqual(rewriteFor('/privacy/'), { source: '/privacy/', destination: '/privacy/index.html' });
+  assert.match(stub('/privacy.html'), /<link rel="canonical" href="https:\/\/promptlab\.tools\/privacy\.html">/);
+  for (const path of ['/pricing', '/pricing/']) assert.equal(rewriteFor(path)?.destination, '/go/pricing.html');
+});
+
+test('former redirect paths get the security headers: no redirects, rewrites only (R-39)', () => {
+  assert.deepEqual(config.redirects || [], [], 'Vercel sends redirects without the headers rules');
+  for (const [path, target] of Object.entries(FORMER_REDIRECTS)) {
+    const rule = rewriteFor(path);
+    assert.ok(rule, `${path} is a rewrite`);
+    const headers = headersFor(path);
+    assert.equal(headers['strict-transport-security'], 'max-age=63072000; includeSubDomains', `${path} HSTS`);
+    assert.equal(headers['x-frame-options'], 'DENY', `${path} X-Frame-Options`);
+    if (rule.destination === target) continue;
+    // Otherwise a no-script refresh page takes the visitor to the target.
+    const html = stub(rule.destination);
+    const refresh = /<meta http-equiv="refresh" content="0; url=([^"]+)">/.exec(html)?.[1];
+    const resolved = new URL(refresh, `https://promptlab.tools${path}`);
+    assert.equal(`${resolved.pathname}${resolved.hash}`, target, `${path} refreshes to ${target}`);
+    assert.doesNotMatch(html, /<script/i);
+    if (!rule.destination.startsWith('/go/')) continue;
+    assert.ok(html.includes(`<a href="${target}">`), `${path} links to ${target}`);
+    assert.match(html, /<meta name="robots" content="noindex,follow">/);
+    assert.match(html, /<link rel="canonical" href="https:\/\/promptlab\.tools\//);
+    assert.match(html, /content="default-src 'none'; base-uri 'none'; form-action 'none'"/);
   }
-  assert.ok(!config.rewrites.some((rule) => rule.source.startsWith('/privacy')), 'privacy must redirect, not rewrite to the stub');
+});
+
+test('a rewrite served under a directory path never breaks relative URLs (#307 Codex P2)', () => {
+  // Under /x/ the browser resolves relative URLs inside /x/, so the page must
+  // live in that directory (for example /x/index.html).
+  for (const rule of config.rewrites) {
+    if (!rule.source.endsWith('/') || !rule.destination.endsWith('.html')) continue;
+    // Pages generated at build time (not in public/) are left to their builders.
+    if (!existsSync(new URL(`../prompt-lab-web/public${rule.destination}`, import.meta.url))) continue;
+    const html = stub(rule.destination);
+    const relative = [...html.matchAll(/\s(?:src|href)="([^"]+)"/g)].map((m) => m[1])
+      .filter((url) => !/^(?:[a-z]+:|\/|#)/i.test(url));
+    if (!relative.length) continue;
+    assert.equal(rule.destination.slice(0, rule.destination.lastIndexOf('/') + 1), rule.source,
+      `${rule.source} serves ${rule.destination}, whose relative URLs (${relative.slice(0, 3).join(', ')}) would break`);
+  }
 });
 
 test('pages send HSTS with includeSubDomains and COOP (security pass 2026-11-01)', () => {

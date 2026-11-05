@@ -281,7 +281,9 @@ Persistence contracts (post 2026-08 behavioral-audit remediation):
   UUID tie-break order concurrent clears without trusting wall-clock time.
   The marker's value is `{"at": <ISO time>, "ids": [...]}`: when the Clear
   happened and the ids (no titles or bodies) of the prompts and trash it
-  removed; if that does not fit, the time alone. Older markers hold the ISO
+  removed; if that does not fit, the time alone. Only the desktop shell
+  writes ids; the web app and the extension write `{"at"}`. After a
+  reconciled desktop boot, markers past the newest 3 drop their ids (R-38). Older markers hold the ISO
   time or `1`. Only the desktop journal's failed-boot merge reads it, to tell
   rows saved after the Clear from rows a Local Storage rollback brought back:
   by id when the list is there (no device clock compare, R-34), otherwise by
