@@ -44,6 +44,10 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
   const [streaming, setStreaming] = useState(false);
   const [optimisticSaveVisible, setOptimisticSaveVisible] = useState(false);
   const [batchProgress, setBatchProgress] = useState({ active: false, completed: 0, total: 0, currentLabel: '' });
+  const batchAbortRef = useRef(null);
+  const currentEditingIdRef = useRef(editingId);
+  currentEditingIdRef.current = editingId;
+  useEffect(() => () => batchAbortRef.current?.abort(), []);
   const enhanceReqRef = useRef(0);
   const enhanceAbortRef = useRef(null);
   // Synchronous guard prevents duplicate sends before React updates loading.
@@ -109,7 +113,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
   };
   const buildEnhancePayload = (modeId = enhMode) => buildEnhancePayloadFor(raw, modeId);
 
-  const runTestCaseJob = async (testCase, promptTitle) => {
+  const runTestCaseJob = async (testCase, promptTitle, signal) => {
     const inputText = ensureString(testCase?.input);
     const payload = buildEnhancePayloadFor(inputText);
     const startedAt = nowMs();
@@ -124,7 +128,25 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
       }).catch(error => logWarn('save blocked test case run', error));
       throw normalizeError(new Error(message), 'execution');
     }
-    const data = await callWithRetry(payload);
+    let data;
+    let configured = null;
+    try {
+      try { [configured] = await getConfiguredProviders(); } catch { /* Unknown routing is recorded honestly. */ }
+      signal?.throwIfAborted();
+      data = await callWithRetry(payload, 1, { signal });
+      signal?.throwIfAborted();
+    } catch (caught) {
+      const cancelled = signal?.aborted || caught?.name === 'AbortError';
+      await saveEvalRun({
+        promptId: testCase.promptId, promptTitle, mode: 'test-case',
+        provider: data?.provider || configured?.provider || 'unknown', model: data?.model || configured?.model || 'unknown',
+        variantLabel: testCase.title, input: inputText, testCaseId: testCase.id,
+        output: cancelled ? 'Test case cancelled.' : 'Test case request failed.',
+        status: cancelled ? 'canceled' : 'error', latencyMs: nowMs() - startedAt,
+        notes: 'Incomplete attempt; excluded from completed suite results.',
+      }).catch(error => logWarn('save incomplete test case run', error));
+      throw caught;
+    }
     const text = extractTextFromAnthropic(data);
     const parsed = parseEnhancedPayload(text, { modern: true });
     const traitResults = checkTraits(parsed.enhanced || text, testCase.expectedTraits, testCase.expectedExclusions);
@@ -348,57 +370,68 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
     setTab('editor');
     notify(`Loaded test case: ${testCase.title}`);
   };
-  const runSingleCase = async (testCase, promptTitle) => {
-    testCasesHook.setRunningCases(true);
-    setBatchProgress({ active: true, completed: 0, total: 1, currentLabel: testCase.title });
-    try {
-      await runTestCaseJob(testCase, promptTitle);
-      await evalRunsHook.refreshEvalRuns(testCase.promptId);
-      evalRunsHook.setShowEvalHistory(true);
-      notify(`Ran test case: ${testCase.title}`);
-    } catch (caught) {
-      const appError = normalizeError(caught, 'execution');
-      notify(appError.userMessage || `Failed test case: ${testCase.title}`);
-      await evalRunsHook.refreshEvalRuns(testCase.promptId);
-    } finally {
-      testCasesHook.setRunningCases(false);
-      setBatchProgress({ active: false, completed: 0, total: 0, currentLabel: '' });
-    }
+  const cancelBatch = () => {
+    batchAbortRef.current?.abort();
   };
-  const runAllCases = async () => {
-    const cases = testCasesHook.testCasesByPrompt[editingId] || [];
-    if (!editingId || cases.length === 0 || testCasesHook.runningCases) return;
-    const promptTitle = saveTitle || suggestTitleFromText(enhanced || raw);
+  const executeCases = async (cases, promptId, promptTitle, recordSuite) => {
+    if (!cases.length || batchAbortRef.current || testCasesHook.runningCases) return;
+    const controller = new AbortController();
+    batchAbortRef.current = controller;
     testCasesHook.setRunningCases(true);
     let completed = 0;
-    let suitePassed = 0;
-    let suiteFailed = 0;
-    for (const testCase of cases) {
-      setBatchProgress({ active: true, completed, total: cases.length, currentLabel: testCase.title });
-      try {
-        const { traitResults } = await runTestCaseJob(testCase, promptTitle);
-        completed += 1;
-        if (traitResults?.verdict === 'pass') suitePassed += 1;
-        if (traitResults?.verdict === 'fail') suiteFailed += 1;
-        setBatchProgress({ active: true, completed, total: cases.length, currentLabel: testCase.title });
-      } catch (caught) {
-        suiteFailed += 1;
-        logWarn(`test case batch: ${testCase.title}`, caught);
+    let passed = 0;
+    let failed = 0;
+    let interrupted = false;
+    const progress = (active, currentLabel = '') => ({
+      active, completed, failed, total: cases.length, currentLabel,
+      status: active ? 'running' : controller.signal.aborted ? 'cancelled' : interrupted ? 'failed' : 'completed',
+    });
+    try {
+      for (const testCase of cases) {
+        if (controller.signal.aborted) break;
+        setBatchProgress(progress(true, testCase.title));
+        try {
+          const { traitResults } = await runTestCaseJob(testCase, promptTitle, controller.signal);
+          completed += 1;
+          if (traitResults?.verdict === 'pass') passed += 1;
+          if (traitResults?.verdict === 'fail') failed += 1;
+        } catch (caught) {
+          if (controller.signal.aborted) break;
+          completed += 1;
+          failed += 1;
+          logWarn('test case batch request failed', caught);
+        }
+        setBatchProgress(progress(true));
       }
+      if (recordSuite) {
+        await lib.recordSuiteResult?.(promptId, {
+          verdict: controller.signal.aborted ? null : failed > 0 ? 'fail' : passed > 0 ? 'pass' : null,
+          status: controller.signal.aborted ? 'canceled' : 'completed',
+          passed, failed, completed, total: cases.length, lastRunAt: new Date().toISOString(),
+        });
+      }
+      if (currentEditingIdRef.current === promptId) {
+        await evalRunsHook.refreshEvalRuns(promptId);
+        evalRunsHook.setShowEvalHistory(true);
+      }
+    } catch (caught) {
+      interrupted = true;
+      logWarn('test case batch completion failed', caught);
+    } finally {
+      if (batchAbortRef.current === controller) batchAbortRef.current = null;
+      testCasesHook.setRunningCases(false);
+      setBatchProgress(progress(false));
+      notify(`${controller.signal.aborted ? 'Batch stopped' : interrupted ? 'Batch interrupted' : 'Batch finished'}: ${completed}/${cases.length} completed, ${failed} failed.`);
     }
-    if (suitePassed > 0 || suiteFailed > 0) {
-      lib.recordSuiteResult?.(editingId, {
-        verdict: suiteFailed > 0 ? 'fail' : 'pass', passed: suitePassed, failed: suiteFailed,
-        total: cases.length, lastRunAt: new Date().toISOString(),
-      });
-    }
-    await evalRunsHook.refreshEvalRuns(editingId);
-    evalRunsHook.setShowEvalHistory(true);
-    testCasesHook.setRunningCases(false);
-    setBatchProgress({ active: false, completed, total: cases.length, currentLabel: '' });
-    notify(`Ran ${completed}/${cases.length} test cases`);
+  };
+  const runSingleCase = (testCase, promptTitle) => executeCases([testCase], testCase.promptId, promptTitle, false);
+  const runAllCases = () => {
+    if (!editingId) return;
+    const cases = [...(testCasesHook.testCasesByPrompt[editingId] || [])];
+    return executeCases(cases, editingId, saveTitle || suggestTitleFromText(enhanced || raw), true);
   };
   const clearExecutionState = () => {
+    batchAbortRef.current?.abort();
     enhanceReqRef.current += 1;
     enhanceInFlightRef.current = false;
     enhanceAbortRef.current?.abort();
@@ -428,7 +461,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
     caseNotes: testCasesHook.caseNotes, setCaseNotes: testCasesHook.setCaseNotes,
     runningCases: testCasesHook.runningCases, openCaseForm: testCasesHook.openCaseForm,
     resetCaseForm: testCasesHook.resetCaseForm, saveCaseForPrompt: testCasesHook.saveCaseForPrompt,
-    removeCase: testCasesHook.removeCase, loadCaseIntoEditor, runSingleCase, runAllCases, cancelEnhance,
+    removeCase: testCasesHook.removeCase, loadCaseIntoEditor, runSingleCase, runAllCases, cancelBatch, cancelEnhance,
     currentTestCases, openOptions: openSettings, clearExecutionState,
   };
 }

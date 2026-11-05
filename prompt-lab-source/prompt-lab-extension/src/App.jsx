@@ -6,7 +6,7 @@ import {
   extractVars,
 } from './promptUtils';
 import { scanSensitiveData } from './piiScanner.js';
-import { captureContext } from './lib/platform.js';
+import { captureContext, openSettings } from './lib/platform.js';
 import { buildCaptureInsertion } from './lib/captureContext.js';
 import { T, DEFAULT_GOLDEN_THRESHOLD } from './constants';
 import useLibrary from './hooks/usePromptLibrary.js';
@@ -16,6 +16,8 @@ import useEditorState from './hooks/useEditorState.js';
 import useExecutionFlow from './hooks/useExecutionFlow.js';
 import usePersistenceFlow from './hooks/usePersistenceFlow.js';
 import useFollowUpSuggestions from './hooks/useFollowUpSuggestions.js';
+import usePromptChat from './hooks/usePromptChat.js';
+import PromptChatPanel from './PromptChatPanel.jsx';
 import { resolveFollowUpSource } from './lib/followUpProvenance.js';
 import useABTest from './hooks/useABTest.js';
 import useAccountSync from './hooks/useAccountSync.js';
@@ -116,8 +118,10 @@ function persistDraftRecovery(snapshot) {
     } else {
       window.sessionStorage.removeItem(DRAFT_RECOVERY_STORAGE_KEY);
     }
+    return true;
   } catch (_error) {
-    // Recovery still works for the active page when session storage is unavailable.
+    // Other recovery actions can retain their active-page snapshot.
+    return false;
   }
 }
 
@@ -161,11 +165,12 @@ export default function App({
     validate: (value) => (WRITE_SIDE_VIEWS.includes(value) ? value : 'scratch'),
   });
   const [writePromptsQuery, setWritePromptsQuery] = useState('');
-  const writeSideTab = writeSideView === 'scratch' ? 'scratch' : 'prompts';
+  const writeSideTab = ['scratch', 'chat'].includes(writeSideView) ? writeSideView : 'prompts';
   // The prompt list last shown, so Prompts reopens where it was left.
-  const [writePromptsView, setWritePromptsView] = useState(() => (writeSideView === 'scratch' ? 'all' : writeSideView));
+  const [writePromptsView, setWritePromptsView] = useState(() => (['all', 'recent', 'favorites'].includes(writeSideView) ? writeSideView : 'all'));
   const scratchToggleRef = useRef(null);
   const promptsToggleRef = useRef(null);
+  const chatToggleRef = useRef(null);
   const [draftRecovery, setDraftRecovery] = useState(loadDraftRecovery);
   const [resultContextRevision, setResultContextRevision] = useState(0);
   const appShellRef = useRef(null);
@@ -268,6 +273,11 @@ export default function App({
     ui: {
       ...ui,
       setABVariant: (side, promptText) => abTest.loadVariant(side, promptText),
+      onDisplaceDraft: (snapshot) => {
+        if (!persistDraftRecovery(snapshot)) return false;
+        setDraftRecovery(snapshot);
+        return true;
+      },
     },
     lib,
     editor: editorState,
@@ -286,12 +296,17 @@ export default function App({
   const followUpSuggestions = useFollowUpSuggestions({
     raw: editorState.raw, enhanced: editorState.enhanced, source: followUpSource,
   });
+  const chat = usePromptChat({
+    prompt: editorState.raw, ownerId: persistenceFlow.editingId, revision: resultContextRevision,
+    visible: writeScratchOpen && writeSideTab === 'chat' && tab === 'editor' && primaryView === 'create' && workspaceView === 'editor',
+  });
   const ed = {
     ...editorState,
     ...persistenceFlow,
     ...executionFlow,
     doSave: (overrides = {}) => persistenceFlow.doSave(executionFlow.refreshEvalRuns, overrides),
     clearEditor: () => {
+      chat.clear();
       executionFlow.clearExecutionState();
       persistenceFlow.clearPersistenceState();
       editorState.clearEditorState();
@@ -317,7 +332,7 @@ export default function App({
     caseTraits, setCaseTraits, caseExclusions, setCaseExclusions,
     caseNotes, setCaseNotes, runningCases,
     openCaseForm, resetCaseForm, saveCaseForPrompt, removeCase,
-    loadCaseIntoEditor, runSingleCase, runAllCases,
+    loadCaseIntoEditor, runSingleCase, runAllCases, cancelBatch,
     showNewColl, setShowNewColl, newCollName, setNewCollName,
     varVals, setVarVals, showVarForm, setShowVarForm, pendingTemplate, applyTemplate, skipTemplate,
     editorLayout, setEditorLayout,
@@ -590,12 +605,12 @@ export default function App({
   const writeScratchMode = viewportWidth >= 1100 ? 'column' : 'overlay';
   const closeWriteScratch = () => {
     setWriteScratchOpen(false);
-    const toggle = writeSideTab === 'prompts' ? promptsToggleRef : scratchToggleRef;
+    const toggle = writeSideTab === 'chat' ? chatToggleRef : writeSideTab === 'prompts' ? promptsToggleRef : scratchToggleRef;
     setTimeout(() => toggle.current?.focus(), 0);
   };
   const showWriteSideTab = (nextTab) => {
     if (nextTab === 'prompts') setWriteSideView(writePromptsView);
-    else setWriteSideView('scratch');
+    else setWriteSideView(nextTab === 'chat' ? 'chat' : 'scratch');
   };
   // A context-bar toggle opens the panel on its tab, switches an open panel
   // to it, or closes the panel when that tab is already showing.
@@ -640,7 +655,7 @@ export default function App({
       .filter((input) => input && typeof input === 'object' && typeof input.key === 'string')
       .map((input) => [input.key, input])
   );
-  const recoveryActionLabel = draftRecovery?.reason === 'composer-handoff' ? 'Restore previous draft' : draftRecovery?.reason === 'discard-result'
+  const recoveryActionLabel = ['shared-import', 'composer-handoff'].includes(draftRecovery?.reason) ? 'Restore previous draft' : draftRecovery?.reason === 'discard-result'
     ? 'Restore discarded result'
     : draftRecovery?.reason === 'navigation'
       ? 'Restore previous draft'
@@ -1000,6 +1015,16 @@ export default function App({
     openCreateView('editor');
     notify(payload.selectionOnly ? 'Scratch selection opened in Write.' : 'Scratch note opened in Write.');
   };
+  const handleUseChatReply = message => {
+    if (chat.loading || message.ownerKey !== chat.ownerKey || message.draft !== raw || !chat.messages.some(item => item.id === message.id)) return;
+    if (raw.trim() || enhanced.trim() || variants.length || notes.trim() || editingId) preserveDraftForUndo('chat-handoff');
+    dismissSaveReceipt();
+    clearEditor();
+    setRaw(message.content);
+    setSaveTitle(suggestTitleFromText(message.content));
+    openCreateView('editor');
+    notify('Chat reply opened as a new prompt. Previous draft is available through Undo.');
+  };
   const [composerRecovery, setComposerRecovery] = useState(null);
   const clearComposer = () => {
     setComposerRecovery(composerBlocks.map(block => ({ ...block })));
@@ -1202,6 +1227,18 @@ export default function App({
       />
 
       <PendingWritesNotice m={m} />
+      {persistenceFlow.draftCheckpoint?.status === 'failed' && (
+        <aside role="alert" className={`flex flex-wrap items-center justify-between gap-2 border-b px-4 py-2 ${m.surface} ${m.border}`}>
+          <span>Draft recovery could not be saved. Keep this tab open and retry before leaving.</span>
+          <button type="button" onClick={() => persistenceFlow.draftCheckpoint.retry()}>Retry draft recovery</button>
+        </aside>
+      )}
+      {(batchProgress.active || batchProgress.status === 'cancelled' || batchProgress.status === 'failed') && (
+        <aside role="status" className={`flex flex-wrap items-center justify-between gap-2 border-b px-4 py-2 ${m.surface} ${m.border}`}>
+          <span>{batchProgress.active ? 'Running test cases' : batchProgress.status === 'cancelled' ? 'Batch stopped' : 'Batch interrupted'}: {batchProgress.completed}/{batchProgress.total} completed. {batchProgress.failed || 0} failed. {batchProgress.active ? '' : 'Completed results remain in run history.'}</span>
+          {batchProgress.active && <button type="button" onClick={cancelBatch}>Stop batch</button>}
+        </aside>
+      )}
       <AccountSyncBar sync={accountSync} m={m} onOpen={(focus) => setShowAccountSync(focus || true)} />
       <AccountSyncPanel
         sync={accountSync}
@@ -1264,7 +1301,8 @@ export default function App({
             openSavePanel={openSavePanel} openSection={openSection}
             accentTextClass={m.textAlt} accentHoverTextClass="hover:underline" accentBadgeClass={m.btn}
             scratchPanel={writeScratchAvailable ? { open: writeScratchOpen && writeSideTab === 'scratch', onToggle: () => toggleWriteSideTab('scratch'), buttonRef: scratchToggleRef } : null}
-            promptsPanel={writeScratchAvailable ? { open: writeScratchOpen && writeSideTab === 'prompts', onToggle: () => toggleWriteSideTab('prompts'), buttonRef: promptsToggleRef } : null} />
+            promptsPanel={writeScratchAvailable ? { open: writeScratchOpen && writeSideTab === 'prompts', onToggle: () => toggleWriteSideTab('prompts'), buttonRef: promptsToggleRef } : null}
+            chatPanel={writeScratchAvailable ? { open: writeScratchOpen && writeSideTab === 'chat', onToggle: () => toggleWriteSideTab('chat'), buttonRef: chatToggleRef } : null} />
         </div>
       )}
 
@@ -1292,7 +1330,10 @@ export default function App({
               aboveMobileNav={compact}
               width={writeScratchWidth}
             >
-              {writeSideTab === 'scratch' ? (
+              {writeSideTab === 'chat' ? (
+                <PromptChatPanel chat={chat} prompt={raw} m={m} colorMode={colorMode}
+                  onUseReply={handleUseChatReply} onOpenSettings={openSettings} />
+              ) : writeSideTab === 'scratch' ? (
                 <ScratchSidePanel
                   m={m}
                   colorMode={colorMode}
@@ -1748,10 +1789,10 @@ export default function App({
       {lib.importPreview && <WorkspaceImportModal m={m} preview={lib.importPreview} applying={lib.importApplying}
         onChoice={lib.chooseImportResolution} onApply={lib.confirmImport} onRetry={lib.retryImport} onClose={lib.cancelImportPreview} />}
       <PiiWarningModal m={m}
-        piiWarning={piiWarning || abTest.piiWarning || followUpSuggestions.piiWarning}
-        piiRedactAndSend={piiWarning ? piiRedactAndSend : abTest.piiWarning ? abTest.piiRedactAndSend : followUpSuggestions.piiRedactAndSend}
-        piiSendAnyway={piiWarning ? piiSendAnyway : abTest.piiWarning ? abTest.piiSendAnyway : followUpSuggestions.piiSendAnyway}
-        piiCancel={piiWarning ? piiCancel : abTest.piiWarning ? abTest.piiCancel : followUpSuggestions.piiCancel} />
+        piiWarning={piiWarning || abTest.piiWarning || followUpSuggestions.piiWarning || chat.piiWarning}
+        piiRedactAndSend={piiWarning ? piiRedactAndSend : abTest.piiWarning ? abTest.piiRedactAndSend : followUpSuggestions.piiWarning ? followUpSuggestions.piiRedactAndSend : chat.piiRedactAndSend}
+        piiSendAnyway={piiWarning ? piiSendAnyway : abTest.piiWarning ? abTest.piiSendAnyway : followUpSuggestions.piiWarning ? followUpSuggestions.piiSendAnyway : chat.piiSendAnyway}
+        piiCancel={piiWarning ? piiCancel : abTest.piiWarning ? abTest.piiCancel : followUpSuggestions.piiWarning ? followUpSuggestions.piiCancel : chat.piiCancel} />
 
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
       {!isExtension && (

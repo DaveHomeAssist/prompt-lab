@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-11-02T00:44:07.311755+00:00",
+  "snapshotAt": "2026-11-02T14:46:34.481Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,34 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "dd8756b1e2462f1a8997fe813aac10fe69862fe4",
+  "mainSha": "8a13ce3ee1a8ccf51619f167bdfe34392cb7b0dd",
   "overall": "Acceptance incomplete",
-  "nextAction": "Confirm Stripe upcoming-renewal emails and lead time in the live Dashboard; verify the authenticated purchase dialog. Terms release PR286 is published and public Terms/footer/sitemap plus deployed consent references pass. Other acceptance gates remain with their existing records.",
+  "nextAction": "Continue N03 bulk icon/tag/metadata editing from the prepared allowlist, preview and acknowledged-write contract. N01 Copy code and N02 contextual Chat are accepted. Other November and independent storage/billing/native/human gates remain with their owning records.",
   "evidence": [
+    {
+      "label": "Screenflow production acceptance",
+      "state": "Verified",
+      "detail": "November2: SF-01 through SF-04 merged in PR311 as8a13ce3 after all16 df2615f checks passed. Vercel production dpl_HWVRNZVxJPgEw5jRrJiASQw8rRja READY on exact merge and promptlab.tools alias. Production smoke41443801045 passed2/2 at375x812 and1440x900: live shared link, independent save, original unchanged, displaced draft restore, no stale receipt, immediate refresh and failed-write retry. Both disposable sessions revoked. Synthetic local fixtures and application APIs blocked; no paid inference. Candidate CI1732 shared/150files,231 legacy,118 hosted/one existing skip,25 landing and all6 Desktop jobs pass. SF-02 validated sign-in/sign-up destinations and SF-03 navigation/cancellation/partial-summary persistence are covered by source and mocked browser tests. Exact-merge post-release Extension41443637293, Landing41443637523 and all6 Desktop41443637356 jobs passed. All four scoped issues are Done with write/readback. Retain regressions; no remaining repair action. Other project acceptance and human/native gates remain separate.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/41443801045"
+    },
+    {
+      "label": "Contextual Chat live acceptance",
+      "state": "Verified",
+      "detail": "November2: PR310 mergedb4349f14941537f217207a64342104c78c596b23 after all16 checks passed on5ffc4ad. Productiondpl_2zeKfSwxx4M2P5j1NoNDco1n64e4 READY exact merge and alias verified. Visible signed-in Owner Pro acceptance: two actual claude-sonnet-4-6 turns (91 input/7 output and132 input/15 output tokens), no call on open, unchecked context excludes original draft, follow-up user/assistant/user envelope, Copy code/Copy reply, close/reopen, explicit new-prompt handoff and Undo. Original draft/editing context restored exactly and survive reload; Library unchanged. Live375x812,1440x900,3840x1080: no page overflow, message/Send visible. Viewport reset and network observation disabled. Interrupted automation lost earlier clipboard backup; exact earlier restoration unverified, resumed empty clipboard restored/read back. No extra provider calls or settings changes. CI1713 shared/149files,231 legacy,110 hosted/one existing skip,25 landing and all6 Desktop jobs (MSI/NSIS/DEB/AppImage, macOS universal diagnostics) pass. Dominic25 focused,3 packaged and2 hosted flows plus build/docs pass. N01/N02 Done; N03 preparation recorded without implementation or sprint expansion. Complete104-row snapshot preserves14 sprint IDs. Broader installed upgrades, signing and human acceptance remain separate. Exact-main redundant workflows are tracked separately from passed candidate gates.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/310"
+    },
+    {
+      "label": "Signed-in Copy code acceptance and contextual chat candidate",
+      "state": "Running",
+      "detail": "November2: N01 Done after visible signed-in production b4f08ab clipboard, keyboard, themes, viewport and controlled failure/retry checks. Synthetic QA Scratch note retained; original draft, Library, clipboard, theme and viewport preserved. N02 In progress: session-only contextual Write panel with unchecked prompt context, existing transport/preflight/usage limits, cancellation, multi-turn history and recoverable reply handoff. Dominic Node22.23.4 passed25 focused tests, extension build and three packaged browser flows at375/1440/3840px. Cancel button reuse and composer clipping repaired with regressions. Full shared tests ran1713 assertions successfully but two transferred Mac metadata files failed collection; metadata removed; final regression subsequently passed. Hosted runner setup initially lacked writable Vite cache and matching Chromium path, now isolated. No real inference yet. CI, merge, deployment and live chat acceptance pending. Complete104-row snapshot retains14 plan items. Final Dominic regression passed1713 shared tests across149 files and231 legacy tests. Hosted chat passed2/2 with selected model, multi-turn messages, quota display,429 and manual retry; extension browser3/3 passed including visible composer.",
+      "url": "https://app.notion.com/p/40c255fc8f44816e8a27e0a1b10c6ee6"
+    },
+    {
+      "label": "November intake and code block copy slice",
+      "state": "Open",
+      "detail": "2026-11-02: ten new Notion issues created; existing Scratch editor and Agent authoring issues extended; writes read back. Complete104-row snapshot preserves14-item sprint membership. Scoped November brief records12 requests and later decisions. PR308 merged fdd0abf after all16 checks passed on identical application tree8d3661a:1700 shared tests/148files,231 legacy,108 hosted/one skip,25 landing, MSI/NSIS/DEB/AppImage acceptance and macOS universal packaging/diagnostics. Dominic Node22.23.4:13 focused tests and extension build pass; packaged Chromium clipboard paste, keyboard and no-page-overflow pass at375/1440/3840px, including supplemental actual-theme-toggle acceptance. Initial fixture navigation/selector failures retained. Production dpl_CnNtnuvbWrrZS2ESxBD4fKMvdaGv READY at exact merge; promptlab.tools alias and served App-CfyQwNf8.js revision/copy controls verified. Signed-in production clipboard use, physical/human acceptance and exact-merge post-push workflows remain separate pending gates. No inference or billing operations.",
+      "url": "https://app.notion.com/p/40c255fc8f448150a92efe8b618c509c"
+    },
     {
       "label": "Approved Terms public release",
       "state": "Verified",
@@ -30,6 +54,12 @@
       "state": "Verified",
       "detail": "October30 PR275 merged8de528c after all13 checks passed. Production dpl_2z2k1AMxsXJPA2GH55Eq3WPaQLTM READY at exact merge. Dedicated signed-in Production Smoke41031608352 passed4/4, including top action, scrolling, metadata save/reload at375/1440px. Disposable sessions revoked; no provider or billing calls. Dominic Node22.23.4 passed42 inspector/artwork tests, extension build and five viewport regressions at1440x900,375x812,844x390,320x256 and3840x1080. First run41031133480 retained: placement passed but the new exact-label selector missed the populated Purpose textarea. Test-only3533555 uses accessible textbox role; a separate probe confirms the mismatch and save/reload. No real user data or browser state touched. No version/tag change or broader human/device acceptance claim.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/41031608352"
+    },
+    {
+      "label": "Screenflow repair candidate",
+      "state": "Running",
+      "detail": "SF-01 through SF-04 are implemented on codex/screenflow-journey-fixes. Dominic Node 22: first full suite 1539 tests across 135 files, 231 legacy tests and extension build pass. Final focused tests 55 pass. Regression tests fail against the original source. Browser verification, exact-head CI, merge, deployment and live acceptance remain pending. Four scoped Issue Backlog records were created and read back; unrelated records retained.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/tree/codex/screenflow-journey-fixes"
     },
     {
       "label": "Artwork pins and Write recovery live",
@@ -256,25 +286,25 @@
     {
       "label": "Hosted dollar budget deployed; account verification pending",
       "state": "Open",
-      "detail": "2026-10-23: Direct Dave request (Focus exception). PR194 merged d33ac1b; atomic Redis reservation and settlement fix3613822. Both review threads resolved. Dominic Node22.22.1 passed121 API tests; disposable Valkey passed settlement, cycle/day/IP no-write refusals, corrupt-counter rejection and30 concurrent reservations (10 accepted/20 refused). Vercel dpl_5XBTWcWdY2jCmEZCq4pdqqtUQtiT READY exactd33ac1b. Public GET405, malformed POST400 and one shared-key Sonnet4.6 request200/OK/KV/standard;9 input+4output tokens=$0.000087. Config readback:$180/cycle,day14UTC,$0.50/IP/day,10/IP and200global requests/day; no env changes this session. Runtime log query returned no records. GitHub merged immediately on auto-merge request before broader CI finished; current Landing/Desktop CI remain running separately. Subscription receipt confirms Oct14\u2013Nov14; an older credit email expiresOct17 and does not prove current balance. Console sign-in required for remaining balance, prior spend, auto-reload and production key identification; org key expiry warning Oct24UTC is confirmed. No request-limit increase or credential rotation. Existing Notion quota row and implementation RUN appended/read back; all51rows/14plan preserved. Private Next Steps Board has no PromptLab mapping. Mac ENOSPC prevented local commit; published GitHub tree equals isolated Dominic commit tree. Original source and untracked.claude preserved.",
+      "detail": "2026-10-23: Direct Dave request (Focus exception). PR194 merged d33ac1b; atomic Redis reservation and settlement fix3613822. Both review threads resolved. Dominic Node22.22.1 passed121 API tests; disposable Valkey passed settlement, cycle/day/IP no-write refusals, corrupt-counter rejection and30 concurrent reservations (10 accepted/20 refused). Vercel dpl_5XBTWcWdY2jCmEZCq4pdqqtUQtiT READY exactd33ac1b. Public GET405, malformed POST400 and one shared-key Sonnet4.6 request200/OK/KV/standard;9 input+4output tokens=$0.000087. Config readback:$180/cycle,day14UTC,$0.50/IP/day,10/IP and200global requests/day; no env changes this session. Runtime log query returned no records. GitHub merged immediately on auto-merge request before broader CI finished; current Landing/Desktop CI remain running separately. Subscription receipt confirms Oct14–Nov14; an older credit email expiresOct17 and does not prove current balance. Console sign-in required for remaining balance, prior spend, auto-reload and production key identification; org key expiry warning Oct24UTC is confirmed. No request-limit increase or credential rotation. Existing Notion quota row and implementation RUN appended/read back; all51rows/14plan preserved. Private Next Steps Board has no PromptLab mapping. Mac ENOSPC prevented local commit; published GitHub tree equals isolated Dominic commit tree. Original source and untracked.claude preserved.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/194"
     },
     {
       "label": "Historical braces exception decision, superseded October 26",
       "state": "Verified",
-      "detail": "Historical record only. PR214 now removes this exception after the advisory withdrawal and Dave approval. 2026-10-21 braces patch availability check \u2014 Direct Dave instruction (Focus=None exception). GitHub GHSA-vfj7-8cjw-p6xm still lists affected<=3.0.3 and patched=None; npm latest and all published versions end at3.0.3. Latest micromatch4.0.8 depends on braces^3.0.3; latest markdownlint-cli2 0.24.0 still depends on micromatch4.0.8, so no compatible parent bump removes it. Installed paths verified on Dominic Node22.22.1: root markdownlint-cli2 0.23.3\u2192micromatch4.0.8\u2192braces3.0.3; extension/web Tailwind3.4.17 and desktop3.4.19 via micromatch4.0.8 and chokidar3.6.0\u2192braces3.0.3. All4 lockfile hashes match main6627041. Fresh audit4/4 policy-qualified passes, totals0critical/20high/9moderate/3low; advisory remains absent from production audit. Tooling21/21 passes. Dave selected keep current exception and document blocker; no Tailwind4/lint replacement authorized. Exception and expiry2026-11-05 unchanged; after that UTC date audit fails if advisory remains. No dependency, application or policy change. Next: recheck upstream fix before expiry; broader removal requires separate scope decision. Source https://github.com/advisories/GHSA-vfj7-8cjw-p6xm and npm registry.",
+      "detail": "Historical record only. PR214 now removes this exception after the advisory withdrawal and Dave approval. 2026-10-21 braces patch availability check — Direct Dave instruction (Focus=None exception). GitHub GHSA-vfj7-8cjw-p6xm still lists affected<=3.0.3 and patched=None; npm latest and all published versions end at3.0.3. Latest micromatch4.0.8 depends on braces^3.0.3; latest markdownlint-cli2 0.24.0 still depends on micromatch4.0.8, so no compatible parent bump removes it. Installed paths verified on Dominic Node22.22.1: root markdownlint-cli2 0.23.3→micromatch4.0.8→braces3.0.3; extension/web Tailwind3.4.17 and desktop3.4.19 via micromatch4.0.8 and chokidar3.6.0→braces3.0.3. All4 lockfile hashes match main6627041. Fresh audit4/4 policy-qualified passes, totals0critical/20high/9moderate/3low; advisory remains absent from production audit. Tooling21/21 passes. Dave selected keep current exception and document blocker; no Tailwind4/lint replacement authorized. Exception and expiry2026-11-05 unchanged; after that UTC date audit fails if advisory remains. No dependency, application or policy change. Next: recheck upstream fix before expiry; broader removal requires separate scope decision. Source https://github.com/advisories/GHSA-vfj7-8cjw-p6xm and npm registry.",
       "url": "https://github.com/advisories/GHSA-vfj7-8cjw-p6xm"
     },
     {
       "label": "PR190 post-merge CI all green",
       "state": "Verified",
-      "detail": "2026-10-21 final post-merge CI \u2014 Direct Dave instruction (Focus=None exception). Desktop Build39653865350 completed SUCCESS on exact PR190 merge5ab64c550e5a11067822bcbfb1a1fce74105a00e. All6 jobs passed: shared extension tests, Windows MSI, macOS universal build, Linux DEB, Windows NSIS and Linux AppImage acceptance. All11 workflows recorded on5ab64c5 are successful; all5 recorded on records merge86ba38a are successful, including signed-in Production Smoke39654665291. No failing checks, no repair or rerun needed; application and deletion repair unchanged. This supersedes the earlier pending Desktop note. Next: retain existing braces remediation before2026-11-05 and separate macOS interactive/signing/human acceptance; no remaining PR190 CI blocker.",
+      "detail": "2026-10-21 final post-merge CI — Direct Dave instruction (Focus=None exception). Desktop Build39653865350 completed SUCCESS on exact PR190 merge5ab64c550e5a11067822bcbfb1a1fce74105a00e. All6 jobs passed: shared extension tests, Windows MSI, macOS universal build, Linux DEB, Windows NSIS and Linux AppImage acceptance. All11 workflows recorded on5ab64c5 are successful; all5 recorded on records merge86ba38a are successful, including signed-in Production Smoke39654665291. No failing checks, no repair or rerun needed; application and deletion repair unchanged. This supersedes the earlier pending Desktop note. Next: retain existing braces remediation before2026-11-05 and separate macOS interactive/signing/human acceptance; no remaining PR190 CI blocker.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39653865350"
     },
     {
       "label": "PR190 merged and production verified",
       "state": "Verified",
-      "detail": "2026-10-21 PR190 release \u2014 Dave explicitly approved merge. Refreshed stale PR metadata by closing/reopening; exact head64fb1dcea14ddf09c90a28d16dddbb4e195fd121 then passed all9 workflows, including Landing39650849006 and Desktop39650851264 (MSI/NSIS/DEB/AppImage acceptance and macOS universal packaging). Merged with SHA guard as5ab64c550e5a11067822bcbfb1a1fce74105a00e; source tree equals tested head. Production dpl_8b4vWFcUeBsu6xdSf6YgY22u9Tbh READY and promptlab.tools alias verified at this merge. Live app bundle contains atomic batch marker; landing/app/guide HTTP checks pass. Signed-in production39653937501 at exact merge passed4/4 in24.4s, covering375/1440 Library navigation/import/export/reload, starter/stale deletion and browser process restart. Synthetic QA data only, disposable sessions revoked, no paid inference or purchases. No application edits in this merge turn. Old tabs must reload for batch markers; pre-existing partial tombstones cannot be safely inferred/recovered. Main post-merge CI remains separately running. Next: preserve deletion markers; retain broader human/macOS interaction/signing/tagged-release gates separately. Existing braces exception remains due2026-11-05. Private Next Steps Board mapping absent.",
+      "detail": "2026-10-21 PR190 release — Dave explicitly approved merge. Refreshed stale PR metadata by closing/reopening; exact head64fb1dcea14ddf09c90a28d16dddbb4e195fd121 then passed all9 workflows, including Landing39650849006 and Desktop39650851264 (MSI/NSIS/DEB/AppImage acceptance and macOS universal packaging). Merged with SHA guard as5ab64c550e5a11067822bcbfb1a1fce74105a00e; source tree equals tested head. Production dpl_8b4vWFcUeBsu6xdSf6YgY22u9Tbh READY and promptlab.tools alias verified at this merge. Live app bundle contains atomic batch marker; landing/app/guide HTTP checks pass. Signed-in production39653937501 at exact merge passed4/4 in24.4s, covering375/1440 Library navigation/import/export/reload, starter/stale deletion and browser process restart. Synthetic QA data only, disposable sessions revoked, no paid inference or purchases. No application edits in this merge turn. Old tabs must reload for batch markers; pre-existing partial tombstones cannot be safely inferred/recovered. Main post-merge CI remains separately running. Next: preserve deletion markers; retain broader human/macOS interaction/signing/tagged-release gates separately. Existing braces exception remains due2026-11-05. Private Next Steps Board mapping absent.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39653937501"
     },
     {
@@ -334,11 +364,11 @@
     {
       "label": "Create graphite visual increment verified on runner",
       "state": "Verified",
-      "detail": "2026-10-18: D-014 original human choice and hold until L4 verified; Library owner released its claim after PR171/174 delivery. Scoped CreateEditorPane/CSS only; all four palettes and both modes preserved, flag off by default. Dominic Node22: two Chromium scenarios passed in1.4min at1440\u00d7900/375\u00d7812 plus768\u00d71024,812\u00d7375,3200\u00d7900; source/result/empty/error contrast,44px targets, focus, reload and flag-off isolation passed. Thirteen existing Create tests and extension build passed; screenshots inspected. Initial muted-label contrast and hidden-label mobile overflow failures corrected and retained. CI/merge/deploy/live visual proof pending. Prior production save/recovery/native proof reused. UX/RUN/Hub written/read back;46rows/14plan IDs preserved. Private board mapping remains absent.",
+      "detail": "2026-10-18: D-014 original human choice and hold until L4 verified; Library owner released its claim after PR171/174 delivery. Scoped CreateEditorPane/CSS only; all four palettes and both modes preserved, flag off by default. Dominic Node22: two Chromium scenarios passed in1.4min at1440×900/375×812 plus768×1024,812×375,3200×900; source/result/empty/error contrast,44px targets, focus, reload and flag-off isolation passed. Thirteen existing Create tests and extension build passed; screenshots inspected. Initial muted-label contrast and hidden-label mobile overflow failures corrected and retained. CI/merge/deploy/live visual proof pending. Prior production save/recovery/native proof reused. UX/RUN/Hub written/read back;46rows/14plan IDs preserved. Private board mapping remains absent.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/tree/codex/create-graphite"
     },
     {
-      "label": "Library L1\u2013L8 automated delivery verified",
+      "label": "Library L1–L8 automated delivery verified",
       "state": "Verified",
       "detail": "2026-10-18: PR170 merged eda7142 and PR171 merged 4b9319b after all 16 checks passed on 934ad07. Candidate/merge source tree 42d5672a458e9b32a0e71df25635ab8cfb24c53d matches. All 10 returned exact-main runs passed, including Desktop 39182308915: MSI/NSIS/DEB/AppImage installed retention and macOS universal packaging. Extension 39182309041 passed 1195 shared, 223 legacy and 13 evaluator tests; six version regressions cover Windows CRLF. Scoped Production 39182361884 passed all four Library cases at 375/1440px with synthetic profiles and session cleanup. Vercel dpl_44KhvNRpp9Cj3qr5JGTxUisvstc1 READY exact 4b9319b; signed-in Library visibly reports 1.8.0-dev (4b9319b) and retains 15 personal prompts. All 32 Library browser, nine hosted and four desktop-shell checks passed on Dominic. Earlier failed runs 39178388110, 39178388142 and 39179694257 remain retained. Human/physical/macOS interaction and tagged-release acceptance remain open. No delegated subagents, real model calls, purchases or personal prompt edits.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/171"
@@ -346,7 +376,7 @@
     {
       "label": "Hosted Create Slice 1 automated acceptance passed",
       "state": "Verified",
-      "detail": "2026-10-18: PR169 merged081b9b5 and PR172 merged1f60dcc repair44px Create buttons, fields, disclosures and choice labels. Production dpl_xBKECQ9ULXrGQszmeqPNqbWMEDo8 READY at1f60dcc. Explicit production39179972239 passed both scenarios12.0s at test9d5509f: all4sizes\u00d72themes,16target scans, no document overflow, one Save, edits/candidates/tabs/focus, assumptions/reversal, stable IDs/version/reload, visible streaming/real Cancel/partial failure/retry/Save. Scheduled39178875628 activation375/1440 history/comparison/reload/reuse passed but its Library restart failed; no overall pass inferred. Retained39178130735 target/selector failures and39179095194 active-session guard then reload-locator timeout. PR173 readiness fix confirmed by0mountedworkspaces before wait; persistence assertions intact. Both QA sessions revoked/read back; no paid calls. Dominic local2scenario matrix passed; screenshots inspected; owned container/claims released. UX/RUN/Hub written/read back; complete46rows/14plan IDs retained. Main Desktop39178986364/Landing39178986318 failures remain ownerPR171 scope; its corrected003397e Desktop39179694257 passes shared/macOS but Windows/Linux fail. Full parent UX, physical touch, screen-reader listening and native/human acceptance remain open; private board mapping absent.",
+      "detail": "2026-10-18: PR169 merged081b9b5 and PR172 merged1f60dcc repair44px Create buttons, fields, disclosures and choice labels. Production dpl_xBKECQ9ULXrGQszmeqPNqbWMEDo8 READY at1f60dcc. Explicit production39179972239 passed both scenarios12.0s at test9d5509f: all4sizes×2themes,16target scans, no document overflow, one Save, edits/candidates/tabs/focus, assumptions/reversal, stable IDs/version/reload, visible streaming/real Cancel/partial failure/retry/Save. Scheduled39178875628 activation375/1440 history/comparison/reload/reuse passed but its Library restart failed; no overall pass inferred. Retained39178130735 target/selector failures and39179095194 active-session guard then reload-locator timeout. PR173 readiness fix confirmed by0mountedworkspaces before wait; persistence assertions intact. Both QA sessions revoked/read back; no paid calls. Dominic local2scenario matrix passed; screenshots inspected; owned container/claims released. UX/RUN/Hub written/read back; complete46rows/14plan IDs retained. Main Desktop39178986364/Landing39178986318 failures remain ownerPR171 scope; its corrected003397e Desktop39179694257 passes shared/macOS but Windows/Linux fail. Full parent UX, physical touch, screen-reader listening and native/human acceptance remain open; private board mapping absent.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39179972239"
     },
     {
@@ -532,7 +562,7 @@
     {
       "label": "Product fixes",
       "state": "Verified",
-      "detail": "PRs #82\u2013#90 merged. Historical candidate 916c267 recorded 957 Vitest + 212 Node tests; not a fresh suite run in this snapshot.",
+      "detail": "PRs #82–#90 merged. Historical candidate 916c267 recorded 957 Vitest + 212 Node tests; not a fresh suite run in this snapshot.",
       "url": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
     },
     {
@@ -586,7 +616,7 @@
     {
       "label": "Pilot companion",
       "state": "Verified",
-      "detail": "PRs #100\u2013#102 merged through 0451f07. The Vercel-backed /companion and /companion/ routes, local assets, noindex directives, restrictive CSP, sandboxed reference, desktop/mobile rendering and Billing interaction are verified live.",
+      "detail": "PRs #100–#102 merged through 0451f07. The Vercel-backed /companion and /companion/ routes, local assets, noindex directives, restrictive CSP, sandboxed reference, desktop/mobile rendering and Billing interaction are verified live.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/102"
     },
     {
@@ -749,7 +779,7 @@
     },
     {
       "id": "32d255fc8f448169844bf43faa73ace4",
-      "title": "UI layout inconsistency \u2014 create mode renders triple-wide plus extra library pane",
+      "title": "UI layout inconsistency — create mode renders triple-wide plus extra library pane",
       "status": "Done",
       "severity": "Medium",
       "area": "Layout",
@@ -1098,7 +1128,7 @@
     {
       "id": "3fd255fc8f4481b9bdbecd92b99fd64b",
       "inPlan": false,
-      "title": "Library workspace controls L1\u2013L8",
+      "title": "Library workspace controls L1–L8",
       "status": "In progress",
       "severity": "Medium",
       "area": "Library",
@@ -1554,10 +1584,10 @@
     {
       "inPlan": false,
       "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this snapshot.",
+      "verification": "November2: SF-01 through SF-04 merged in PR311 as8a13ce3 after all16 df2615f checks passed. Vercel production dpl_HWVRNZVxJPgEw5jRrJiASQw8rRja READY on exact merge and promptlab.tools alias. Production smoke41443801045 passed2/2 at375x812 and1440x900: live shared link, independent save, original unchanged, displaced draft restore, no stale receipt, immediate refresh and failed-write retry. Both disposable sessions revoked. Synthetic local fixtures and application APIs blocked; no paid inference. Candidate CI1732 shared/150files,231 legacy,118 hosted/one existing skip,25 landing and all6 Desktop jobs pass. SF-02 validated sign-in/sign-up destinations and SF-03 navigation/cancellation/partial-summary persistence are covered by source and mocked browser tests. Exact-merge post-release Extension41443637293, Landing41443637523 and all6 Desktop41443637356 jobs passed. All four scoped issues are Done with write/readback. Retain regressions; no remaining repair action. Other project acceptance and human/native gates remain separate.",
       "id": "409255fc8f4481e78dfff5b0abd252e8",
       "title": "SF-01 Preserve shared prompt identity and displaced draft",
-      "status": "In progress",
+      "status": "Done",
       "severity": "High",
       "area": "Import",
       "type": "Bug",
@@ -1566,10 +1596,10 @@
     {
       "inPlan": false,
       "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this snapshot.",
+      "verification": "November2: SF-01 through SF-04 merged in PR311 as8a13ce3 after all16 df2615f checks passed. Vercel production dpl_HWVRNZVxJPgEw5jRrJiASQw8rRja READY on exact merge and promptlab.tools alias. Production smoke41443801045 passed2/2 at375x812 and1440x900: live shared link, independent save, original unchanged, displaced draft restore, no stale receipt, immediate refresh and failed-write retry. Both disposable sessions revoked. Synthetic local fixtures and application APIs blocked; no paid inference. Candidate CI1732 shared/150files,231 legacy,118 hosted/one existing skip,25 landing and all6 Desktop jobs pass. SF-02 validated sign-in/sign-up destinations and SF-03 navigation/cancellation/partial-summary persistence are covered by source and mocked browser tests. Exact-merge post-release Extension41443637293, Landing41443637523 and all6 Desktop41443637356 jobs passed. All four scoped issues are Done with write/readback. Retain regressions; no remaining repair action. Other project acceptance and human/native gates remain separate.",
       "id": "409255fc8f4481349b10d5ccdc40e13c",
       "title": "SF-02 Preserve incoming authentication destinations",
-      "status": "In progress",
+      "status": "Done",
       "severity": "Medium",
       "area": "Background",
       "type": "Bug",
@@ -1578,10 +1608,10 @@
     {
       "inPlan": false,
       "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this snapshot.",
+      "verification": "November2: SF-01 through SF-04 merged in PR311 as8a13ce3 after all16 df2615f checks passed. Vercel production dpl_HWVRNZVxJPgEw5jRrJiASQw8rRja READY on exact merge and promptlab.tools alias. Production smoke41443801045 passed2/2 at375x812 and1440x900: live shared link, independent save, original unchanged, displaced draft restore, no stale receipt, immediate refresh and failed-write retry. Both disposable sessions revoked. Synthetic local fixtures and application APIs blocked; no paid inference. Candidate CI1732 shared/150files,231 legacy,118 hosted/one existing skip,25 landing and all6 Desktop jobs pass. SF-02 validated sign-in/sign-up destinations and SF-03 navigation/cancellation/partial-summary persistence are covered by source and mocked browser tests. Exact-merge post-release Extension41443637293, Landing41443637523 and all6 Desktop41443637356 jobs passed. All four scoped issues are Done with write/readback. Retain regressions; no remaining repair action. Other project acceptance and human/native gates remain separate.",
       "id": "409255fc8f448189a6c6e63df67e8155",
       "title": "SF-03 Cancel test case batches with partial completion",
-      "status": "In progress",
+      "status": "Done",
       "severity": "Medium",
       "area": "Editor",
       "type": "Bug",
@@ -1590,10 +1620,10 @@
     {
       "inPlan": false,
       "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this snapshot.",
+      "verification": "November2: SF-01 through SF-04 merged in PR311 as8a13ce3 after all16 df2615f checks passed. Vercel production dpl_HWVRNZVxJPgEw5jRrJiASQw8rRja READY on exact merge and promptlab.tools alias. Production smoke41443801045 passed2/2 at375x812 and1440x900: live shared link, independent save, original unchanged, displaced draft restore, no stale receipt, immediate refresh and failed-write retry. Both disposable sessions revoked. Synthetic local fixtures and application APIs blocked; no paid inference. Candidate CI1732 shared/150files,231 legacy,118 hosted/one existing skip,25 landing and all6 Desktop jobs pass. SF-02 validated sign-in/sign-up destinations and SF-03 navigation/cancellation/partial-summary persistence are covered by source and mocked browser tests. Exact-merge post-release Extension41443637293, Landing41443637523 and all6 Desktop41443637356 jobs passed. All four scoped issues are Done with write/readback. Retain regressions; no remaining repair action. Other project acceptance and human/native gates remain separate.",
       "id": "409255fc8f44816b9c0ac1cb28ae0c80",
       "title": "SF-04 Recover draft checkpoints across exit and storage failure",
-      "status": "In progress",
+      "status": "Done",
       "severity": "Medium",
       "area": "Editor",
       "type": "Bug",
@@ -1754,6 +1784,138 @@
       "area": "Editor",
       "type": "UX",
       "url": "https://app.notion.com/40b255fc8f448128afe3ebc347c8375d"
+    },
+    {
+      "id": "40c255fc8f448001bde4c3a81e9c3618",
+      "title": "B",
+      "status": "Not started",
+      "severity": "Unknown",
+      "area": "Unknown",
+      "type": "Unknown",
+      "url": "https://app.notion.com/40c255fc8f448001bde4c3a81e9c3618",
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "Notion disposition only; unrelated row preserved without inferred scope."
+    },
+    {
+      "id": "40c255fc8f4481ad982ed9c6ca30edf6",
+      "title": "Name custom labels and coordinate their colors",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Library",
+      "type": "Feature",
+      "url": "https://app.notion.com/40c255fc8f4481ad982ed9c6ca30edf6",
+      "inPlan": false,
+      "nextAction": "Scope the requested slice using the November intake brief.",
+      "verification": "Notion row read back; implementation acceptance pending."
+    },
+    {
+      "id": "40c255fc8f4481c9a715e8b5f7ffd58c",
+      "title": "Enhance skill instructions",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Editor",
+      "type": "Feature",
+      "url": "https://app.notion.com/40c255fc8f4481c9a715e8b5f7ffd58c",
+      "inPlan": false,
+      "nextAction": "Scope the requested slice using the November intake brief.",
+      "verification": "Notion row read back; implementation acceptance pending."
+    },
+    {
+      "id": "40c255fc8f4481da84d6ca5f401b337a",
+      "title": "Save smart groups and folder rules",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Library",
+      "type": "Feature",
+      "url": "https://app.notion.com/40c255fc8f4481da84d6ca5f401b337a",
+      "inPlan": false,
+      "nextAction": "Scope the requested slice using the November intake brief.",
+      "verification": "Notion row read back; implementation acceptance pending."
+    },
+    {
+      "id": "40c255fc8f44814d9862ca0464767a77",
+      "title": "Choose app and Scratch fonts and text size",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Layout",
+      "type": "Feature",
+      "url": "https://app.notion.com/40c255fc8f44814d9862ca0464767a77",
+      "inPlan": false,
+      "nextAction": "Scope the requested slice using the November intake brief.",
+      "verification": "Notion row read back; implementation acceptance pending."
+    },
+    {
+      "id": "40c255fc8f448150a92efe8b618c509c",
+      "title": "Copy individual code blocks",
+      "status": "Done",
+      "severity": "Medium",
+      "area": "Editor",
+      "type": "Feature",
+      "url": "https://app.notion.com/40c255fc8f448150a92efe8b618c509c",
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "PR308/309 delivered; signed-in production b4f08ab exact clipboard readback passed for whitespace, Unicode, markup, empty, long and unfinished blocks, keyboard, both themes and three viewports. Pending, rejected and missing clipboard API, retry and restoration passed. N01 acceptance complete."
+    },
+    {
+      "id": "40c255fc8f4481668168f6da751a37bb",
+      "title": "Author and enhance system prompts",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Editor",
+      "type": "Feature",
+      "url": "https://app.notion.com/40c255fc8f4481668168f6da751a37bb",
+      "inPlan": false,
+      "nextAction": "Scope the requested slice using the November intake brief.",
+      "verification": "Notion row read back; implementation acceptance pending."
+    },
+    {
+      "id": "40c255fc8f44816e8a27e0a1b10c6ee6",
+      "title": "Chat with AI inside Prompt Lab",
+      "status": "Done",
+      "severity": "Medium",
+      "area": "Editor",
+      "type": "Feature",
+      "url": "https://app.notion.com/40c255fc8f44816e8a27e0a1b10c6ee6",
+      "inPlan": false,
+      "nextAction": "Retain the contextual chat regressions; continue N03 bulk editing.",
+      "verification": "PR310 merged b4349f1 after16 passing checks. Exact production deployment READY; signed-in two-turn Sonnet4.6 chat, excluded original context, clipboard copy, close/reopen, handoff/Undo and original draft after reload passed. Library unchanged. Three live viewport checks pass. Earlier clipboard backup lost on interruption; resumed empty clipboard restored. Broader installed/human acceptance separate."
+    },
+    {
+      "id": "40c255fc8f44818b844ece5f2cd6336c",
+      "title": "Extract a reusable generic template",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Editor",
+      "type": "Feature",
+      "url": "https://app.notion.com/40c255fc8f44818b844ece5f2cd6336c",
+      "inPlan": false,
+      "nextAction": "Scope the requested slice using the November intake brief.",
+      "verification": "Notion row read back; implementation acceptance pending."
+    },
+    {
+      "id": "40c255fc8f448192b4eefbd9c9d11b31",
+      "title": "Suggest smart tags for prompts",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Library",
+      "type": "Feature",
+      "url": "https://app.notion.com/40c255fc8f448192b4eefbd9c9d11b31",
+      "inPlan": false,
+      "nextAction": "Scope the requested slice using the November intake brief.",
+      "verification": "Notion row read back; implementation acceptance pending."
+    },
+    {
+      "id": "40c255fc8f4481aeb3c9e2dce700ed1c",
+      "title": "Bulk edit prompt icons tags and metadata",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Library",
+      "type": "Feature",
+      "url": "https://app.notion.com/40c255fc8f4481aeb3c9e2dce700ed1c",
+      "inPlan": false,
+      "nextAction": "Define the existing-field patch allowlist, mixed-value preview and acknowledged apply with fresh-version validation; then implement the smallest N03 operation.",
+      "verification": "Source preparation recorded/read back. Existing bulk selection and Add tag confirmed. Icon assignment, tag removal and metadata preview/apply remain unimplemented; status Not started."
     }
   ]
 }

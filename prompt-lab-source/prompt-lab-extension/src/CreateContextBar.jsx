@@ -86,6 +86,7 @@ export default function CreateContextBar({
   openSavePanel, openSection, accentTextClass, accentHoverTextClass, accentBadgeClass,
   scratchPanel = null,
   promptsPanel = null,
+  chatPanel = null,
 }) {
   const context = describeEditingContext({
     currentEntry, raw, enhanced, suggestedSaveTitle, saveTitle, saveCollection, saveTags,
@@ -139,10 +140,11 @@ export default function CreateContextBar({
       </div>
       </div>
       </details>
-      {(scratchPanel || promptsPanel) && (
+      {(scratchPanel || promptsPanel || chatPanel) && (
         <div className="pl-context-toggles ml-auto flex shrink-0 items-center gap-x-1.5">
           {scratchPanel && <SidePanelToggle m={m} panel={scratchPanel} label="Scratch" icon="PanelRight" accentBadgeClass={accentBadgeClass} />}
           {promptsPanel && <SidePanelToggle m={m} panel={promptsPanel} label="Prompts" icon="Star" accentBadgeClass={accentBadgeClass} />}
+          {chatPanel && <SidePanelToggle m={m} panel={chatPanel} label="Chat" icon="Quote" accentBadgeClass={accentBadgeClass} />}
         </div>
       )}
     </section>

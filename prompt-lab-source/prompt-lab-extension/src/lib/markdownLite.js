@@ -28,6 +28,10 @@ function renderInline(text) {
     });
 }
 
+function renderCodeBlock(lines, language = '') {
+  return `<div class="md-code-block"><div class="md-code-toolbar"><button type="button" data-copy-code>Copy code</button><span role="status" aria-live="polite"></span></div><pre><code${language ? ` class="language-${escapeHtml(language)}"` : ''}>${escapeHtml(lines.join('\n'))}</code></pre></div>`;
+}
+
 export function renderMarkdown(src) {
   if (!src || typeof src !== 'string') return '';
 
@@ -57,7 +61,7 @@ export function renderMarkdown(src) {
         codeLang = line.trimStart().slice(3).trim();
         codeLines = [];
       } else {
-        out.push(`<pre><code${codeLang ? ` class="language-${escapeHtml(codeLang)}"` : ''}>${escapeHtml(codeLines.join('\n'))}</code></pre>`);
+        out.push(renderCodeBlock(codeLines, codeLang));
         inCode = false;
         codeLang = '';
         codeLines = [];
@@ -132,7 +136,7 @@ export function renderMarkdown(src) {
 
   // Close any unclosed blocks
   if (inCode) {
-    out.push(`<pre><code>${escapeHtml(codeLines.join('\n'))}</code></pre>`);
+    out.push(renderCodeBlock(codeLines, codeLang));
   }
   closeList();
 

@@ -29,7 +29,7 @@ function makeEntry(overrides = {}) {
   });
 }
 
-function renderPersistenceFlow({ entry = null, raw = '', enhanced = '' } = {}) {
+function renderPersistenceFlow({ entry = null, raw = '', enhanced = '', onDisplaceDraft = vi.fn(() => true) } = {}) {
   const notify = vi.fn();
   const setTab = vi.fn();
   const setABVariant = vi.fn();
@@ -49,7 +49,7 @@ function renderPersistenceFlow({ entry = null, raw = '', enhanced = '' } = {}) {
     const [composerBlocks, setComposerBlocks] = useState([]);
 
     const flow = usePersistenceFlow({
-      ui: { notify, setTab, setABVariant, tab: 'editor' },
+      ui: { notify, setTab, setABVariant, tab: 'editor', onDisplaceDraft },
       lib: { library, doSave, bumpUse },
       editor: {
         raw: rawState,
@@ -113,6 +113,46 @@ describe('usePersistenceFlow share + template paths', () => {
     expect(result.current.saveTitle).toBe('Prompt enhanced');
     expect(result.current.sharedHashPending).toBe(false);
     expect(notify).toHaveBeenCalledWith('Shared prompt loaded!');
+  });
+
+  it('preserves the restored draft and saves shared content as a new record', async () => {
+    const prior = { raw: 'Unsaved prior draft', enhanced: 'Prior result', editingId: 'original-record', editingVersionId: 'v1', saveTitle: 'Prior title', saveCollection: 'Private collection', saveTags: ['prior'] };
+    sessionGet.mockImplementationOnce((_key, cb) => cb(prior));
+    window.location.hash = `#share=${encodeShare({ original: 'Shared body', enhanced: 'Shared result', title: 'Shared title' })}`;
+    const preserve = vi.fn(() => true);
+    const { result, doSave } = renderPersistenceFlow({ onDisplaceDraft: preserve });
+    await waitFor(() => expect(result.current.showSave).toBe(true));
+    expect(preserve).toHaveBeenCalledTimes(1);
+    expect(preserve.mock.calls[0][0]).toMatchObject({ editor: { raw: prior.raw }, persistence: { editingId: prior.editingId, editingVersionId: 'v1', saveCollection: prior.saveCollection } });
+    expect(result.current.editingId).toBeNull();
+    expect(result.current.editingVersionId).toBeNull();
+    expect(result.current.saveCollection).toBe('');
+    await act(async () => { await result.current.doSave(); });
+    expect(doSave).toHaveBeenCalledWith(expect.objectContaining({ editingId: null, raw: 'Shared body', title: 'Shared title' }));
+  });
+
+  it('handles a shared link arriving after the editor has already mounted', async () => {
+    const preserve = vi.fn(() => true);
+    const { result, doSave } = renderPersistenceFlow({ raw: 'Live draft', onDisplaceDraft: preserve });
+    act(() => result.current.setEditingId('prior-record'));
+    await act(async () => {
+      window.location.hash = `#share=${encodeShare({ original: 'Incoming live share', title: 'Live share' })}`;
+      window.dispatchEvent(new Event('hashchange'));
+    });
+    await waitFor(() => expect(result.current.showSave).toBe(true));
+    expect(preserve).toHaveBeenCalledWith(expect.objectContaining({ editor: expect.objectContaining({ raw: 'Live draft' }), persistence: expect.objectContaining({ editingId: 'prior-record' }) }));
+    await act(async () => { await result.current.doSave(); });
+    expect(doSave).toHaveBeenCalledWith(expect.objectContaining({ editingId: null, raw: 'Incoming live share' }));
+  });
+
+  it('keeps the current draft intact if recovery cannot be persisted', async () => {
+    sessionGet.mockImplementationOnce((_key, cb) => cb({ raw: 'Keep this draft', editingId: 'original-record' }));
+    window.location.hash = `#share=${encodeShare({ original: 'Shared body', title: 'Shared' })}`;
+    const { result, notify } = renderPersistenceFlow({ onDisplaceDraft: () => false });
+    await waitFor(() => expect(notify).toHaveBeenCalledWith(expect.stringContaining('could not be preserved')));
+    expect(result.current.raw).toBe('Keep this draft');
+    expect(result.current.editingId).toBe('original-record');
+    expect(result.current.showSave).toBe(false);
   });
 
   it('template_fill_preserves_entry_metadata', async () => {
