@@ -1,5 +1,13 @@
 # Prompt Lab Changelog (Plain English)
 
+## Pending delivery: Workspace backups restore without extra questions
+
+- Restoring a workspace backup no longer stops to ask about two different
+  prompts in the same file that happen to have the same title. Both are kept,
+  and you can still choose Skip or Replace for either one before you apply.
+- Prompts in the backup that match a title or ID already in your Library still
+  ask what to do, and prompts with the same text are still skipped by default.
+
 ## Pending delivery: Prompt artwork
 
 - Change a prompt's artwork directly from its Library card in List, Tiles,
