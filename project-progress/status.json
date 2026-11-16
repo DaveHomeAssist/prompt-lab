@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-11-16T05:58:16.101Z",
+  "snapshotAt": "2026-11-16T06:23:32.643Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,14 +9,14 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "9255f8bc1f7335fecd50777243283096d1f9af25",
+  "mainSha": "8ea12ddb4f57fd9f168fbfb277b552c7a7d0a8cd",
   "overall": "Acceptance incomplete",
   "nextAction": "Continue N03 bulk icon/tag/metadata editing from the prepared allowlist, preview and acknowledged-write contract. N01 Copy code and N02 contextual Chat are accepted. Other November and independent storage/billing/native/human gates remain with their owning records.",
   "evidence": [
     {
       "label": "Inline rename and result editor recovery",
       "state": "Open",
-      "detail": "November 16: PR318 candidate d746c47 pushed. Dominic Node 22.23.4: 3 Library rename browser cases, 12 prompt lifecycle cases including native Cut, Undo, paste and saving a new version, and 78 targeted Vitest checks passed. Both new issue rows were read back. GitHub CI, merge, production deployment and live interaction verification are pending.",
+      "detail": "November 16: PR318 merged 8ea12dd after 16 of 16 exact-candidate checks passed, including hosted browsers, extension, macOS, MSI, NSIS, DEB and AppImage. Vercel production dpl_FbW8dgQm73EQdkeyHLuqiXMYHSeJ READY at the exact merge; the live promptlab.tools app bundle carried the revision and both UI changes. Dominic Node 22.23.4 verified 15 targeted Chromium cases plus a cleared alternative across reload, and 78 component and persistence checks. Baseline 9255f8b reproduced the lost result editor. Both issue rows and the implementation RUN were updated and read back; the complete snapshot still has 108 rows and 14 plan items. Signed-in production interaction remains open.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/318"
     },
     {
@@ -1956,8 +1956,8 @@
       "type": "Feature",
       "url": "https://app.notion.com/41a255fc8f44814e909ccd9df60ca800",
       "inPlan": false,
-      "nextAction": "Verify production deployment and the live interaction.",
-      "verification": "PR318: Dominic Node 22 and hosted Chromium regression passed. Production acceptance pending."
+      "nextAction": "Verify the interaction in a signed-in production browser.",
+      "verification": "PR318 merged 8ea12dd. Dominic browser regression, exact-candidate CI, production deployment and live app bundle verified. Signed-in production interaction pending."
     },
     {
       "id": "41a255fc8f44819b8feed35029d0694b",
@@ -1968,8 +1968,8 @@
       "type": "Bug",
       "url": "https://app.notion.com/41a255fc8f44819b8feed35029d0694b",
       "inPlan": false,
-      "nextAction": "Verify production deployment and the live interaction.",
-      "verification": "PR318: Dominic Node 22 and hosted Chromium regression passed. Production acceptance pending."
+      "nextAction": "Verify the interaction in a signed-in production browser.",
+      "verification": "PR318 merged 8ea12dd. Dominic browser regression, exact-candidate CI, production deployment and live app bundle verified. Signed-in production interaction pending."
     }
   ]
 }
