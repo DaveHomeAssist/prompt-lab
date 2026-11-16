@@ -974,7 +974,7 @@ export default function App({
   };
   const handleCandidateSelection = (candidate, meta) => {
     const runId = meta?.runId || resultMeta?.runId;
-    if (!runId || !candidate?.id) return;
+    if (!runId || !candidate?.id || !candidate.content.trim()) return;
     void updateEvalRun?.(runId, {
       selectedCandidateId: candidate.id,
       output: candidate.content,

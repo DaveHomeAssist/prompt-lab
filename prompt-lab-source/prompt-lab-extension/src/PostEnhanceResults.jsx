@@ -54,9 +54,10 @@ export default function PostEnhanceResults({
   const [saveFeedback, setSaveFeedback] = useState(null);
   const [showFullSummary, setShowFullSummary] = useState(false);
   const savePendingRef = useRef(false);
-  const normalized = useMemo(() => normalizeResultMeta(resultMeta, { enhanced, variants }), [resultMeta, enhanced, variants]);
+  const normalized = useMemo(() => normalizeResultMeta(resultMeta, { enhanced, variants }, { preserveEmpty: true }), [resultMeta, enhanced, variants]);
   const selected = normalized.candidates.find(candidate => candidate.id === normalized.selectedCandidateId)
     || normalized.candidates[0] || { id: 'improved', label: 'Improved', content: enhanced };
+  const hasCandidateText = Boolean(selected.content.trim());
   const primaryId = normalized.primaryId || 'improved';
   const isPrimary = selected.id === primaryId;
   const assumptions = normalized.assumptions.filter(item => (item.candidateId || 'improved') === selected.id);
@@ -91,7 +92,7 @@ export default function PostEnhanceResults({
         ? `Saved ${saveFeedback.label} to “${saveFeedback.title}” · version ${saveFeedback.versionNumber}.${changedSinceSave ? ' Current result has unsaved changes.' : ''}`
         : currentEntry ? `Selected: ${selected.label}. Save adds a version to “${currentEntry.title}”.` : `Selected: ${selected.label}. Not saved to Library yet.`;
   const saveSelected = async (asNew = false) => {
-    if (savePendingRef.current) return;
+    if (!hasCandidateText || savePendingRef.current) return;
     savePendingRef.current = true;
     const snapshot = { content: selected.content, raw, candidateId: selected.id, label: selected.label, runId: normalized.runId };
     setSaveFeedback({ state: 'pending' });
@@ -132,7 +133,7 @@ export default function PostEnhanceResults({
     updateCandidate(result.text, nextMeta);
   };
   const pinCandidate = candidate => {
-    if (!editingId) return;
+    if (!editingId || !candidate.content.trim()) return;
     lib.pinGoldenResponse(editingId, { text: candidate.content, runId: normalized.runId || evalRuns?.[0]?.id, candidateId: candidate.id, provider, model });
   };
   const handleCandidateKeyDown = event => {
@@ -152,9 +153,9 @@ export default function PostEnhanceResults({
         <div className="pl-commit-copy"><p className="pl-eyebrow">Save selected result</p><label htmlFor="result-save-title" className="sr-only">Prompt title</label><input id="result-save-title" value={saveTitle} placeholder={suggestedSaveTitle} onChange={event => setSaveTitle(event.target.value)} /></div>
         <div className="pl-commit-actions">
           {splitWorkspace && (
-            <button type="button" onClick={() => copy(selected.content, `${selected.label} copied`)} className="pl-secondary-button"><Ic n="Copy" size={13} /> Copy</button>
+            <button type="button" disabled={!hasCandidateText} onClick={() => copy(selected.content, `${selected.label} copied`)} className="pl-secondary-button"><Ic n="Copy" size={13} /> Copy</button>
           )}
-          <button data-testid="save-to-library" type="button" onClick={() => saveSelected()} disabled={!canSavePanel || saving} className="pl-primary-button"><Ic n="Save" size={13} /> <span className="pl-commit-label">{saving ? 'Saving…' : currentEntry ? 'Save new version' : 'Save as new prompt'}</span>{splitWorkspace && <span className="pl-commit-target"> · {selected.label}</span>}</button>
+          <button data-testid="save-to-library" type="button" onClick={() => saveSelected()} disabled={!hasCandidateText || !canSavePanel || saving} className="pl-primary-button"><Ic n="Save" size={13} /> <span className="pl-commit-label">{saving ? 'Saving…' : currentEntry ? 'Save new version' : 'Save as new prompt'}</span>{splitWorkspace && <span className="pl-commit-target"> · {selected.label}</span>}</button>
           {(editingId || currentEntry || showInlineSaveBar) && <details className="pl-result-save-more" onKeyDown={event => {
             if (event.key === 'Escape') { event.currentTarget.open = false; event.currentTarget.querySelector('summary')?.focus(); }
           }}>
@@ -166,8 +167,8 @@ export default function PostEnhanceResults({
                 menu.querySelector('summary')?.focus();
               }
             }}>
-              {currentEntry && <button type="button" onClick={() => saveSelected(true)} disabled={!canSavePanel || saving} className="pl-secondary-button">Save as new prompt</button>}
-              {editingId && <button type="button" onClick={() => pinCandidate(selected)} title="Set the comparison baseline. This does not save a Library version." className="pl-secondary-button"><Ic n="Pin" size={13} /> Pin golden</button>}
+              {currentEntry && <button type="button" onClick={() => saveSelected(true)} disabled={!hasCandidateText || !canSavePanel || saving} className="pl-secondary-button">Save as new prompt</button>}
+              {editingId && <button type="button" disabled={!hasCandidateText} onClick={() => pinCandidate(selected)} title="Set the comparison baseline. This does not save a Library version." className="pl-secondary-button"><Ic n="Pin" size={13} /> Pin golden</button>}
               {showInlineSaveBar && <button type="button" className="pl-secondary-button" onClick={() => openSavePanel()}>Library details</button>}
             </div>
           </details>}
@@ -213,7 +214,7 @@ export default function PostEnhanceResults({
             )
           ) : (
             <>
-              <button type="button" onClick={() => copy(selected.content)} className="pl-secondary-button"><Ic n="Copy" size={13} /> Copy selected</button>
+              <button type="button" disabled={!hasCandidateText} onClick={() => copy(selected.content)} className="pl-secondary-button"><Ic n="Copy" size={13} /> Copy selected</button>
               <button type="button" onClick={enhance} className="pl-secondary-button"><Ic n="RefreshCw" size={13} /> Re-run</button>
             </>
           )}
@@ -242,9 +243,9 @@ export default function PostEnhanceResults({
           <div className="pl-candidate-actions" role="toolbar" aria-label={`${selected.label} actions`}>
             <button type="button" onClick={() => selectCandidate(selected, { view: 'improved', preview: true })}>Preview</button>
             <button type="button" onClick={() => selectCandidate(selected, { view: 'changes', preview: false })}>Diff</button>
-            {!splitWorkspace && <button type="button" onClick={() => copy(selected.content, `${selected.label} copied`)}>Copy</button>}
-            {!splitWorkspace && <button type="button" disabled={!canSavePanel || saving} onClick={() => saveSelected()}>{explicitSaveLabels ? (currentEntry ? SAVE_LABELS.newVersion : SAVE_LABELS.newPrompt) : 'Save'}</button>}
-            {editingId && <button type="button" onClick={() => pinCandidate(selected)}>Pin</button>}
+            {!splitWorkspace && <button type="button" disabled={!hasCandidateText} onClick={() => copy(selected.content, `${selected.label} copied`)}>Copy</button>}
+            {!splitWorkspace && <button type="button" disabled={!hasCandidateText || !canSavePanel || saving} onClick={() => saveSelected()}>{explicitSaveLabels ? (currentEntry ? SAVE_LABELS.newVersion : SAVE_LABELS.newPrompt) : 'Save'}</button>}
+            {editingId && <button type="button" disabled={!hasCandidateText} onClick={() => pinCandidate(selected)}>Pin</button>}
           </div>
         </aside>
         <div className="pl-result-workspace">
@@ -271,7 +272,7 @@ export default function PostEnhanceResults({
           {view === 'improved' && (
             <div id="result-panel-improved" role="tabpanel" aria-labelledby="result-tab-improved">
               {preview ? <div className="pl-result-editor pl-markdown-result"><MarkdownPreview text={selected.content} /></div>
-                : <textarea data-testid="output-textarea" aria-label={`${selected.label} candidate`} className="pl-result-editor" value={selected.content} onChange={event => updateCandidate(event.target.value)} />}
+                : <textarea data-testid="output-textarea" aria-label={`${selected.label} candidate`} className="pl-result-editor" placeholder="Paste or type your result here" value={selected.content} onChange={event => updateCandidate(event.target.value)} />}
             </div>
           )}
           <div className="pl-result-after-editor">

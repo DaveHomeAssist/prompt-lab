@@ -172,3 +172,34 @@ for (const [width, height] of [[1440, 900], [375, 812], [844, 390], [320, 256], 
     await page.screenshot({ path: testInfo.outputPath(`header-${width}.png`) });
   });
 }
+
+test('cutting the entire result leaves it editable for undo, paste and save', async ({ page, context }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await prepare(page, 'split');
+  await page.getByTestId('save-to-library').click();
+  const first = (await readLibrary(page))[0];
+  const output = page.getByTestId('output-textarea');
+  await output.selectText();
+  await page.keyboard.press('Control+x');
+  await expect(output).toBeFocused();
+  await expect(output).toHaveValue('');
+  await expect(page.getByTestId('save-to-library')).toBeDisabled();
+  await expect(page.getByText('Workbench flow', { exact: true })).toHaveCount(0);
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(result);
+
+  await page.keyboard.press('Control+z');
+  await expect(output).toHaveValue(result);
+  await output.selectText();
+  await page.keyboard.press('Control+x');
+  await expect(output).toHaveValue('');
+  await page.keyboard.press('Control+v');
+  await expect(output).toHaveValue(result);
+  await output.press('End');
+  await page.keyboard.insertText(' Add a named backup owner.');
+  await page.getByTestId('save-to-library').click();
+  await expect.poll(async () => (await readLibrary(page))[0]).toMatchObject({
+    id: first.id, enhanced: `${result} Add a named backup owner.`,
+  });
+  await fits(page);
+});
