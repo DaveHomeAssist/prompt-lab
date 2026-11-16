@@ -40,6 +40,7 @@ const PATHS = {
   LayoutGrid: `<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>`,
   List: `<line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/>`,
   PanelRight: `<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/>`,
+  Pencil: `<path d="m14 5 5 5M4 20l4-.9L20 7l-3-3L5 16z"/>`,
   Pin: `<path d="M12 17v5"/><path d="M5 17h14"/><path d="M6 3h12l-2 8 3 3H5l3-3z"/>`,
   Quote: `<path d="M3 21c3 0 7-1 7-8V5c0-1.25-.75-2-2-2H4c-1.25 0-2 .75-2 1.97V9c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2z"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.75-2-2-2h-4c-1.25 0-2 .75-2 1.97V9c0 1.25.75 2 2 2h.75c0 4.25.25 4-1.75 4z"/>`,
   RefreshCw: `<path d="M21 12a9 9 0 0 0-15-6.7L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 15 6.7L21 16"/><path d="M16 16h5v5"/>`,
