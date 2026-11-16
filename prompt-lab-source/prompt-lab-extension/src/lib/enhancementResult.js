@@ -97,7 +97,7 @@ export function buildResultCandidates(enhanced, variants = [], primaryId = 'impr
   });
   return rows.filter((row, index) => rows.findIndex(item => item.id === row.id) === index).slice(0, modern ? 5 : 3);
 }
-export function normalizeResultMeta(value = {}, content = {}) {
+export function normalizeResultMeta(value = {}, content = {}, { preserveEmpty = false } = {}) {
   const source = value && typeof value === 'object' ? value : {};
   const fallbackContent = content && typeof content === 'object' ? content : {};
   const primaryId = ensureString(source.primaryId || source.primary_id).trim()
@@ -106,7 +106,7 @@ export function normalizeResultMeta(value = {}, content = {}) {
     || (Array.isArray(source.candidates) && source.candidates.some(item => isModernId(item?.id)));
   const rows = Array.isArray(source.candidates) && source.candidates.length > 0
     ? source.candidates.map((candidate, index) => ({ ...candidateIdentity(candidate, index, modern), content: ensureString(candidate?.content) }))
-      .filter(candidate => candidate.content.trim()).slice(0, modern ? 5 : 3)
+      .filter(candidate => preserveEmpty || candidate.content.trim()).slice(0, modern ? 5 : 3)
     : buildResultCandidates(fallbackContent.enhanced, fallbackContent.variants, primaryId);
   const candidates = rows.filter((row, index) => rows.findIndex(item => item.id === row.id) === index);
   const resolvedPrimaryId = candidates.some(item => item.id === primaryId) ? primaryId : candidates[0]?.id || primaryId;
@@ -147,7 +147,7 @@ export function revertStructuredEdit(text, edit) {
   return { changed: false, text: source };
 }
 export function replaceCandidateContent(resultMeta, candidateId, content) {
-  const normalized = normalizeResultMeta(resultMeta);
+  const normalized = normalizeResultMeta(resultMeta, {}, { preserveEmpty: true });
   return { ...normalized, selectedCandidateId: candidateId,
     candidates: normalized.candidates.map(candidate => candidate.id === candidateId ? { ...candidate, content: ensureString(content) } : candidate) };
 }

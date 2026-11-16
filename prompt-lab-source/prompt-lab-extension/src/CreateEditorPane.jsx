@@ -190,7 +190,9 @@ export default function CreateEditorPane({
     : 'bg-amber-100 text-amber-900';
   const hasDraftInput = Boolean(raw.trim());
   const hasActivationDraft = hasDraftInput || Boolean(currentEntry);
-  const showWorkbenchEmptyState = !loading && !enhanced && !error;
+  // An existing candidate can be temporarily empty while the user edits it.
+  const hasResultEditor = Boolean(enhanced || resultMeta?.candidates?.length);
+  const showWorkbenchEmptyState = !loading && !hasResultEditor && !error;
   const activationMilestones = [
     {
       label: 'Draft ready',
@@ -567,8 +569,8 @@ export default function CreateEditorPane({
         <p className={`text-xs font-semibold ${m.text}`}>Incomplete response — request failed</p>
         <pre className={`${m.codeBlock} mt-2 max-h-56 overflow-auto whitespace-pre-wrap rounded-lg p-3 text-xs`}>{streamPreview}</pre>
       </div>}
-      {(loading || enhanced) && <>
-        {loading && !enhanced && (
+      {(loading || hasResultEditor) && <>
+        {loading && !hasResultEditor && (
           <div className={`${m.surface} border ${m.border} rounded-xl p-3`}>
             <div className={`flex justify-between items-start gap-3 mb-3 ${compact ? 'flex-col' : ''}`}>
               <div className="min-w-0">
@@ -594,7 +596,7 @@ export default function CreateEditorPane({
             )}
           </div>
         )}
-        {enhanced && <>
+        {hasResultEditor && <>
           <PostEnhanceResults
             key={resultContextRevision}
             m={m}

@@ -218,6 +218,27 @@ describe('workspace export and import contract', () => {
     expect(saved).toBe(true); expect(result.current.library[0].metadata.artwork.icon).toBe('Star');
   });
 
+  it('restores the previous stored title after an unacknowledged desktop details write', async () => {
+    localStorage.setItem(storageKeys.library, JSON.stringify([richPrompt]));
+    const notify = vi.fn();
+    const { result } = renderHook(() => usePromptLibrary(notify));
+    await waitFor(() => expect(result.current.libReady).toBe(true));
+    // A desktop session without an active durable journal cannot confirm the write.
+    window.__TAURI_INTERNALS__ = {};
+    try {
+      let saved;
+      await act(async () => {
+        saved = await result.current.saveEntryDetails(richPrompt.id, entry => ({ ...entry, title: 'Unconfirmed title' }));
+      });
+      expect(saved).toBe(false);
+      expect(result.current.library[0].title).toBe(richPrompt.title);
+      expect(JSON.parse(localStorage.getItem(storageKeys.library))[0].title).toBe(richPrompt.title);
+      expect(notify).toHaveBeenCalledWith('Durable Library storage is unavailable.');
+    } finally {
+      delete window.__TAURI_INTERNALS__;
+    }
+  });
+
   it('round-trips prompt detail, trash, collections, packs, Scratch, and runs', async () => {
     localStorage.setItem(storageKeys.library, JSON.stringify([richPrompt]));
     localStorage.setItem(storageKeys.trash, JSON.stringify([deletedPrompt]));

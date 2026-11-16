@@ -324,10 +324,27 @@ export default function LibraryWorkspace({
   const [renamingCollection, setRenamingCollection] = useState('');
   const [renameCollectionDraft, setRenameCollectionDraft] = useState('');
   const [announcement, setAnnouncement] = useState('');
+  const [rename, setRename] = useState(null);
+  const [renameError, setRenameError] = useState('');
+  const renameInputRef = useRef(null);
+  const renameSessionRef = useRef(null);
+  const renameSavingRef = useRef(false);
+  const titleClickTimer = useRef(null);
+  const cancelTitleClick = () => clearTimeout(titleClickTimer.current);
+  useEffect(() => () => clearTimeout(titleClickTimer.current), []);
+  useLayoutEffect(() => {
+    if (rename) {
+      renameInputRef.current?.focus();
+      renameInputRef.current?.select();
+    }
+  }, [rename]);
   const importInputRef = useRef(null);
   const inspectorDialogRef = useDialogA11y({
     open: compact && Boolean(selectedId),
-    onClose: () => closeInspector(),
+    onClose: () => {
+      if (renameSessionRef.current?.source === 'inspector') finishRename(false, true);
+      else closeInspector();
+    },
   });
 
   useEffect(() => setSearchDraft(lib.search || ''), [lib.search]);
@@ -360,6 +377,57 @@ export default function LibraryWorkspace({
     else pendingDetailsRef.current.set(selected.id, next);
     setDetailsRevision(revision => revision + 1);
   };
+  const beginRename = (entry, source, container) => {
+    cancelTitleClick();
+    if (smartView === 'trash' || renameSessionRef.current || renameSavingRef.current) return;
+    const session = { id: entry.id, title: entry.title, source, container };
+    renameSessionRef.current = session;
+    setRenameError('');
+    setRename(session);
+  };
+  const finishRename = async (commit, restoreFocus = false) => {
+    const session = renameSessionRef.current;
+    if (!session) return;
+    const title = renameInputRef.current?.value.trim();
+    renameSessionRef.current = null;
+    setRename(null);
+    if (restoreFocus) requestAnimationFrame(() => {
+      if (document.activeElement === document.body) {
+        session.container.querySelector(session.source === 'card' ? '.pl-library-card-open' : '.pl-inspector-rename')?.focus();
+      }
+    });
+    if (!commit || !title || title === session.title) return;
+    renameSavingRef.current = true;
+    try {
+      const saved = await lib.saveEntryDetails(session.id, entry => ({ ...entry, title, updatedAt: new Date().toISOString() }));
+      if (saved !== true) throw new Error('Rename was not saved.');
+      const pending = pendingDetailsRef.current.get(session.id);
+      if (pending) pendingDetailsRef.current.set(session.id, { ...pending, title });
+      setDetailsRevision(revision => revision + 1);
+      setAnnouncement(`Renamed prompt to ${title}.`);
+    } catch {
+      setRenameError('Could not rename the prompt. Its previous title was kept. Try again.');
+    } finally {
+      renameSavingRef.current = false;
+    }
+  };
+  const titleInput = () => <input
+    ref={renameInputRef}
+    className="pl-inline-title-input"
+    aria-label="Rename prompt title"
+    defaultValue={rename.title}
+    onClick={event => event.stopPropagation()}
+    onDoubleClick={event => event.stopPropagation()}
+    onPointerDown={event => event.stopPropagation()}
+    onDragStart={event => { event.preventDefault(); event.stopPropagation(); }}
+    onBlur={() => finishRename(true)}
+    onKeyDown={event => {
+      event.stopPropagation();
+      if (event.nativeEvent.isComposing || !['Enter', 'Escape'].includes(event.key)) return;
+      event.preventDefault();
+      finishRename(event.key === 'Enter', true);
+    }}
+  />;
   const saveCardArtwork = async (id, artwork) => {
     if (smartView === 'trash' || !lib.library.some(entry => entry.id === id)) return false;
     const nextArtwork = safeArtwork(artwork);
@@ -407,7 +475,7 @@ export default function LibraryWorkspace({
     if (nextView !== 'tag') lib.setActiveTag(null);
     if (compact) setDrawerOpen(false);
   };
-  const selectEntry = (entry) => { if (compact) setDrawerOpen(false); setSelectedId(entry.id); setInspectorTab('details'); lib.trackRecentAccess?.(entry.id); };
+  const selectEntry = (entry) => { cancelTitleClick(); if (compact) setDrawerOpen(false); setSelectedId(entry.id); setInspectorTab('details'); lib.trackRecentAccess?.(entry.id); };
   const toggleChecked = (id) => setCheckedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
   // Clearing filters only widens the visible set, so a Library selection stays
   // valid and is kept. A Recently Deleted selection does not exist in All
@@ -418,7 +486,7 @@ export default function LibraryWorkspace({
     if (smartView === 'trash') setCheckedIds([]);
   };
   const saveDetails = async () => {
-    if (!selected || smartView === 'trash' || !detailsDraft.title.trim()) return;
+    if (!selected || smartView === 'trash' || renameSavingRef.current || !detailsDraft.title.trim()) return;
     const update = (entry) => ({
       ...entry,
       title: detailsDraft.title.trim(),
@@ -610,6 +678,7 @@ export default function LibraryWorkspace({
 
       {artworkTarget && smartView !== 'trash' && lib.library.some(entry => entry.id === artworkTarget.id) && <ArtworkPopover key={artworkTarget.id} entry={lib.library.find(entry => entry.id === artworkTarget.id)} trigger={artworkTarget.trigger} onSave={saveCardArtwork} onClose={() => setArtworkTarget(null)} />}
       {artworkHistoryError && <p role="status" className="pl-artwork-history-error">{artworkHistoryError}</p>}
+      {renameError && !selected && <p role="alert" className="pl-artwork-history-error">{renameError}</p>}
       <div className="pl-library-index-heading">
         <div><p className="pl-eyebrow">{smartView === 'collection' ? lib.activeCollection : smartView === 'tag' ? `#${lib.activeTag}` : smartView === 'trash' ? 'Recently Deleted' : SMART_VIEWS.find((view) => view.id === smartView)?.label || 'All prompts'}</p><h2>{entries.length} {entries.length === 1 ? 'prompt' : 'prompts'}</h2></div>
         <div className="pl-library-index-actions">{entries.length > 0 && <label className="pl-library-select-all"><input type="checkbox" checked={allVisibleChecked} onChange={() => setCheckedIds(allVisibleChecked ? [] : entries.map((entry) => entry.id))} /> Select all</label>}</div>
@@ -618,16 +687,42 @@ export default function LibraryWorkspace({
       {entries.length === 0
         ? <div className="pl-library-empty"><Ic n={smartView === 'trash' ? 'Trash2' : 'Search'} size={22} /><h3>Nothing here yet</h3><p>{hasFilters ? 'Change or clear the active filters.' : 'Save a prompt from the Editor to start your reusable library.'}</p>{hasFilters ? <button type="button" onClick={clearFilters}>Clear filters</button> : <p>Use New Prompt in the app header to start one.</p>}</div>
         : <div className={`pl-library-results is-${layout}`} role="list" aria-label="Saved prompts">
-          {entries.map((entry, index) => <article key={entry.id} className={`pl-library-card${selectedId === entry.id ? ' is-selected' : ''}`} role="listitem">
+          {entries.map((entry, index) => {
+            const editingTitle = rename?.id === entry.id && rename.source === 'card';
+            const CardBody = editingTitle ? 'div' : 'button';
+            return <article key={entry.id} className={`pl-library-card${selectedId === entry.id ? ' is-selected' : ''}`} role="listitem">
             <label className="pl-library-card-select"><input type="checkbox" aria-label={`Select ${entry.title}`} checked={checkedIds.includes(entry.id)} onChange={() => toggleChecked(entry.id)} /></label>
             <div className={`pl-library-card-artwork${Object.values(safeArtwork(entry.metadata?.artwork)).some(Boolean) ? '' : ' is-empty'}`}>
               <button type="button" disabled={smartView === 'trash'} aria-label={`Change artwork for ${entry.title}`} aria-haspopup="dialog" aria-expanded={artworkTarget?.id === entry.id} onClick={event => setArtworkTarget({ id: entry.id, trigger: event.currentTarget })}><Artwork value={entry.metadata?.artwork} /></button>
               {layout === 'gallery' && !Object.values(safeArtwork(entry.metadata?.artwork)).some(Boolean) && smartView !== 'trash' && <button type="button" className="pl-artwork-add" aria-label={`Add image for ${entry.title}`} onClick={event => setArtworkTarget({ id: entry.id, trigger: event.currentTarget })}>Add image</button>}
             </div>
-            <button type="button" className="pl-library-card-open" aria-pressed={selectedId === entry.id} aria-label={`Inspect ${entry.title}`} onClick={() => selectEntry(entry)}>
-              <span className="pl-library-card-copy"><span className="pl-library-card-title"><strong>{entry.title}</strong>{entry.favorite && <Ic n="Star" size={12} className="text-amber-400" />}{entry.metadata?.suite?.verdict && <span className={entry.metadata.suite.verdict === 'pass' ? 'pl-suite-pass' : 'pl-suite-fail'}>{entry.metadata.suite.verdict === 'pass' ? '✓ suite' : '✗ suite'}</span>}</span><span className="pl-library-card-excerpt">{entryText(entry).slice(0, layout === 'tiles' ? 180 : 260)}</span><span className="pl-library-card-labels">{entry.collection && <span>{entry.collection}</span>}{(entry.tags || []).slice(0, 4).map((tag) => <span key={tag}>#{tag}</span>)}</span></span>
+            <CardBody className="pl-library-card-open" {...(!editingTitle && {
+              type: 'button',
+              'aria-pressed': selectedId === entry.id,
+              'aria-label': `Inspect ${entry.title}`,
+              'aria-keyshortcuts': smartView === 'trash' ? undefined : 'F2',
+              onClick: event => {
+                // Selecting can move a Recent card or cover it with a floating inspector.
+                if (smartView !== 'trash' && event.detail > 0 && event.target.closest('[data-card-title]')) {
+                  cancelTitleClick();
+                  if (event.detail === 1) titleClickTimer.current = setTimeout(() => selectEntry(entry), 450);
+                } else selectEntry(entry);
+              },
+              onKeyDown: event => {
+                if (event.key !== 'F2' || smartView === 'trash') return;
+                event.preventDefault();
+                event.stopPropagation();
+                beginRename(entry, 'card', event.currentTarget.closest('article'));
+              },
+            })}>
+              <span className="pl-library-card-copy"><span className="pl-library-card-title"><strong className={editingTitle ? 'pl-inline-title is-editing' : undefined} data-card-title
+                title={smartView === 'trash' ? undefined : 'Double-click or press F2 to rename'}
+                onDoubleClick={editingTitle || smartView === 'trash' ? undefined : event => {
+                  event.stopPropagation();
+                  beginRename(entry, 'card', event.currentTarget.closest('article'));
+                }}><span aria-hidden={editingTitle || undefined}>{entry.title}</span>{editingTitle && titleInput()}</strong>{entry.favorite && <Ic n="Star" size={12} className="text-amber-400" />}{entry.metadata?.suite?.verdict && <span className={entry.metadata.suite.verdict === 'pass' ? 'pl-suite-pass' : 'pl-suite-fail'}>{entry.metadata.suite.verdict === 'pass' ? '✓ suite' : '✗ suite'}</span>}</span><span className="pl-library-card-excerpt">{entryText(entry).slice(0, layout === 'tiles' ? 180 : 260)}</span><span className="pl-library-card-labels">{entry.collection && <span>{entry.collection}</span>}{(entry.tags || []).slice(0, 4).map((tag) => <span key={tag}>#{tag}</span>)}</span></span>
               <span className="pl-library-card-meta"><span title={`${getVersionCount(entry)} version${getVersionCount(entry) === 1 ? '' : 's'}, including the current one`}>{getVersionCount(entry)} ver</span><span>{entry.useCount || 0} uses</span><time>{smartView === 'trash' ? trashExpiryLabel(entry) : formatEntryDate(entry)}</time></span>
-            </button>
+            </CardBody>
             <div className="pl-library-card-actions">
               {lib.sortBy === 'manual' && !['trash', 'recent', 'frequent'].includes(smartView) && <>
                 <button type="button" aria-label={`Move ${entry.title} up`} title="Move up" disabled={index === 0} onClick={() => lib.moveLibraryEntryByOffset(entry.id, -1, entries)}><Ic n="ChevronUp" size={13} /></button>
@@ -635,7 +730,8 @@ export default function LibraryWorkspace({
               </>}
               {smartView === 'trash' ? <><button type="button" onClick={() => lib.restoreDeleted(entry.id)}>Restore</button><button type="button" onClick={() => lib.permanentlyDelete(entry.id)} aria-label={`Permanently delete ${entry.title}`} title="Delete forever"><Ic n="Trash2" size={13} /></button></> : <><button type="button" onClick={() => loadEntry(entry)}>Editor</button><button type="button" onClick={() => copy(entryText(entry))} aria-label={`Copy ${entry.title}`} title="Copy prompt"><Ic n="Copy" size={13} /></button><button type="button" onClick={() => lib.setFavorite(entry.id)} aria-label={`${entry.favorite ? 'Unfavorite' : 'Favorite'} ${entry.title}`} aria-pressed={Boolean(entry.favorite)} title={entry.favorite ? 'Remove from favorites' : 'Add to favorites'}><Ic n="Star" size={13} /></button></>}
             </div>
-          </article>)}
+            </article>;
+          })}
         </div>}
     </section>
 
@@ -666,7 +762,18 @@ export default function LibraryWorkspace({
       {!selected ? <div className="pl-inspector-empty"><Ic n="PanelRight" size={22} /><p>Select a prompt to inspect its content, metadata, tests, and version history.</p></div> : <>
         <header>
           <button type="button" className="pl-library-mobile-back" onClick={closeInspector}><Ic n="ArrowRight" size={13} /> Back to prompts</button>
-          <div className="pl-library-inspector-heading"><div><p className="pl-eyebrow">{smartView === 'trash' ? 'Recently Deleted' : 'Inspector'}</p><h2 id="prompt-inspector-title">{selected.title}</h2></div><button type="button" className="pl-icon-button" onClick={closeInspector} aria-label="Close prompt inspector" title="Close inspector"><Ic n="X" size={14} /></button></div>
+          <div className="pl-library-inspector-heading">
+            <div className="pl-inspector-title-wrap"><p className="pl-eyebrow">{smartView === 'trash' ? 'Recently Deleted' : 'Inspector'}</p>
+              <h2 id="prompt-inspector-title" aria-label={selected.title} className={rename?.source === 'inspector' && rename.id === selected.id ? 'pl-inline-title is-editing' : undefined}
+                onDoubleClick={smartView === 'trash' ? undefined : event => {
+                  event.stopPropagation();
+                  beginRename(selected, 'inspector', event.currentTarget.closest('.pl-library-inspector-heading'));
+                }}><span>{selected.title}</span>{rename?.source === 'inspector' && rename.id === selected.id && titleInput()}</h2>
+            </div>
+            {smartView !== 'trash' && <button type="button" className="pl-icon-button pl-inspector-rename" aria-label="Rename prompt" title="Rename prompt" onClick={event => beginRename(selected, 'inspector', event.currentTarget.parentElement)}><Ic n="Pencil" size={14} /></button>}
+            <button type="button" className="pl-icon-button" onClick={closeInspector} aria-label="Close prompt inspector" title="Close inspector"><Ic n="X" size={14} /></button>
+          </div>
+          {renameError && <p role="alert" className="pl-artwork-history-error">{renameError}</p>}
           {selected.sourceNoteId && <button type="button" className="pl-source-note-link" onClick={() => onOpenScratchSource?.(selected.sourceNoteId, selected)}><Ic n="FileText" size={13} /> Open source in Scratch</button>}
         </header>
         <div className="pl-inspector-tabs" role="tablist" aria-label="Prompt details" onKeyDown={(event) => handleTabArrowKeys(event, inspectorTab, setInspectorTab)}>
