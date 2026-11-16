@@ -1078,12 +1078,22 @@ export default function usePromptLibrary(notify) {
     const current = before.find(entry => entry.id === id);
     if (!current) return false;
     const next = before.map(entry => entry.id === id ? stampRecordMutation(entry, updater(entry)) : entry);
+    let stagedRaw;
     try {
       if (!persistRecords(storageKeys.library, next)) throw new Error(libraryConflictRef.current || 'Library storage write failed.');
+      stagedRaw = librarySnapshotRef.current.raw;
       const durable = commitLibrarySave(); if (durable) await durable;
       if (libraryRef.current !== before) throw new Error('The Library changed while saving. Review your edits and retry.');
       libraryRef.current = next; setLibrary(next); return true;
-    } catch (error) { notify(error.message || 'Prompt details were not saved.'); return false; }
+    } catch (error) {
+      // Revert an unacknowledged desktop write only if no newer write replaced it.
+      if (stagedRaw && libraryRef.current === before
+        && librarySnapshotRef.current.raw === stagedRaw && localStorage.getItem(storageKeys.library) === stagedRaw) {
+        persistRecords(storageKeys.library, before, stagedRaw);
+      }
+      notify(error.message || 'Prompt details were not saved.');
+      return false;
+    }
   };
 
   const saveFolders = async (nextFolders, pathChanges = new Map()) => {
