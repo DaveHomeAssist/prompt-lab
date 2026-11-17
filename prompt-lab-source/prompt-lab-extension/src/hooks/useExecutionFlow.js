@@ -23,12 +23,13 @@ import {
 } from '../lib/generationOptions.js';
 import useEvalRuns from './useEvalRuns.js';
 import useTestCases from './useTestCases.js';
+import { applyProfilePreamble } from '../lib/projectProfiles.js';
 
 const nowMs = () => typeof performance !== 'undefined' && typeof performance.now === 'function'
   ? performance.now() : Date.now();
 
 /** Execution controller for enhance and evaluate flows. */
-export default function useExecutionFlow({ ui, lib, editor, persistence }) {
+export default function useExecutionFlow({ ui, lib, editor, persistence, profileSendRef }) {
   const { notify, setTab, tab } = ui;
   const { options: generationOptions } = useGenerationOptions();
   const {
@@ -112,10 +113,13 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
     };
   };
   const buildEnhancePayload = (modeId = enhMode) => buildEnhancePayloadFor(raw, modeId);
+  const withProfile = (payload) => applyProfilePreamble(payload, profileSendRef?.current?.profile, {
+    disabled: Boolean(profileSendRef?.current?.disabled),
+  }).payload;
 
   const runTestCaseJob = async (testCase, promptTitle, signal) => {
     const inputText = ensureString(testCase?.input);
-    const payload = buildEnhancePayloadFor(inputText);
+    const payload = withProfile(buildEnhancePayloadFor(inputText));
     const startedAt = nowMs();
     const { matches } = scanSensitiveData({ payload });
     if (matches.length > 0) {
@@ -166,7 +170,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
       ? null : overridePayload;
     const enhanceModeId = meta?.modeId || enhMode;
     const options = resolveGenerationOptions(enhanceModeId, { ...generationOptions, ...meta?.options });
-    const payload = safeOverridePayload || buildEnhancePayloadFor(raw, enhanceModeId, meta?.options);
+    const payload = withProfile(safeOverridePayload || buildEnhancePayloadFor(raw, enhanceModeId, meta?.options));
     const reviewed = preflight.review({
       payload, scope: 'enhance', label: `Enhance (${enhanceModeId})`,
       isCurrent: () => ownerRef.current === ownerKey,
