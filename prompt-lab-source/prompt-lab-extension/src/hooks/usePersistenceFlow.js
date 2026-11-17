@@ -11,6 +11,8 @@ import { createSaveReceipt } from '../lib/promptLifecycle.js';
 import { normalizeResultMeta } from '../lib/enhancementResult.js';
 import { normalizeFollowUpOrigin } from '../lib/followUpProvenance.js';
 import { linkScratchNoteToPrompt } from '../lib/sourceLink.js';
+import { profileSaveStamp } from '../lib/projectProfiles.js';
+import { normalizeTagList } from '../lib/tagSchema.js';
 
 function hasSharedPayloadHash(hash = typeof window === 'undefined' ? '' : window.location.hash) {
   return hash.startsWith('#pack=') || hash.startsWith('#share=');
@@ -19,7 +21,7 @@ function hasSharedPayloadHash(hash = typeof window === 'undefined' ? '' : window
 /**
  * Save/share/load controller around the library + session storage boundaries.
  */
-export default function usePersistenceFlow({ ui, lib, editor }) {
+export default function usePersistenceFlow({ ui, lib, editor, profileSendRef }) {
   const { notify, setTab, tab, setABVariant } = ui;
   const {
     raw, enhanced, variants, notes, resultMeta, enhMode,
@@ -435,6 +437,13 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     const targetId = Object.prototype.hasOwnProperty.call(overrides, 'targetId')
       ? overrides.targetId
       : (saveTargetId ?? editingId);
+    const stamped = profileSendRef
+      ? profileSaveStamp(profileSendRef.current?.profile, {
+        disabled: Boolean(profileSendRef.current?.disabled),
+        isNew: !targetId || overrides.copyAsNew === true,
+        tags: tagsValue,
+      })
+      : { tags: tagsValue };
     const titleValue = Object.prototype.hasOwnProperty.call(overrides, 'titleOverride')
       ? overrides.titleOverride
       : saveTitle;
@@ -459,7 +468,8 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
       variants: variantsValue,
       notes: notesValue,
       resultMeta: resultMetaValue,
-      tags: tagsValue,
+      tags: normalizeTagList(stamped.tags),
+      ...(profileSendRef ? { profileId: stamped.profileId, profileName: stamped.profileName } : {}),
       title: titleValue,
       collection: collectionValue,
       editingId: targetId,

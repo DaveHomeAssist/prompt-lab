@@ -117,7 +117,7 @@ function buildComposerSections(entries) {
   return sections;
 }
 
-export default function ComposerTab({ m, library, composerBlocks, setComposerBlocks, addToComposer, notify, copy, onSendToEditor, onClear, onUndoClear, canUndoClear = false, saveChain, compact = false, pageScroll = false }) {
+export default function ComposerTab({ m, library, composerBlocks, setComposerBlocks, addToComposer, notify, copy, onSendToEditor, onClear, onUndoClear, canUndoClear = false, saveChain, compact = false, pageScroll = false, profileSendRef }) {
   const [dragOverComposer, setDragOverComposer] = useState(false);
   const [draggingLibId, setDraggingLibId] = useState(null);
   const [dragOverBlockIdx, setDragOverBlockIdx] = useState(null);
@@ -402,6 +402,7 @@ export default function ComposerTab({ m, library, composerBlocks, setComposerBlo
           copy={copy}
           onSendToEditor={onSendToEditor}
           onClose={() => setShowChainLab(false)}
+          profileSendRef={profileSendRef}
         />
       )}
     </div>

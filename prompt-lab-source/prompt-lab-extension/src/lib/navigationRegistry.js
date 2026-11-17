@@ -172,7 +172,7 @@ export function buildCommandActions(handlers) {
     enhance, save, saveLabel, clear, newPrompt,
     goEditor, goLibrary, goBuild, goSplit, goRuns, goCompare, goNotebook,
     toggleTheme, exportLib, openSettings, openOptions, showShortcuts,
-    manageAccount, signOut,
+    manageAccount, signOut, openProfiles,
   } = handlers;
 
   return [
@@ -191,6 +191,7 @@ export function buildCommandActions(handlers) {
     { label: 'Export Library', hint: '', action: exportLib },
     { label: 'Open Settings', hint: '', action: openSettings },
     { label: 'Extension Options (API Key)', hint: '', action: openOptions },
+    { label: 'Open project profiles', hint: 'Alt+P', action: openProfiles },
     { label: 'Show Keyboard Shortcuts', hint: '?', action: showShortcuts },
     { label: 'Manage Account', hint: '', action: manageAccount },
     { label: 'Sign Out', hint: '', action: signOut },
