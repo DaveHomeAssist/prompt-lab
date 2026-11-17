@@ -17,7 +17,7 @@
     "test:e2e:production": "npm run check:node && playwright test --grep @production",
     "test:e2e:production-free": "npm run check:node && playwright test --config=playwright.production.config.js",
     "test:legacy": "npm run check:node && node --test tests/*.test.mjs",
-    "build:cws": "npm run check:node && vite build --outDir dist-cws --minify false && node scripts/assemble.js dist-cws"
+    "build:cws": "npm run check:node && vite build --outDir dist-cws --minify false && node scripts/assemble.js dist-cws && node scripts/check-cws-personal-data.mjs dist-cws"
   },
   "engines": {
     "node": "22.x"

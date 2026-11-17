@@ -81,7 +81,7 @@ One sync cycle ([`syncEngine.js`](../prompt-lab-extension/src/lib/sync/syncEngin
 5. Results: `applied`, `conflict_won` and `unchanged` update the shadow. `conflict_lost` applies the server copy, from the deferred pull or a `sync_fetch`.
 6. If anything was pushed, pull again to advance the cursor past our own rows.
 
-Cursor safety (review F-05): `sync_push` takes `pg_advisory_xact_lock` on the user, so one user's pushes commit in sequence order, and `sync_pull` only returns rows whose writing transaction is older than the snapshot's xmin. The concurrency test reproduces the skip without the lock (2 to 3 skipped changes in 300) and shows none with it.
+Cursor safety (review F-05): `sync_push` holds `pg_advisory_xact_lock` on the user until that transaction commits. `sync_pull` returns only the contiguous prefix of visible rows whose `write_xid` is below the snapshot horizon, and holds back every later row when an earlier one is not. A per-row filter let a higher `change_seq` from an older transaction advance the cursor past a lower `change_seq` while a third transaction sat between their xids.
 
 ## 4. Conflict rule
 

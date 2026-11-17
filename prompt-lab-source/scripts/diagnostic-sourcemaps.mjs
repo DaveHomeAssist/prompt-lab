@@ -27,6 +27,23 @@ export function retainSourceMaps(outputDirectory, artifactDirectory) {
   return retained;
 }
 
+// The default `dist` build keeps `.diagnostic-source-maps/<revision>/<surface>`.
+// Another outDir, such as the unminified CWS review build, gets its own
+// directory so a later build cannot replace that surface's manifest.
+export function diagnosticArtifactDirectory(projectRoot, revision, surface, outputDirectory) {
+  const root = resolve(projectRoot);
+  const output = resolve(outputDirectory);
+  let name = surface;
+  if (output !== resolve(root, 'dist')) {
+    const label = relative(root, output)
+      .split(sep)
+      .filter((part) => part && part !== '.' && part !== '..')
+      .join('-');
+    name = `${surface}-${label || 'custom'}`;
+  }
+  return resolve(root, '.diagnostic-source-maps', revision, name);
+}
+
 export function diagnosticSourceMaps(surface) {
   let config;
   return {
@@ -35,10 +52,11 @@ export function diagnosticSourceMaps(surface) {
     configResolved(value) { config = value; },
     closeBundle() {
       const revision = JSON.parse(buildIdentity().__PL_BUILD_REVISION__);
-      const destination = resolve(config.root, '.diagnostic-source-maps', revision, surface);
-      const count = retainSourceMaps(resolve(config.root, config.build.outDir), destination);
+      const outputDirectory = resolve(config.root, config.build.outDir);
+      const destination = diagnosticArtifactDirectory(config.root, revision, surface, outputDirectory);
+      const count = retainSourceMaps(outputDirectory, destination);
       if (!count) throw new Error('Diagnostic source maps were not produced');
-      console.log(`[PromptLab] Retained ${count} diagnostic maps outside distributable output (${revision}/${surface}).`);
+      console.log(`[PromptLab] Retained ${count} diagnostic maps outside distributable output (${relative(config.root, destination)}).`);
     },
   };
 }
