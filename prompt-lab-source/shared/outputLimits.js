@@ -12,10 +12,15 @@
 //   which current llama3, qwen, gemma, mistral and phi builds accept; named
 //   families below are capped at 32,768.
 //
-// A request must not ask for more than the row that matches. The hosted
-// reservation multiplies this same budget by the catalogue output rate.
+// A request must not ask for more than the row that matches. The shared hosted
+// key is capped at HOSTED_DEFAULT_MAX_TOKENS unless HOSTED_MAX_TOKENS is set,
+// and its reservation uses that capped budget at the catalogue output rate.
 
 export const OUTPUT_BUDGET_STEPS = Object.freeze([2048, 4096, 8192, 16384, 32768, 65536, 128000]);
+
+// Shared hosted key only. Bring-your-own-key and Ollama are not held to this.
+// A set HOSTED_MAX_TOKENS replaces it and is still bounded by the model ceiling.
+export const HOSTED_DEFAULT_MAX_TOKENS = 8192;
 
 const FAMILIES = Object.freeze([
   { provider: 'anthropic', test: /^claude-(opus|sonnet|haiku)-4-[6-9]\b/, maxOutputTokens: 128000 },
@@ -46,6 +51,20 @@ function modelIds(model) {
   const bare = raw.includes('/') ? raw.slice(raw.lastIndexOf('/') + 1) : raw;
   const hyphenated = bare.replace(/\./g, '-');
   return [...new Set([raw, bare, hyphenated])];
+}
+
+/**
+ * Output cap for one shared-key request. Unset or unusable `envValue` means
+ * 8,192. The result never exceeds the model's published ceiling, and a positive
+ * HOSTED_MAX_TOKENS overrides 8,192 while staying inside that ceiling.
+ */
+export function hostedOutputCap(model, envValue) {
+  const ceiling = maxOutputTokens('anthropic', model);
+  const raw = envValue == null ? '' : String(envValue).trim();
+  if (!raw) return Math.min(HOSTED_DEFAULT_MAX_TOKENS, ceiling);
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return Math.min(HOSTED_DEFAULT_MAX_TOKENS, ceiling);
+  return Math.min(parsed, ceiling);
 }
 
 /** Largest output this provider will accept for the model. Unknown models use a conservative default. */

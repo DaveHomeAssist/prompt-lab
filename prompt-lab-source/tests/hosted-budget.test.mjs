@@ -12,7 +12,7 @@ import {
   usageCostMicros,
 } from '../api/_lib/hostedBudget.js';
 import { generationOutputBudget } from '../prompt-lab-extension/src/lib/generationOptions.js';
-import { estimatedOutputCharge } from '../shared/outputLimits.js';
+import { estimatedOutputCharge, hostedOutputCap } from '../shared/outputLimits.js';
 
 const OCT_22 = Date.UTC(2026, 9, 22, 18, 0);
 
@@ -133,7 +133,9 @@ test('an Expanded budget reserves at the same output rate as the catalogue', () 
     reservationMicros(sonnet, { bodyBytes: 0, maxTokens: budget }),
     Math.ceil(estimatedOutputCharge(sonnet.output, budget)),
   );
-  assert.equal(reservationMicros(sonnet, { bodyBytes: 0, maxTokens: budget }), budget * sonnet.output);
+  const sharedCap = hostedOutputCap('claude-sonnet-4-6');
+  assert.equal(sharedCap, 8192);
+  assert.equal(reservationMicros(sonnet, { bodyBytes: 0, maxTokens: sharedCap }), sharedCap * sonnet.output);
 });
 
 test('a failed transaction leaves all counters untouched', async () => {

@@ -60,6 +60,7 @@ describe('generation recalibration', () => {
     expect(generationOutputBudget('x'.repeat(20000), DEFAULT_GENERATION_OPTIONS)).toBe(32768);
     expect(generationOutputBudget('x'.repeat(20000), { budget: 2048 })).toBe(2048);
     expect(generationOutputBudget('x'.repeat(20000), { budget: 128000 }, { provider: 'openai', model: 'gpt-4o' })).toBe(16384);
+    expect(generationOutputBudget('x'.repeat(20000), DEFAULT_GENERATION_OPTIONS, { provider: 'ollama', model: 'llama3.2' })).toBe(32768);
   });
   it('preserves literal JSON and embedded fences and keeps an incomplete prompt as partial', () => {
     const content = 'Return JSON using this example:\n```json\n{"answer":"exact"}\n```';

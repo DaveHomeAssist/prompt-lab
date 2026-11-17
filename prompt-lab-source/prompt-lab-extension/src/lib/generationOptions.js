@@ -80,8 +80,10 @@ export function resolveGenerationOptions(modeId, preferences) {
 /**
  * Output budget for one rewrite. Expanded and long drafts ask for much more
  * than a short refinement, then the result is clamped to the model's published
- * ceiling. Token estimates use the same 4 characters per token as scorePrompt,
- * so the hosted reservation (rate × this budget) tracks the request.
+ * ceiling. Bring-your-own-key and Ollama keep that full budget. The shared
+ * hosted key is capped again in the proxy (8,192 unless HOSTED_MAX_TOKENS
+ * overrides it), and the reservation uses the tokens that cap actually sends.
+ * Token estimates use the same 4 characters per token as scorePrompt.
  */
 export function generationOutputBudget(input, options, context = {}) {
   const provider = context.provider || 'anthropic';

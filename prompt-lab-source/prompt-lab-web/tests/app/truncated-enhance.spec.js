@@ -32,7 +32,7 @@ test('a truncated Expanded response stays usable and can be continued', async ({
         text: truncated ? CUT : TAIL,
         stopReason: truncated ? 'max_tokens' : 'end_turn',
         inputTokens: 911,
-        outputTokens: truncated ? 2048 : 40,
+        outputTokens: truncated ? 8192 : 40,
       }),
     });
   });
@@ -45,7 +45,7 @@ test('a truncated Expanded response stays usable and can be continued', async ({
   await expect(page.getByTestId('partial-result')).toContainText('Partial result');
   await expect(page.getByTestId('output-textarea')).toHaveValue('# handle-intake and route the request');
   await expect(page.getByTestId('output-panel')).toContainText('911 input');
-  await expect(page.getByTestId('output-panel')).toContainText('2,048 output');
+  await expect(page.getByTestId('output-panel')).toContainText('8,192 output');
   expect(await page.getByTestId('prompt-input').inputValue()).toBe(DRAFT);
   expect(sent[0].max_tokens).toBeGreaterThanOrEqual(8192);
   expect(sent[0].system).toContain('"primary_id":"expanded"');

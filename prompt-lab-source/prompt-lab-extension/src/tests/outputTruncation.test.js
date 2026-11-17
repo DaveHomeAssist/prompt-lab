@@ -4,7 +4,7 @@ import { callProvider as callExtensionProvider } from '../../extension/lib/provi
 import { parseEnhancedPayload, stitchContinuation } from '../promptUtils.js';
 import { normalizeError } from '../lib/errorTaxonomy.js';
 import {
-  isOutputTruncated, maxOutputTokens, nextOutputBudget, responseWasTruncated,
+  hostedOutputCap, isOutputTruncated, maxOutputTokens, nextOutputBudget, responseWasTruncated,
 } from '../../../shared/outputLimits.js';
 
 const CUT = '{"schema_version":2,"primary_id":"expanded","enhanced":"# handle-intake and route the request';
@@ -178,5 +178,14 @@ describe('output budgets stay inside published limits', () => {
     expect(nextOutputBudget(2048, 'anthropic', 'claude-sonnet-4-6')).toBe(4096);
     expect(nextOutputBudget(8192, 'openai', 'gpt-4o')).toBe(16384);
     expect(nextOutputBudget(16384, 'openai', 'gpt-4o')).toBe(16384);
+  });
+
+  it('holds only the shared key to 8192 and lets Ollama use its model budget', () => {
+    expect(hostedOutputCap('claude-sonnet-4-6')).toBe(8192);
+    expect(hostedOutputCap('claude-sonnet-4-6', '')).toBe(8192);
+    expect(hostedOutputCap('claude-sonnet-4-6', '16384')).toBe(16384);
+    expect(hostedOutputCap('claude-sonnet-4-6', '200000')).toBe(128000);
+    expect(hostedOutputCap('claude-3-haiku')).toBe(4096);
+    expect(maxOutputTokens('ollama', 'llama3.2')).toBe(32768);
   });
 });
