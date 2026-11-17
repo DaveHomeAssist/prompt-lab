@@ -107,9 +107,7 @@ concurrency:
 
 jobs:
   landing-gates:
-    # ubuntu-latest moved to Ubuntu 26.04 on 2026-11-03. Keep these browser
-    # gates on ubuntu-24.04 with Production Smoke and Desktop Build.
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
       run:
