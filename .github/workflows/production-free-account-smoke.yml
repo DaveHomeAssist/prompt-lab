@@ -37,9 +37,7 @@ concurrency:
 jobs:
   smoke:
     name: Signed-in Free Account
-    # ubuntu-latest moved to Ubuntu 26.04 on 2026-11-03. Playwright 1.58.2
-    # cannot install Chromium on ubuntu26.04-x64, so stay on 24.04.
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: Production – prompt-lab
     defaults:
