@@ -1329,9 +1329,11 @@ html[data-palette]:not([data-palette='ember']) .pl-app-shell[data-theme='light']
 .pl-artwork-details[open] > summary { margin-bottom: 0.5rem; }
 
 
-/* Keep the persistent prompt action and editor reachable on short displays. */
+/* Keep the persistent prompt action and editor reachable on short displays.
+   The profile chip returns with the identity row; Alt+P still opens the menu. */
 @media (max-height: 500px) {
-  .pl-app-header .pl-header-identity { display: none; }
+  .pl-app-header .pl-header-identity,
+  .pl-app-header .pl-profile-anchor { display: none; }
 }
 /* On short phone-width windows the floating side panel has no room, and its
    44 px toggles would take the editor's last lines. Scratch stays in the
