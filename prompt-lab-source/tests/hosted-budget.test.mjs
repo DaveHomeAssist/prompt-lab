@@ -11,6 +11,8 @@ import {
   reserveBudget,
   usageCostMicros,
 } from '../api/_lib/hostedBudget.js';
+import { generationOutputBudget } from '../prompt-lab-extension/src/lib/generationOptions.js';
+import { estimatedOutputCharge } from '../shared/outputLimits.js';
 
 const OCT_22 = Date.UTC(2026, 9, 22, 18, 0);
 
@@ -121,6 +123,17 @@ test('SSE usage survives events split across chunks', () => {
   const cut = createSseUsageReader();
   cut.push(start + `event: error\ndata: ${JSON.stringify({ type: 'error', error: { type: 'overloaded_error' } })}\n\n`);
   assert.equal(cut.finish(), null);
+});
+
+test('an Expanded budget reserves at the same output rate as the catalogue', () => {
+  const sonnet = pricingFor('claude-sonnet-4-6');
+  const budget = generationOutputBudget('x'.repeat(20000), { strategy: 'expanded' }, { provider: 'anthropic', model: 'claude-sonnet-4-6' });
+  assert.equal(budget, 32768);
+  assert.equal(
+    reservationMicros(sonnet, { bodyBytes: 0, maxTokens: budget }),
+    Math.ceil(estimatedOutputCharge(sonnet.output, budget)),
+  );
+  assert.equal(reservationMicros(sonnet, { bodyBytes: 0, maxTokens: budget }), budget * sonnet.output);
 });
 
 test('a failed transaction leaves all counters untouched', async () => {

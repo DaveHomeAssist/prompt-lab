@@ -54,17 +54,21 @@ describe('generation recalibration', () => {
     expect(normalizeGenerationOptions({ task: 'injected', budget: -1, alternatives: 'true' })).toEqual(DEFAULT_GENERATION_OPTIONS);
   });
   it('budgets for input size and candidate count while honoring explicit limits', () => {
-    expect(generationOutputBudget('Short source', DEFAULT_GENERATION_OPTIONS)).toBe(4096);
-    expect(generationOutputBudget('Short source', { alternatives: true })).toBe(8192);
-    expect(generationOutputBudget('x'.repeat(20000), DEFAULT_GENERATION_OPTIONS)).toBe(16384);
+    expect(generationOutputBudget('Short source', DEFAULT_GENERATION_OPTIONS)).toBe(8192);
+    expect(generationOutputBudget('Short source', { strategy: 'refined' })).toBe(4096);
+    expect(generationOutputBudget('Short source', { alternatives: true })).toBe(32768);
+    expect(generationOutputBudget('x'.repeat(20000), DEFAULT_GENERATION_OPTIONS)).toBe(32768);
     expect(generationOutputBudget('x'.repeat(20000), { budget: 2048 })).toBe(2048);
+    expect(generationOutputBudget('x'.repeat(20000), { budget: 128000 }, { provider: 'openai', model: 'gpt-4o' })).toBe(16384);
   });
-  it('preserves literal JSON and embedded fences and rejects an incomplete prompt', () => {
+  it('preserves literal JSON and embedded fences and keeps an incomplete prompt as partial', () => {
     const content = 'Return JSON using this example:\n```json\n{"answer":"exact"}\n```';
     expect(parseEnhancedPayload(JSON.stringify({ schema_version: 2, enhanced: content })).enhanced).toBe(content);
     const jsonPrompt = '{"task":"Explain the current code","format":"two sentences"}';
     expect(parseEnhancedPayload(JSON.stringify({ enhanced: jsonPrompt }), { modern: true }).enhanced).toBe(jsonPrompt);
-    expect(() => parseEnhancedPayload('{"enhanced":"unfinished', { modern: true })).toThrow();
+    const partial = parseEnhancedPayload('{"enhanced":"unfinished', { modern: true });
+    expect(partial.enhanced).toBe('unfinished');
+    expect(partial.partial).toBe(true);
   });
   it('keeps modern identities and exact selected text through save and reload', () => {
     const resultMeta = normalizeResultMeta({ schema_version: 2, primary_id: 'expanded', selectedCandidateId: 'rebuilt', candidates: [

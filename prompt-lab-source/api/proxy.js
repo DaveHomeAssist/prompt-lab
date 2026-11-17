@@ -10,6 +10,7 @@ import {
 import { corsHeadersForRequest, corsRejectionResponse } from './_lib/allowedOrigins.js';
 import { isHostedOwner } from './_lib/hostedOwner.js';
 import { HOSTED_MODELS, HOSTED_DEFAULT_MODEL } from '../prompt-lab-extension/src/lib/hostedModels.js';
+import { maxOutputTokens } from '../shared/outputLimits.js';
 import {
   BUDGET_TRANSACTION_SCRIPT,
   budgetRefusalScope,
@@ -39,7 +40,6 @@ const BURST_WINDOW_MS = 60_000;
 const DEFAULT_DEMO_DAILY_LIMIT = 3;
 const DEFAULT_GLOBAL_DAILY_LIMIT = 100;
 const DEMO_WINDOW_MS = 24 * 60 * 60_000;
-const DEFAULT_MAX_TOKENS = 2048;
 const DEFAULT_MAX_INPUT_CHARS = 50_000;
 const ANTHROPIC_TIMEOUT_MS = 55_000;
 const REDIS_TIMEOUT_MS = 2000;
@@ -88,8 +88,15 @@ function getGlobalDailyLimit() {
   return readIntEnv('HOSTED_GLOBAL_DAILY_LIMIT', DEFAULT_GLOBAL_DAILY_LIMIT);
 }
 
-function getHostedMaxTokens() {
-  return readIntEnv('HOSTED_MAX_TOKENS', DEFAULT_MAX_TOKENS);
+// Unset HOSTED_MAX_TOKENS means the model's published output ceiling.
+// An explicit env value still wins, and never exceeds that ceiling.
+function getHostedMaxTokens(model) {
+  const modelCap = maxOutputTokens('anthropic', model);
+  const raw = process.env.HOSTED_MAX_TOKENS;
+  if (raw == null || String(raw).trim() === '') return modelCap;
+  const parsed = Number.parseInt(String(raw).trim(), 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return modelCap;
+  return Math.min(parsed, modelCap);
 }
 
 function getHostedMaxInputChars() {
@@ -407,7 +414,6 @@ function sanitizeAnthropicBody(rawBody, { sharedKey = false } = {}) {
   const allowedModels = getAllowedModels();
   const defaultModel = allowedModels[0];
   const requestedModel = typeof payload.model === 'string' ? payload.model.trim() : '';
-  const hostedMaxTokens = Math.max(1, getHostedMaxTokens());
   const requestedMaxTokens = Number(payload.max_tokens);
 
   if (!allowedModels.length) throw new Error('No priced hosted models are available.');
@@ -415,6 +421,7 @@ function sanitizeAnthropicBody(rawBody, { sharedKey = false } = {}) {
     throw new Error('This model is not available for hosted use. Choose a model in Provider Settings.');
   }
   payload.model = requestedModel || defaultModel;
+  const hostedMaxTokens = Math.max(1, getHostedMaxTokens(payload.model));
   payload.max_tokens = Number.isFinite(requestedMaxTokens) && requestedMaxTokens > 0
     ? Math.min(Math.floor(requestedMaxTokens), hostedMaxTokens)
     : hostedMaxTokens;

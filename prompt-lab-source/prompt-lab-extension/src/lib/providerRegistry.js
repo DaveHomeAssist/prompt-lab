@@ -1,3 +1,5 @@
+import { isOutputTruncated } from '../../../shared/outputLimits.js';
+
 /**
  * Provider Registry — single source of truth for all provider metadata,
  * payload building, response normalization, and settings shape.
@@ -120,10 +122,16 @@ function streamFrameError(data) {
   return error;
 }
 
+function withTruncation(result, provider, reason) {
+  if (!isOutputTruncated(provider, reason)) return result;
+  return { ...result, truncated: true, stopReason: reason };
+}
+
 function parseSseChunks(buffer, flush = false, inspectFrame, acceptsDoneMarker = false) {
   const chunks = [];
   let model = null;
   let usage = null;
+  let stopReason = null;
   let done = false;
   let error = null;
   const frames = buffer.split(/\r?\n\r?\n/);
@@ -153,10 +161,11 @@ function parseSseChunks(buffer, flush = false, inspectFrame, acceptsDoneMarker =
     if (typeof inspected?.model === 'string' && inspected.model) model = inspected.model;
     if (inspected?.text) chunks.push(inspected.text);
     usage = mergeUsage(usage, inspected?.usage);
+    if (inspected?.stopReason) stopReason = inspected.stopReason;
     done ||= inspected?.done === true;
   }
 
-  return { buffer: working, chunks, usage, done, error, ...(model ? { model } : {}) };
+  return { buffer: working, chunks, usage, done, error, stopReason, ...(model ? { model } : {}) };
 }
 
 function parseAnthropicSse(buffer, flush = false) {
@@ -167,7 +176,11 @@ function parseAnthropicSse(buffer, flush = false) {
     }
     if (data?.type === 'content_block_delta') return { text: data?.delta?.text || '', usage: null };
     if (data?.type === 'message_delta') {
-      return { text: data?.delta?.text || '', usage: { input: null, output: data?.usage?.output_tokens, total: null } };
+      return {
+        text: data?.delta?.text || '',
+        usage: { input: null, output: data?.usage?.output_tokens, total: null },
+        stopReason: data?.delta?.stop_reason || null,
+      };
     }
     return { text: '', usage: null };
   });
@@ -177,6 +190,7 @@ function parseOpenAiSse(buffer, flush = false) {
   return parseSseChunks(buffer, flush, (data) => ({
     text: data?.choices?.[0]?.delta?.content || '',
     usage: normalizeUsage(data?.usage?.prompt_tokens, data?.usage?.completion_tokens, data?.usage?.total_tokens),
+    stopReason: data?.choices?.[0]?.finish_reason || null,
   }), true);
 }
 
@@ -244,12 +258,12 @@ const PROVIDERS = Object.freeze({
     normalizeResponse(data, requestBody, _resolvedModel) {
       const text = anthropicBlocksToText(data?.content);
       if (!text) throw new Error('Anthropic returned empty content.');
-      return {
+      return withTruncation({
         content: [{ type: 'text', text }],
         model: data?.model || requestBody.model,
         provider: 'anthropic',
         usage: normalizeUsage(data?.usage?.input_tokens, data?.usage?.output_tokens, null),
-      };
+      }, 'anthropic', data?.stop_reason);
     },
 
     extractText(data) {
@@ -296,12 +310,12 @@ const PROVIDERS = Object.freeze({
     normalizeResponse(data, requestBody, _resolvedModel) {
       const text = data?.message?.content;
       if (!text) throw new Error('Ollama returned empty content.');
-      return {
+      return withTruncation({
         content: [{ type: 'text', text }],
         model: requestBody.model,
         provider: 'ollama',
         usage: normalizeUsage(data?.prompt_eval_count, data?.eval_count, null),
-      };
+      }, 'ollama', data?.done_reason);
     },
 
     extractText(data) {
@@ -350,12 +364,12 @@ const PROVIDERS = Object.freeze({
     normalizeResponse(data, requestBody, _resolvedModel) {
       const text = data?.choices?.[0]?.message?.content;
       if (!text) throw new Error('OpenAI returned empty content.');
-      return {
+      return withTruncation({
         content: [{ type: 'text', text }],
         model: requestBody.model,
         provider: 'openai',
         usage: normalizeUsage(data?.usage?.prompt_tokens, data?.usage?.completion_tokens, data?.usage?.total_tokens),
-      };
+      }, 'openai', data?.choices?.[0]?.finish_reason);
     },
 
     extractText(data) {
@@ -413,6 +427,11 @@ const PROVIDERS = Object.freeze({
       const finishReason = candidate?.finishReason;
       const text = candidate?.content?.parts?.map((part) => part.text || '').join('');
       if (!text) {
+        if (isOutputTruncated('gemini', finishReason)) {
+          const error = new Error('Response was cut off at the output limit');
+          error.code = 'output_truncated';
+          throw error;
+        }
         if (finishReason === 'SAFETY') {
           const ratings = candidate?.safetyRatings?.map((r) => `${r.category}: ${r.probability}`).join(', ');
           throw new Error(`Gemini blocked this response due to safety filters (${ratings || 'no details'}).`);
@@ -422,7 +441,7 @@ const PROVIDERS = Object.freeze({
         }
         throw new Error('Gemini returned empty content.');
       }
-      return {
+      return withTruncation({
         content: [{ type: 'text', text }],
         model: resolvedModel || 'gemini',
         provider: 'gemini',
@@ -431,7 +450,7 @@ const PROVIDERS = Object.freeze({
           data?.usageMetadata?.candidatesTokenCount,
           data?.usageMetadata?.totalTokenCount,
         ),
-      };
+      }, 'gemini', finishReason);
     },
 
     extractText(data) {
@@ -480,12 +499,12 @@ const PROVIDERS = Object.freeze({
     normalizeResponse(data, requestBody, _resolvedModel) {
       const text = data?.choices?.[0]?.message?.content;
       if (!text) throw new Error('OpenRouter returned empty content.');
-      return {
+      return withTruncation({
         content: [{ type: 'text', text }],
         model: requestBody.model,
         provider: 'openrouter',
         usage: normalizeUsage(data?.usage?.prompt_tokens, data?.usage?.completion_tokens, data?.usage?.total_tokens),
-      };
+      }, 'openrouter', data?.choices?.[0]?.finish_reason);
     },
 
     parseStream: parseOpenAiSse,

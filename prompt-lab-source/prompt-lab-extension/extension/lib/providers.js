@@ -23,6 +23,19 @@ async function readErrorMessage(response, fallback) {
   }
 }
 
+// Same stop reasons as shared/outputLimits.js. This file is copied into the
+// extension package, so it cannot import the shared module.
+function outputTruncated(provider, reason) {
+  const value = String(reason || '').trim().toLowerCase();
+  if (!value) return false;
+  if (provider === 'anthropic' || provider === 'gemini') return value === 'max_tokens';
+  return value === 'length';
+}
+
+function withTruncation(result, provider, reason) {
+  return outputTruncated(provider, reason) ? { ...result, truncated: true, stopReason: reason } : result;
+}
+
 function fetchOrThrow(fetchImpl) {
   if (typeof fetchImpl !== 'function') {
     throw new Error('A fetch implementation is required.');
@@ -67,7 +80,11 @@ export async function callAnthropic(payload, settings = {}, fetchImpl = globalTh
     throw new Error(await readErrorMessage(response, `Anthropic request failed (${response.status})`));
   }
   const data = await response.json();
-  return { ...data, model: data?.model || requestBody.model, provider: 'anthropic' };
+  return withTruncation(
+    { ...data, model: data?.model || requestBody.model, provider: 'anthropic' },
+    'anthropic',
+    data?.stop_reason,
+  );
 }
 
 export async function callOllama(payload, settings = {}, fetchImpl = globalThis.fetch) {
@@ -91,7 +108,11 @@ export async function callOllama(payload, settings = {}, fetchImpl = globalThis.
   const text = data?.message?.content;
   if (!text) throw new Error('Ollama returned empty content.');
 
-  return { content: [{ type: 'text', text }], model: requestBody.model, provider: 'ollama' };
+  return withTruncation(
+    { content: [{ type: 'text', text }], model: requestBody.model, provider: 'ollama' },
+    'ollama',
+    data?.done_reason,
+  );
 }
 
 export async function callOpenAI(payload, settings = {}, fetchImpl = globalThis.fetch) {
@@ -124,7 +145,11 @@ export async function callOpenAI(payload, settings = {}, fetchImpl = globalThis.
   const text = data?.choices?.[0]?.message?.content;
   if (!text) throw new Error('OpenAI returned empty content.');
 
-  return { content: [{ type: 'text', text }], model: requestBody.model, provider: 'openai' };
+  return withTruncation(
+    { content: [{ type: 'text', text }], model: requestBody.model, provider: 'openai' },
+    'openai',
+    data?.choices?.[0]?.finish_reason,
+  );
 }
 
 export async function callGemini(payload, settings = {}, fetchImpl = globalThis.fetch) {
@@ -156,10 +181,22 @@ export async function callGemini(payload, settings = {}, fetchImpl = globalThis.
   }
 
   const data = await response.json();
+  const finishReason = data?.candidates?.[0]?.finishReason;
   const text = data?.candidates?.[0]?.content?.parts?.map((part) => part.text || '').join('');
-  if (!text) throw new Error('Gemini returned empty content.');
+  if (!text) {
+    if (outputTruncated('gemini', finishReason)) {
+      const error = new Error('Response was cut off at the output limit');
+      error.code = 'output_truncated';
+      throw error;
+    }
+    throw new Error('Gemini returned empty content.');
+  }
 
-  return { content: [{ type: 'text', text }], model: modelId, provider: 'gemini' };
+  return withTruncation(
+    { content: [{ type: 'text', text }], model: modelId, provider: 'gemini' },
+    'gemini',
+    finishReason,
+  );
 }
 
 export async function callOpenRouter(payload, settings = {}, fetchImpl = globalThis.fetch) {
@@ -194,7 +231,11 @@ export async function callOpenRouter(payload, settings = {}, fetchImpl = globalT
   const text = data?.choices?.[0]?.message?.content;
   if (!text) throw new Error('OpenRouter returned empty content.');
 
-  return { content: [{ type: 'text', text }], model: requestBody.model, provider: 'openrouter' };
+  return withTruncation(
+    { content: [{ type: 'text', text }], model: requestBody.model, provider: 'openrouter' },
+    'openrouter',
+    data?.choices?.[0]?.finish_reason,
+  );
 }
 
 export async function listOllamaModels(baseUrl, fetchImpl = globalThis.fetch) {

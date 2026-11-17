@@ -359,6 +359,30 @@ test('proxy restricts endpoints and models while clamping token budgets', async 
   assert.equal(captured[0].max_tokens, 1024);
 });
 
+test('proxy allows an Expanded budget up to the model output ceiling', async () => {
+  process.env.ANTHROPIC_API_KEY = 'server-key';
+  delete process.env.HOSTED_MAX_TOKENS;
+  const captured = [];
+  globalThis.fetch = async (_url, init) => {
+    captured.push(JSON.parse(init.body));
+    return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  };
+  const handler = await loadHandler();
+  const expanded = await handler(makeRequest({
+    headers: { 'x-api-key': 'user-key', 'anthropic-version': '2023-06-01' },
+    body: { model: 'claude-sonnet-4-6', max_tokens: 8192, messages: [{ role: 'user', content: 'expand this' }] },
+  }));
+  assert.equal(expanded.status, 200);
+  assert.equal(captured[0].max_tokens, 8192);
+  assert.equal(expanded.headers.get('X-Hosted-Max-Tokens'), '8192');
+  const over = await handler(makeRequest({
+    headers: { 'x-api-key': 'user-key', 'anthropic-version': '2023-06-01' },
+    body: { model: 'claude-sonnet-4-6', max_tokens: 200000, messages: [{ role: 'user', content: 'expand this' }] },
+  }));
+  assert.equal(over.status, 200);
+  assert.equal(captured[1].max_tokens, 128000);
+});
+
 test('proxy rejects oversized hosted provider inputs before the provider call', async () => {
   process.env.ANTHROPIC_API_KEY = 'server-key';
   process.env.HOSTED_MAX_INPUT_CHARS = '100';

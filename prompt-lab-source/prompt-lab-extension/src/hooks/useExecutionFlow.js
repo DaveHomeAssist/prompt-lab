@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { callModel } from '../api';
 import {
   extractTextFromAnthropic, parseEnhancedPayload, suggestTitleFromText,
-  isTransientError, ngramSimilarity, checkTraits,
+  isTransientError, ngramSimilarity, checkTraits, stitchContinuation,
 } from '../promptUtils';
 import { ALL_TAGS, DEFAULT_ENHANCE_MODEL, DEFAULT_ENHANCE_TEMPERATURE } from '../constants';
 import { isGoldenRegression, resolveGoldenThreshold } from '../lib/goldenVerdict.js';
@@ -12,7 +12,7 @@ import useSensitivePreflight from './useSensitivePreflight.js';
 import { openSettings, getConfiguredProviders } from '../lib/platform.js';
 import { logWarn } from '../lib/logger.js';
 import { ensureString } from '../lib/utils.js';
-import { AppError, ErrorCategory, normalizeError } from '../lib/errorTaxonomy.js';
+import { AppError, ErrorCategory, normalizeError, truncationError } from '../lib/errorTaxonomy.js';
 import { normalizeResultMeta } from '../lib/enhancementResult.js';
 import {
   assessEnhancementQuality, buildEnhancementCorrectionPayload, combineTokenUsage,
@@ -21,11 +21,34 @@ import useGenerationOptions from './useGenerationOptions.js';
 import {
   resolveGenerationOptions, generationOutputBudget, buildGenerationSystemPrompt,
 } from '../lib/generationOptions.js';
+import { nextOutputBudget, responseWasTruncated } from '../../../shared/outputLimits.js';
 import useEvalRuns from './useEvalRuns.js';
 import useTestCases from './useTestCases.js';
 
 const nowMs = () => typeof performance !== 'undefined' && typeof performance.now === 'function'
   ? performance.now() : Date.now();
+
+function readStoredRoute() {
+  try {
+    const settings = JSON.parse(globalThis.localStorage?.getItem('pl2-provider-settings') || 'null') || {};
+    const provider = typeof settings.provider === 'string' && settings.provider ? settings.provider : 'anthropic';
+    const models = {
+      anthropic: settings.anthropicModel,
+      openai: settings.openaiModel,
+      gemini: settings.geminiModel,
+      openrouter: settings.openrouterModel,
+      ollama: settings.ollamaModel,
+    };
+    const model = typeof models[provider] === 'string' && models[provider] ? models[provider] : DEFAULT_ENHANCE_MODEL;
+    return { provider, model };
+  } catch {
+    return { provider: 'anthropic', model: DEFAULT_ENHANCE_MODEL };
+  }
+}
+
+const CONTINUATION_INSTRUCTION = 'The JSON object above was cut off by the output limit. Continue from the exact cutoff. Output only the missing tail so concatenating it with the previous output yields one JSON object. Do not repeat earlier text and do not add a Markdown fence.';
+
+export { CONTINUATION_INSTRUCTION };
 
 /** Execution controller for enhance and evaluate flows. */
 export default function useExecutionFlow({ ui, lib, editor, persistence }) {
@@ -50,6 +73,19 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
   useEffect(() => () => batchAbortRef.current?.abort(), []);
   const enhanceReqRef = useRef(0);
   const enhanceAbortRef = useRef(null);
+  const continuationRef = useRef(null);
+  const routeRef = useRef(readStoredRoute());
+  useEffect(() => {
+    let cancelled = false;
+    getConfiguredProviders()
+      .then((list) => {
+        const configured = list?.[0];
+        if (cancelled || !configured?.model) return;
+        routeRef.current = { provider: configured.provider || 'anthropic', model: configured.model };
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
   // Synchronous guard prevents duplicate sends before React updates loading.
   const enhanceInFlightRef = useRef(false);
   const ownerKey = JSON.stringify([raw, editingId, enhMode, generationOptions]);
@@ -100,11 +136,14 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
     throw normalizeError(lastError || new Error('Request failed.'), 'execution');
   };
 
-  const buildEnhancePayloadFor = (inputText, modeId = enhMode, overrides = {}) => {
+  const buildEnhancePayloadFor = (inputText, modeId = enhMode, overrides = {}, route = {}) => {
     const options = resolveGenerationOptions(modeId, { ...generationOptions, ...overrides });
     return {
       model: DEFAULT_ENHANCE_MODEL,
-      max_tokens: generationOutputBudget(inputText, options),
+      max_tokens: generationOutputBudget(inputText, options, {
+        provider: route.provider || 'anthropic',
+        model: route.model || DEFAULT_ENHANCE_MODEL,
+      }),
       temperature: DEFAULT_ENHANCE_TEMPERATURE,
       system: buildGenerationSystemPrompt(options, ALL_TAGS),
       messages: [{ role: 'user', content: inputText }],
@@ -166,7 +205,23 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
       ? null : overridePayload;
     const enhanceModeId = meta?.modeId || enhMode;
     const options = resolveGenerationOptions(enhanceModeId, { ...generationOptions, ...meta?.options });
-    const payload = safeOverridePayload || buildEnhancePayloadFor(raw, enhanceModeId, meta?.options);
+    const route = routeRef.current;
+    let payload = safeOverridePayload || buildEnhancePayloadFor(raw, enhanceModeId, meta?.options, route);
+    if (meta?.retryLarger || meta?.continue) {
+      const basis = continuationRef.current?.maxTokens || payload.max_tokens;
+      payload = { ...payload, max_tokens: nextOutputBudget(basis, route.provider, route.model) };
+    }
+    if (meta?.continue && continuationRef.current?.prefix) {
+      payload = {
+        ...payload,
+        continuationPrefix: continuationRef.current.prefix,
+        messages: [
+          { role: 'user', content: raw },
+          { role: 'assistant', content: continuationRef.current.prefix },
+          { role: 'user', content: CONTINUATION_INSTRUCTION },
+        ],
+      };
+    }
     const reviewed = preflight.review({
       payload, scope: 'enhance', label: `Enhance (${enhanceModeId})`,
       isCurrent: () => ownerRef.current === ownerKey,
@@ -222,13 +277,55 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
           setStreamPreview(fullText || chunk || '');
         },
       };
-      let data = await callWithRetry(payload, 1, streamOptions);
+      const continuationPrefix = ensureString(payload?.continuationPrefix);
+      const wirePayload = { ...payload };
+      delete wirePayload.continuationPrefix;
+      let data = await callWithRetry(wirePayload, 1, streamOptions);
       if (reqId !== enhanceReqRef.current) return;
       executionProvider = data?.provider || executionProvider;
       executionModel = data?.model || executionModel;
       accumulatedUsage = combineTokenUsage(data?.usage);
-      let txt = extractTextFromAnthropic(data);
-      let parsed = parseEnhancedPayload(txt, { modern: true });
+      const streamedText = data?.content?.[0]?.text;
+      const rawPiece = typeof streamedText === 'string' ? streamedText : extractTextFromAnthropic(data);
+      let txt = continuationPrefix ? stitchContinuation(continuationPrefix, rawPiece) : extractTextFromAnthropic(data);
+      const acceptPartial = (parsedResult, sourceText, response) => {
+        const usage = accumulatedUsage;
+        const partialMeta = normalizeResultMeta({
+          ...parsedResult,
+          schema_version: 2,
+          primary_id: parsedResult.primary_id || options.strategy,
+          requestedOutputTokens: payload.max_tokens,
+          partial: true,
+          metadataIncomplete: true,
+          provider: response?.provider || executionProvider,
+          model: response?.model || executionModel,
+          latencyMs: nowMs() - startedAt,
+          usage,
+        }, { enhanced: parsedResult.enhanced, variants: parsedResult.variants });
+        setEnhanced(parsedResult.enhanced || '');
+        setVariants(parsedResult.variants || []);
+        setResultMeta?.(partialMeta);
+        setNotes(parsedResult.notes || 'Partial result. The response was cut off at the output limit.');
+        setSaveTags(parsedResult.tags || []);
+        const partialTitle = suggestTitleFromText(parsedResult.enhanced || raw);
+        setSaveTitle(current => ensureString(current).trim() ? current : partialTitle);
+        setStreamPreview('');
+        setStreaming(false);
+        continuationRef.current = { prefix: sourceText, maxTokens: payload.max_tokens };
+        const cutOffError = truncationError('Structured output ended inside a string at the output limit.');
+        cutOffError.salvagedText = parsedResult.enhanced;
+        throw cutOffError;
+      };
+      let parsed;
+      try {
+        parsed = parseEnhancedPayload(txt, { modern: true });
+      } catch (parseErr) {
+        continuationRef.current = { prefix: txt, maxTokens: payload.max_tokens };
+        const err = responseWasTruncated(data) ? truncationError(parseErr?.message) : parseErr;
+        err.partialText = txt;
+        throw err;
+      }
+      if (parsed.partial === true) acceptPartial(parsed, txt, data);
       const sentSource = ensureString(payload?.messages?.find(message => message?.role === 'user')?.content || raw);
       let correctionUsed = false;
       let qualityAssessment = assessEnhancementQuality(sentSource, parsed);
@@ -244,7 +341,15 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
         executionModel = correctionData?.model || executionModel;
         accumulatedUsage = combineTokenUsage(data?.usage, correctionData?.usage);
         const correctionText = extractTextFromAnthropic(correctionData);
-        const corrected = parseEnhancedPayload(correctionText, { modern: true });
+        let corrected;
+        try {
+          corrected = parseEnhancedPayload(correctionText, { modern: true });
+        } catch (parseErr) {
+          const err = responseWasTruncated(correctionData) ? truncationError(parseErr?.message) : parseErr;
+          err.partialText = correctionText;
+          throw err;
+        }
+        if (corrected.partial === true) acceptPartial(corrected, correctionText, correctionData);
         qualityAssessment = assessEnhancementQuality(sentSource, corrected);
         if (!qualityAssessment.passed) {
           qualityGateFailure = qualityAssessment;
@@ -260,6 +365,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
         parsed = corrected;
         qualityGateFailure = null;
       }
+      continuationRef.current = null;
       const latencyMs = nowMs() - startedAt;
       const runId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
         ? crypto.randomUUID() : `enhance-${Date.now()}`;
@@ -327,13 +433,13 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
         setOptimisticSaveVisible(false);
         setStreaming(false);
         const appError = normalizeError(caught, 'execution');
-        if (caught?.partialText) setStreamPreview(caught.partialText);
+        if (!caught?.salvagedText && caught?.partialText) setStreamPreview(caught.partialText);
         setError(appError);
         saveEvalRun({
           promptId: editingId,
           promptTitle: (saveTitle || suggestTitleFromText(raw)).trim() || suggestTitleFromText(raw),
           mode: 'enhance', enhanceMode: enhanceModeId, provider: executionProvider, model: executionModel,
-          input: raw, output: caught?.partialText || appError.userMessage || appError.message || 'Enhance failed.',
+          input: raw, output: caught?.salvagedText || caught?.partialText || appError.userMessage || appError.message || 'Enhance failed.',
           latencyMs: nowMs() - startedAt, status: 'error', usage: accumulatedUsage,
           notes: [appError.category ? `Error category: ${appError.category}` : '',
             qualityGateFailure?.failures?.length ? `Quality gate: ${qualityGateFailure.failures.join(', ')}` : '',

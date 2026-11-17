@@ -121,8 +121,13 @@ describe('parseEnhancedPayload', () => {
     const result = parseEnhancedPayload('{"enhanced":"Keep the exact intent.\\nReturn a verified result.","variants":[{"label":"Compact","content":"Cut off');
     expect(result.enhanced).toBe('Keep the exact intent.\nReturn a verified result.'); expect(result.variants).toEqual([]); expect(result.notes).toMatch(/hosted output limit/i);
   });
-  it('does not recover an enhanced string that was itself truncated', () => {
-    expect(() => parseEnhancedPayload('{"enhanced":"This prompt is still being generated')).toThrow(/not valid JSON/i);
+  it('keeps an enhanced string that was itself cut off and marks it partial', () => {
+    const cut = '{"schema_version":2,"primary_id":"expanded","enhanced":"# handle-intake and route the request';
+    const result = parseEnhancedPayload(cut, { modern: true });
+    expect(result.enhanced).toBe('# handle-intake and route the request');
+    expect(result.partial).toBe(true);
+    expect(result.primary_id).toBe('expanded');
+    expect(result.schema_version).toBe(2);
   });
   it('throws on empty content', () => { expect(() => parseEnhancedPayload('')).toThrow(); expect(() => parseEnhancedPayload(null)).toThrow(); });
   it('throws on non-JSON content', () => { expect(() => parseEnhancedPayload('This is not JSON at all')).toThrow(); });

@@ -12,6 +12,14 @@ import { getPrimarySaveLabel } from './lib/promptLifecycle.js';
 import PromptShortcuts from './PromptShortcuts.jsx';
 import './CreateGraphite.css';
 
+function incompleteResponseHeading(error) {
+  if (error?.code === 'output_truncated') return 'Response was cut off at the output limit';
+  if (error?.category === 'network') return 'Network error — the request did not finish';
+  if (error?.code === 'parse_error') return 'Parse error — the response could not be read';
+  if (error?.category === 'provider') return 'Provider error — the request failed';
+  return 'Incomplete response — request failed';
+}
+
 /**
  * CreateEditorPane – compressed Create workflow.
  *
@@ -471,6 +479,26 @@ export default function CreateEditorPane({
             </div>
           )}
           <div className="mt-2 flex flex-wrap gap-2">
+            {error.actions?.includes('continue') && (
+              <button
+                type="button"
+                onClick={() => enhance(undefined, { continue: true })}
+                className={`ui-control inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${accentSolidClass}`}
+              >
+                <Ic n="RefreshCw" size={11} />
+                Continue
+              </button>
+            )}
+            {error.actions?.includes('retry_larger') && (
+              <button
+                type="button"
+                onClick={() => enhance(undefined, { retryLarger: true })}
+                className={`ui-control inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${m.btn} ${m.textAlt}`}
+              >
+                <Ic n="RefreshCw" size={11} />
+                Retry with a larger limit
+              </button>
+            )}
             {error.actions?.includes('retry') && (
               <button
                 type="button"
@@ -566,7 +594,7 @@ export default function CreateEditorPane({
 
       {/* Enhanced results */}
       {!loading && error && streamPreview && <div className={`${m.surface} border ${m.border} rounded-xl p-3`}>
-        <p className={`text-xs font-semibold ${m.text}`}>Incomplete response — request failed</p>
+        <p className={`text-xs font-semibold ${m.text}`}>{incompleteResponseHeading(error)}</p>
         <pre className={`${m.codeBlock} mt-2 max-h-56 overflow-auto whitespace-pre-wrap rounded-lg p-3 text-xs`}>{streamPreview}</pre>
       </div>}
       {(loading || hasResultEditor) && <>

@@ -1,3 +1,5 @@
+import { OUTPUT_BUDGET_STEPS, clampOutputTokens, maxOutputTokens } from '../../../shared/outputLimits.js';
+
 /** Versioned authoring preferences. Saved prompt content is never relabeled. */
 export const GENERATION_STORAGE_KEY = 'pl2-generation-options-v1';
 export const GENERATION_EVENT = 'pl:generation-options-changed';
@@ -15,7 +17,7 @@ export const TARGETS = Object.freeze([
 export const DEFAULT_GENERATION_OPTIONS = Object.freeze({
   version: 1, strategy: 'expanded', task: 'general', target: 'general', alternatives: false, budget: 'auto',
 });
-export const OUTPUT_BUDGETS = Object.freeze([2048, 4096, 8192, 16384]);
+export const OUTPUT_BUDGETS = OUTPUT_BUDGET_STEPS;
 export const COMPARE_BUDGET_KEY = 'pl2-compare-output-budget-v1';
 export const DEFAULT_COMPARE_BUDGET = 4096;
 
@@ -75,14 +77,30 @@ export function resolveGenerationOptions(modeId, preferences) {
   return options;
 }
 
-/** Requested allowance, not a claim about the provider's effective limit. */
-export function generationOutputBudget(input, options) {
-  if (OUTPUT_BUDGETS.includes(Number(options?.budget))) return Number(options.budget);
+/**
+ * Output budget for one rewrite. Expanded and long drafts ask for much more
+ * than a short refinement, then the result is clamped to the model's published
+ * ceiling. Token estimates use the same 4 characters per token as scorePrompt,
+ * so the hosted reservation (rate × this budget) tracks the request.
+ */
+export function generationOutputBudget(input, options, context = {}) {
+  const provider = context.provider || 'anthropic';
+  const model = context.model || 'claude-sonnet-4-6';
+  if (OUTPUT_BUDGETS.includes(Number(options?.budget))) {
+    return clampOutputTokens(Number(options.budget), provider, model);
+  }
+  const sourceTokens = Math.max(1, Math.ceil(String(input || '').length / 4));
+  const strategy = options?.strategy || 'expanded';
+  const expanded = strategy === 'expanded';
   const candidates = options?.alternatives ? 3 : 1;
-  const sourceEstimate = Math.ceil(String(input || '').length / 3);
-  const perCandidate = Math.max(2048, sourceEstimate * (options?.strategy === 'expanded' ? 2 : 1.5));
-  const desired = Math.ceil(perCandidate * candidates + 1536);
-  return OUTPUT_BUDGETS.find(limit => limit >= desired) || OUTPUT_BUDGETS.at(-1);
+  const envelope = 2048;
+  const multiplier = expanded ? 3 : strategy === 'rebuilt' ? 2 : 1.5;
+  const floor = expanded ? 8192 : 4096;
+  const perCandidate = Math.max(floor, Math.ceil(sourceTokens * multiplier) + envelope);
+  const desired = perCandidate * candidates;
+  const snapped = OUTPUT_BUDGETS.find((limit) => limit >= desired) || desired;
+  const cap = maxOutputTokens(provider, model);
+  return Math.max(1, Math.min(cap, snapped));
 }
 
 const STRATEGY_POLICY = {
