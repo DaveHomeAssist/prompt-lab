@@ -4,7 +4,7 @@ import { normalizeResultMeta } from './enhancementResult.js';
 import { normalizeFollowUpOrigin } from './followUpProvenance.js';
 import { DEFAULT_GOLDEN_THRESHOLD } from '../constants.js';
 
-const MAX_PROMPT_VERSIONS = 25;
+export const MAX_PROMPT_VERSIONS = 20;
 export const PROMPT_STATUS = Object.freeze(['draft', 'active', 'deprecated']);
 
 const DEFAULT_PROMPT_METADATA = Object.freeze({

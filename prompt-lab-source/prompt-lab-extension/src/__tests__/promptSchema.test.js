@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   arePromptSnapshotsEqual,
+  MAX_PROMPT_VERSIONS,
   appendVersionSnapshot,
   createPromptEntry,
   normalizeEntry,
@@ -374,7 +375,7 @@ describe('appendVersionSnapshot', () => {
     expect(second.versions.length).toBe(first.versions.length);
   });
 
-  it('caps versions at MAX_PROMPT_VERSIONS (25)', () => {
+  it('caps versions at the last 20 snapshots', () => {
     let entry = makeEntry();
     for (let i = 0; i < 30; i++) {
       entry = {
@@ -383,7 +384,11 @@ describe('appendVersionSnapshot', () => {
       };
       entry = appendVersionSnapshot(entry, { savedAt: new Date(Date.now() + i * 1000).toISOString() });
     }
-    expect(entry.versions.length).toBeLessThanOrEqual(25);
+    expect(MAX_PROMPT_VERSIONS).toBe(20);
+    expect(entry.versions).toHaveLength(20);
+    expect(entry.versions[0].enhanced).toBe('Version 10');
+    expect(entry.versions[19].enhanced).toBe('Version 29');
+    expect(entry.versions.every((version) => version.savedAt)).toBe(true);
   });
 });
 
