@@ -1598,7 +1598,8 @@ html[data-palette]:not([data-palette='ember']) .pl-app-shell[data-theme='light']
 }
 .pl-app-shell.is-compact .pl-inline-title input.pl-inline-title-input:not([type='checkbox']):not([type='radio']):not([type='hidden']) { min-height: 0; }
 
-.pl-profile-bar { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 0.45rem; width: 100%; padding-top: 0.35rem; color: var(--pl-brand-paper); }
+.pl-app-header { position: relative; z-index: 40; }
+.pl-profile-anchor { position: relative; flex: 0 0 auto; color: var(--pl-brand-paper); }
 .pl-profile-chip, .pl-profile-toggle, .pl-profile-bar button, .pl-profile-override { color: var(--pl-brand-paper); background: color-mix(in srgb, var(--pl-brand-paper) 8%, var(--pl-brand-ink)); border: 1px solid color-mix(in srgb, var(--pl-brand-paper) 32%, transparent); border-radius: 999px; }
 .pl-profile-chip, .pl-profile-toggle { display: inline-flex; align-items: center; gap: 0.35rem; min-height: 1.85rem; padding: 0.15rem 0.65rem; font-size: 0.72rem; font-weight: 650; }
 .pl-profile-chip-name { max-width: 9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1606,12 +1607,12 @@ html[data-palette]:not([data-palette='ember']) .pl-app-shell[data-theme='light']
 .pl-profile-override input { accent-color: var(--pl-brand-ember); }
 .pl-profile-example, .pl-profile-active-flag { border-radius: 999px; padding: 0 0.35rem; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; background: color-mix(in srgb, var(--pl-brand-paper) 16%, transparent); color: var(--pl-brand-paper); }
 .pl-profile-chip:focus-visible, .pl-profile-toggle:focus-visible, .pl-profile-menu button:focus-visible, .pl-profile-manager button:focus-visible, .pl-profile-manager input:focus-visible, .pl-profile-manager textarea:focus-visible, .pl-profile-manager select:focus-visible, .pl-profile-search input:focus-visible { outline: 2px solid var(--pl-focus-ring); outline-offset: 2px; }
-.pl-profile-menu { position: absolute; z-index: 40; top: calc(100% + 0.25rem); left: 0; display: grid; gap: 0.2rem; width: min(18rem, calc(100vw - 1.5rem)); padding: 0.45rem; border: 1px solid color-mix(in srgb, var(--pl-brand-paper) 28%, transparent); border-radius: 0.75rem; background: var(--pl-brand-ink); color: var(--pl-brand-paper); box-shadow: 0 0.75rem 2rem rgba(0, 0, 0, 0.28); }
+.pl-profile-menu { position: absolute; z-index: 80; top: calc(100% + 0.35rem); left: 0; display: grid; gap: 0.2rem; width: min(18rem, calc(100vw - 1.5rem)); padding: 0.45rem; border: 1px solid color-mix(in srgb, var(--pl-brand-paper) 28%, transparent); border-radius: 0.75rem; background: var(--pl-brand-ink); color: var(--pl-brand-paper); box-shadow: 0 0.75rem 2rem rgba(0, 0, 0, 0.28); }
 .pl-profile-menu button, .pl-profile-search input { width: 100%; border-radius: 0.5rem; background: transparent; color: var(--pl-brand-paper); text-align: left; }
 .pl-profile-menu button { display: flex; align-items: center; gap: 0.4rem; min-height: 2rem; padding: 0.3rem 0.5rem; border: 0; }
 .pl-profile-menu button[aria-selected='true'] { background: color-mix(in srgb, var(--pl-brand-paper) 12%, transparent); }
 .pl-profile-search input, .pl-profile-form input, .pl-profile-form textarea, .pl-profile-form select { width: 100%; border: 1px solid color-mix(in srgb, var(--pl-brand-paper) 32%, transparent); border-radius: 0.45rem; background: var(--pl-brand-ink); color: var(--pl-brand-paper); padding: 0.4rem 0.5rem; }
-.pl-profile-preview { flex: 1 0 100%; max-height: 8rem; overflow: auto; border: 1px solid color-mix(in srgb, var(--pl-brand-paper) 28%, transparent); border-radius: 0.7rem; background: var(--pl-brand-ink); color: var(--pl-brand-paper); padding: 0.55rem 0.7rem; }
+.pl-profile-preview { position: absolute; z-index: 70; left: 0; right: 0; top: 100%; display: grid; gap: 0.45rem; max-height: 8rem; overflow: auto; border-top: 1px solid color-mix(in srgb, var(--pl-brand-paper) 28%, transparent); background: var(--pl-brand-ink); color: var(--pl-brand-paper); padding: 0.55rem 0.85rem 0.7rem; box-shadow: 0 0.75rem 1.5rem rgba(0, 0, 0, 0.22); }
 .pl-profile-preview p, .pl-profile-preview pre { margin: 0; color: var(--pl-brand-paper); font-size: 0.75rem; white-space: pre-wrap; }
 .pl-profile-preview pre { margin-top: 0.35rem; font-family: ui-monospace, monospace; }
 .pl-profile-suggestion { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin: 0; color: var(--pl-brand-paper); font-size: 0.75rem; }

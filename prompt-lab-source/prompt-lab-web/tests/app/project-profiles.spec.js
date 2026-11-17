@@ -22,6 +22,7 @@ test('picking a project profile shows the preamble in the send preview and leave
   await expect(dialog).toBeHidden();
 
   await expect(page.getByTestId('project-profile-chip')).toContainText('Field notes');
+  await page.getByTestId('project-profile-chip').click();
   await page.getByRole('button', { name: 'Preview what gets sent' }).click();
   const preview = page.getByTestId('project-profile-preview');
   await expect(preview).toContainText(INSTRUCTIONS);

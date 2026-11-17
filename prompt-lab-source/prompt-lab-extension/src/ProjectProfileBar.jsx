@@ -244,7 +244,7 @@ export default function ProjectProfileBar({ state, suggestion, onUseSuggestion }
   };
 
   return (
-    <div className="pl-profile-bar" ref={rootRef}>
+    <div className="pl-profile-anchor" ref={rootRef}>
       <button
         ref={chipRef}
         type="button"
@@ -260,30 +260,6 @@ export default function ProjectProfileBar({ state, suggestion, onUseSuggestion }
         <span className="pl-profile-chip-name">{active ? active.name : 'No profile'}</span>
         {active?.example && <span className="pl-profile-example">Example</span>}
       </button>
-      <button
-        type="button"
-        className="pl-profile-toggle"
-        aria-pressed={state.previewOpen}
-        onClick={() => state.setPreviewOpen((open) => !open)}
-      >
-        Preview what gets sent
-      </button>
-      {active && (
-        <label className="pl-profile-override">
-          <input
-            type="checkbox"
-            checked={state.runDisabled}
-            onChange={(event) => state.setRunDisabled(event.target.checked)}
-          />
-          Profile off for this run
-        </label>
-      )}
-      {suggestion && suggestion.id !== active?.id && (
-        <p className="pl-profile-suggestion">
-          <span>Suggested profile: {suggestion.name}</span>
-          <button type="button" onClick={() => onUseSuggestion(suggestion.id)}>Use {suggestion.name}</button>
-        </p>
-      )}
       {state.pickerOpen && (
         <div
           className="pl-profile-menu"
@@ -319,22 +295,49 @@ export default function ProjectProfileBar({ state, suggestion, onUseSuggestion }
             </button>
           ))}
           {query.trim() && visible.length === 0 && <p className="pl-profile-empty">No profiles match that search.</p>}
+          {suggestion && suggestion.id !== active?.id && (
+            <button type="button" onClick={() => onUseSuggestion(suggestion.id)}>Use suggested profile {suggestion.name}</button>
+          )}
+          <button
+            type="button"
+            aria-pressed={state.previewOpen}
+            onClick={() => { state.setPreviewOpen((open) => !open); state.closePicker(); }}
+          >
+            Preview what gets sent
+          </button>
           <button type="button" onClick={() => state.openManager()}>Manage profiles</button>
         </div>
       )}
-      {state.previewOpen && (
-        <div className="pl-profile-preview" data-testid="project-profile-preview" role="region" aria-label="What gets sent">
-          {state.runDisabled || !active || !state.preamble
-            ? <p>{previewText}</p>
-            : (
-              <>
-                <p>Run, Enhance, and Rewrite send this as a system preamble. Your prompt text is not changed.</p>
-                <pre>{state.preamble}</pre>
-              </>
-            )}
-        </div>
-      )}
       {state.managerOpen && <ProjectProfilesManager state={state} onClose={state.closeManager} />}
+      {state.previewOpen && createPortal(
+        <SendPreview state={state} active={active} previewText={previewText} />,
+        rootRef.current?.closest('header') || document.body,
+      )}
+    </div>
+  );
+}
+
+function SendPreview({ state, active, previewText }) {
+  return (
+    <div className="pl-profile-preview" data-testid="project-profile-preview" role="region" aria-label="What gets sent">
+      {active && (
+        <label className="pl-profile-override">
+          <input
+            type="checkbox"
+            checked={state.runDisabled}
+            onChange={(event) => state.setRunDisabled(event.target.checked)}
+          />
+          Profile off for this run
+        </label>
+      )}
+      {state.runDisabled || !active || !state.preamble
+        ? <p>{previewText}</p>
+        : (
+          <>
+            <p>Run, Enhance, and Rewrite send this as a system preamble. Your prompt text is not changed.</p>
+            <pre>{state.preamble}</pre>
+          </>
+        )}
     </div>
   );
 }
