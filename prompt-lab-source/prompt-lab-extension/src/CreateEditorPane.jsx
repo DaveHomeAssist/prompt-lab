@@ -188,7 +188,7 @@ export default function CreateEditorPane({
     : 'p-4 flex flex-col gap-2 h-full min-h-0 overflow-hidden';
   const resultsClass = scrollWithWorkspace
     ? 'space-y-3'
-    : 'min-h-0 flex-1 overflow-y-auto pr-1 space-y-3';
+    : 'min-h-48 flex-1 overflow-y-auto pr-1 space-y-3';
   const accentTextClass = colorMode === 'dark' ? 'text-orange-400' : 'text-orange-800';
   const accentHoverTextClass = 'hover:text-orange-300';
   const accentSolidClass = 'bg-orange-500/90 text-white hover:bg-orange-400';
@@ -857,7 +857,9 @@ export default function CreateEditorPane({
   return (
     <div className={shellClass}>
       <div className={contentClass}>
-        {sourceSections}
+        <div className={scrollWithWorkspace ? undefined : 'min-h-0 shrink overflow-y-auto'}>
+          {sourceSections}
+        </div>
 
         {/* ── Scrollable results container ── */}
         <div className={resultsClass} role="region" aria-label="Enhancement results" tabIndex={scrollWithWorkspace ? undefined : 0}>
