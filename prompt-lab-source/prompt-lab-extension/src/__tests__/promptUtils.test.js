@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { encodeShare, decodeShare, extractVars, fillTemplateVars, isGhostVar, looksSensitive, ngramSimilarity,
-  parseEnhancedPayload, resolveGhostVars, scorePrompt, wordDiff } from '../promptUtils.js';
+  parseEnhancedPayload, resolveGhostVars, scorePrompt, testCaseOutcome, wordDiff } from '../promptUtils.js';
 
 describe('extractVars', () => {
   it('extracts template variables from text', () => {
@@ -136,6 +136,14 @@ describe('parseEnhancedPayload', () => {
   it('throws on non-JSON content', () => { expect(() => parseEnhancedPayload('This is not JSON at all')).toThrow(); });
   it('throws when enhanced field is missing', () => { expect(() => parseEnhancedPayload('{"notes":"only notes"}')).toThrow(); });
   it('throws when enhanced field is empty', () => { expect(() => parseEnhancedPayload('{"enhanced":"","notes":"notes"}')).toThrow(); });
+  it('does not treat a salvaged partial prompt as a finished test case', () => {
+    const parsed = parseEnhancedPayload('{"schema_version":2,"primary_id":"expanded","enhanced":"# handle-intake includes the trait');
+    const outcome = testCaseOutcome(parsed);
+    expect(outcome.complete).toBe(false);
+    expect(outcome.traitResults.verdict).toBeNull();
+    expect(outcome.output).toContain('handle-intake');
+    expect(testCaseOutcome({ enhanced: 'A finished prompt', partial: false }).complete).toBe(true);
+  });
 });
 describe('wordDiff', () => {
   it('returns single eq token for identical empty strings', () => { expect(wordDiff('', '')).toEqual([{ t: 'eq', v: '' }]); });

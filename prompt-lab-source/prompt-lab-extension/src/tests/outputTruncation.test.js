@@ -153,6 +153,15 @@ describe('partial JSON salvage', () => {
     expect(parseEnhancedPayload(stitchContinuation(CUT, ' before closing."}')).enhanced).toBe('# handle-intake and route the request before closing.');
   });
 
+  it('keeps a repeated letter when the tail starts at the cutoff', () => {
+    const prefix = 'Write a let';
+    const tail = 'ter for the customer."}';
+    expect(stitchContinuation(prefix, tail)).toBe('Write a letter for the customer."}');
+    const repeated = 'and route the request';
+    expect(stitchContinuation(`${CUT.slice(0, -'request'.length)}${repeated}`, `${repeated} before closing."}`))
+      .toBe(`${CUT.slice(0, -'request'.length)}${repeated} before closing."}`);
+  });
+
   it('names truncation, provider, network and parse failures differently', () => {
     expect(normalizeError(Object.assign(new Error('cut'), { code: 'output_truncated' })).userMessage)
       .toBe('Response was cut off at the output limit');

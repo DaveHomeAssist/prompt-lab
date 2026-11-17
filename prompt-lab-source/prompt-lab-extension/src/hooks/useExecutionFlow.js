@@ -2,14 +2,15 @@ import { useEffect, useRef, useState } from 'react';
 import { callModel } from '../api';
 import {
   extractTextFromAnthropic, parseEnhancedPayload, suggestTitleFromText,
-  isTransientError, ngramSimilarity, checkTraits, stitchContinuation,
+  isTransientError, ngramSimilarity, checkTraits, stitchContinuation, testCaseOutcome,
 } from '../promptUtils';
 import { ALL_TAGS, DEFAULT_ENHANCE_MODEL, DEFAULT_ENHANCE_TEMPERATURE } from '../constants';
 import { isGoldenRegression, resolveGoldenThreshold } from '../lib/goldenVerdict.js';
 import { saveEvalRun } from '../experimentStore';
 import { scanSensitiveData } from '../piiScanner';
 import useSensitivePreflight from './useSensitivePreflight.js';
-import { openSettings, getConfiguredProviders } from '../lib/platform.js';
+import { openSettings, getActiveProviderRoute, getConfiguredProviders } from '../lib/platform.js';
+import { activeProviderRoute } from '../lib/providerRegistry.js';
 import { logWarn } from '../lib/logger.js';
 import { ensureString } from '../lib/utils.js';
 import { AppError, ErrorCategory, normalizeError, truncationError } from '../lib/errorTaxonomy.js';
@@ -31,19 +32,22 @@ const nowMs = () => typeof performance !== 'undefined' && typeof performance.now
 function readStoredRoute() {
   try {
     const settings = JSON.parse(globalThis.localStorage?.getItem('pl2-provider-settings') || 'null') || {};
-    const provider = typeof settings.provider === 'string' && settings.provider ? settings.provider : 'anthropic';
-    const models = {
-      anthropic: settings.anthropicModel,
-      openai: settings.openaiModel,
-      gemini: settings.geminiModel,
-      openrouter: settings.openrouterModel,
-      ollama: settings.ollamaModel,
-    };
-    const model = typeof models[provider] === 'string' && models[provider] ? models[provider] : DEFAULT_ENHANCE_MODEL;
-    return { provider, model };
+    const hosted = typeof import.meta !== 'undefined' && import.meta.env?.VITE_WEB_MODE === 'true';
+    return activeProviderRoute(hosted ? { ...settings, provider: 'anthropic' } : settings);
   } catch {
-    return { provider: 'anthropic', model: DEFAULT_ENHANCE_MODEL };
+    return activeProviderRoute({});
   }
+}
+
+const extensionRuntime = () => typeof chrome !== 'undefined' && typeof chrome.runtime?.sendMessage === 'function';
+
+function resolveRoute() {
+  if (extensionRuntime() && typeof getActiveProviderRoute === 'function') {
+    return Promise.resolve(getActiveProviderRoute())
+      .then((active) => (active?.provider && active?.model ? active : readStoredRoute()))
+      .catch(() => readStoredRoute());
+  }
+  return readStoredRoute();
 }
 
 const CONTINUATION_INSTRUCTION = 'The JSON object above was cut off by the output limit. Continue from the exact cutoff. Output only the missing tail so concatenating it with the previous output yields one JSON object. Do not repeat earlier text and do not add a Markdown fence.';
@@ -74,18 +78,6 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
   const enhanceReqRef = useRef(0);
   const enhanceAbortRef = useRef(null);
   const continuationRef = useRef(null);
-  const routeRef = useRef(readStoredRoute());
-  useEffect(() => {
-    let cancelled = false;
-    getConfiguredProviders()
-      .then((list) => {
-        const configured = list?.[0];
-        if (cancelled || !configured?.model) return;
-        routeRef.current = { provider: configured.provider || 'anthropic', model: configured.model };
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, []);
   // Synchronous guard prevents duplicate sends before React updates loading.
   const enhanceInFlightRef = useRef(false);
   const ownerKey = JSON.stringify([raw, editingId, enhMode, generationOptions]);
@@ -154,7 +146,8 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
 
   const runTestCaseJob = async (testCase, promptTitle, signal) => {
     const inputText = ensureString(testCase?.input);
-    const payload = buildEnhancePayloadFor(inputText);
+    const route = resolveRoute();
+    const payload = buildEnhancePayloadFor(inputText, enhMode, {}, route && typeof route.then === 'function' ? await route : route);
     const startedAt = nowMs();
     const { matches } = scanSensitiveData({ payload });
     if (matches.length > 0) {
@@ -187,12 +180,23 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
       throw caught;
     }
     const text = extractTextFromAnthropic(data);
-    const parsed = parseEnhancedPayload(text, { modern: true });
-    const traitResults = checkTraits(parsed.enhanced || text, testCase.expectedTraits, testCase.expectedExclusions);
+    const parsed = parseEnhancedPayload(text, { modern: true, truncated: responseWasTruncated(data) });
+    const outcome = testCaseOutcome(parsed);
+    if (!outcome.complete) {
+      await saveEvalRun({
+        promptId: testCase.promptId, promptTitle, mode: 'test-case',
+        provider: data?.provider || 'unknown', model: data?.model || payload.model || 'unknown',
+        variantLabel: testCase.title, input: inputText, output: outcome.output,
+        latencyMs: nowMs() - startedAt, status: 'error', notes: outcome.notes, testCaseId: testCase.id,
+        requestedOutputTokens: payload.max_tokens,
+      }).catch(error => logWarn('save partial test case run', error));
+      return { parsed, traitResults: outcome.traitResults };
+    }
+    const traitResults = checkTraits(outcome.output, testCase.expectedTraits, testCase.expectedExclusions);
     await saveEvalRun({
       promptId: testCase.promptId, promptTitle, mode: 'test-case',
       provider: data?.provider || 'unknown', model: data?.model || payload.model || 'unknown',
-      variantLabel: testCase.title, input: inputText, output: parsed.enhanced || text,
+      variantLabel: testCase.title, input: inputText, output: outcome.output,
       latencyMs: nowMs() - startedAt, notes: parsed.notes || '', testCaseId: testCase.id,
       traitResults, verdict: traitResults.verdict, requestedOutputTokens: payload.max_tokens,
     }).catch(error => logWarn('save test case run', error));
@@ -205,7 +209,8 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
       ? null : overridePayload;
     const enhanceModeId = meta?.modeId || enhMode;
     const options = resolveGenerationOptions(enhanceModeId, { ...generationOptions, ...meta?.options });
-    const route = routeRef.current;
+    const pendingRoute = resolveRoute();
+    const route = pendingRoute && typeof pendingRoute.then === 'function' ? await pendingRoute : pendingRoute;
     let payload = safeOverridePayload || buildEnhancePayloadFor(raw, enhanceModeId, meta?.options, route);
     if (meta?.retryLarger || meta?.continue) {
       const basis = continuationRef.current?.maxTokens || payload.max_tokens;

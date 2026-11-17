@@ -316,7 +316,12 @@ function extractCompleteJsonStringField(text, fieldName) {
   return read?.closed ? read.value : '';
 }
 
-/** Join a cut-off reply to the model's continuation without repeating the overlap. */
+// A one-character overlap is a repeated letter at the cutoff ("let" + "ter"),
+// not proof the model repeated earlier text. Only a longer shared run is
+// treated as a re-emission.
+const MIN_STITCH_OVERLAP = 16;
+
+/** Join a cut-off reply to the model's continuation. Exact tails stay intact. */
 export function stitchContinuation(prefix, continuation) {
   const head = String(prefix || '');
   let tail = String(continuation || '').replace(/^\uFEFF/, '');
@@ -331,13 +336,28 @@ export function stitchContinuation(prefix, continuation) {
       if (restarted && typeof restarted.enhanced === 'string' && restarted.enhanced.trim()) return tail;
     } catch { /* The tail is a continuation, not a fresh object. */ }
   }
-  if (tail.startsWith(head)) return tail;
+  if (head.length >= MIN_STITCH_OVERLAP && tail.startsWith(head)) return tail;
   const max = Math.min(head.length, tail.length);
   let overlap = 0;
-  for (let size = max; size > 0; size -= 1) {
+  for (let size = max; size >= MIN_STITCH_OVERLAP; size -= 1) {
     if (head.slice(-size) === tail.slice(0, size)) { overlap = size; break; }
   }
   return head + tail.slice(overlap);
+}
+
+const EMPTY_TRAITS = Object.freeze({ passedTraits: [], failedTraits: [], excludedHits: [], verdict: null });
+
+/** A salvaged cutoff can be read and saved. It is not a finished test case. */
+export function testCaseOutcome(parsed) {
+  if (parsed?.partial === true) {
+    return {
+      complete: false,
+      output: typeof parsed.enhanced === 'string' ? parsed.enhanced : '',
+      notes: 'Partial result cut off at the output limit. Excluded from completed suite results.',
+      traitResults: { ...EMPTY_TRAITS },
+    };
+  }
+  return { complete: true, output: typeof parsed?.enhanced === 'string' ? parsed.enhanced : '', traitResults: null };
 }
 
 export function parseEnhancedPayload(rawText, options = {}) {

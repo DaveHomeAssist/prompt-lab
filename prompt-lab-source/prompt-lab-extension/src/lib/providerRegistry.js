@@ -548,6 +548,23 @@ export const PROVIDER_NON_SECRET_FIELDS = Object.freeze([...new Set([
   ]),
 ])].filter((field) => field && !PROVIDER_SECRET_FIELDS.includes(field)));
 
+const MODEL_FIELDS = Object.freeze({
+  anthropic: 'anthropicModel',
+  openai: 'openaiModel',
+  gemini: 'geminiModel',
+  openrouter: 'openrouterModel',
+  ollama: 'ollamaModel',
+});
+
+/** The provider the user selected, not the first configured key in registry order. */
+export function activeProviderRoute(settings = {}) {
+  const requested = typeof settings.provider === 'string' ? settings.provider : '';
+  const provider = VALID_PROVIDERS.includes(requested) ? requested : DEFAULT_PROVIDER;
+  const field = MODEL_FIELDS[provider] || 'anthropicModel';
+  const configured = typeof settings[field] === 'string' ? settings[field].trim() : '';
+  return { provider, model: configured || DEFAULTS[field] || DEFAULTS.anthropicModel };
+}
+
 /** Backward-compatible DEFAULTS object. */
 export const DEFAULTS = Object.freeze(
   Object.fromEntries([
