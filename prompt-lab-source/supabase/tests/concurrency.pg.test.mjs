@@ -78,6 +78,55 @@ test('F-05: two devices pushing at once, with slow commits, never make a cursor 
   await Promise.all([...writers, reader].map((client) => client.end()));
 });
 
+test('F-05: a higher change_seq with an earlier xid does not skip the older change', async () => {
+  const sub = 'user_XidOrder1';
+  const low = await connect();
+  const mid = await connect();
+  const high = await connect();
+  const reader = await connect();
+  const watch = await connect();
+  const insert = (client, id) => client.query(
+    `insert into public.sync_items (user_id, kind, item_id, payload, deleted, version, lamport, device_id)
+     values ($1, 'prompt', $2, '{"state":"active"}'::jsonb, false, 1, 1, 'dev')`,
+    [sub, id],
+  );
+  try {
+    await low.query('begin');
+    await low.query('select pg_current_xact_id()');
+    await mid.query('begin');
+    const midXid = BigInt((await mid.query('select pg_current_xact_id()::text as xid')).rows[0].xid);
+    await high.query('begin');
+    await insert(high, 'early');
+    await high.query('commit');
+    await insert(low, 'late');
+    await low.query('commit');
+
+    const stored = await watch.query(
+      `select item_id, change_seq, write_xid::text as xid from public.sync_items where user_id = $1 order by change_seq`,
+      [sub],
+    );
+    const early = stored.rows.find((row) => row.item_id === 'early');
+    const late = stored.rows.find((row) => row.item_id === 'late');
+    assert.ok(early && late);
+    assert.ok(Number(early.change_seq) < Number(late.change_seq));
+    assert.ok(BigInt(late.xid) < midXid && midXid < BigInt(early.xid));
+
+    const hidden = await asUser(reader, sub, 'select item_id from public.sync_pull($1, 1000)', [0]);
+    await hidden.commit();
+    assert.deepEqual(hidden.result.rows.map((row) => row.item_id), []);
+
+    await mid.query('commit');
+    const visible = await asUser(reader, sub, 'select item_id from public.sync_pull($1, 1000)', [0]);
+    await visible.commit();
+    assert.deepEqual(visible.result.rows.map((row) => row.item_id), ['early', 'late']);
+  } finally {
+    await Promise.all([low, mid, high, reader, watch].map(async (client) => {
+      await client.query('rollback').catch(() => {});
+      await client.end();
+    }));
+  }
+});
+
 test('LOW: sync_admin_delete_user waits for an in-flight push and erases what it wrote', { timeout: 60000 }, async () => {
   const sub = 'user_DeleteRace1';
   const pusher = await connect();

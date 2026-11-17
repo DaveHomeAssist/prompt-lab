@@ -104,6 +104,7 @@ This is an operator-maintained snapshot, not a background sync service. Never pu
 ## Session Log
 
 [2026-11-17] [PLB] [fix] Bound SDK JWKS fetches (30s issuer cooldown, 5s abort, one 5xx retry), stop spoofing the Clerk User-Agent, and keep the owner email and starter-library attribution out of the CWS bundle (041)
+[2026-11-17] [PLB] [fix] sync_pull returns a contiguous safe prefix so a higher change_seq cannot skip an older change while another transaction holds the snapshot horizon (041)
 [2026-10-28] [PLB] [landing] Rebuild the promptlab.tools splash around the strategy model and the real sensitive data check, guard the release badge, and replace stale landing tests (tracker 039)
 [2026-10-27] [PLB] [build] Save current 1.8.0 desktop packages from main run40356488179, build fresh extension from d782bde on Duncan Node22.23.4, and record package hashes. After Dave's explicit approval, PR231 merged as 9548501 and production sign-in artwork/labels were visually verified. Refresh the complete 70-row/14-plan progress snapshot; no installed app or public release changed.
 
