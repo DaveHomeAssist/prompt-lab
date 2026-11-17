@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-11-16T06:23:32.643Z",
+  "snapshotAt": "2026-11-17T03:16:07.000Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "8ea12ddb4f57fd9f168fbfb277b552c7a7d0a8cd",
+  "mainSha": "abc89d4d0c204392aaa52390a5df5c547f48bb73",
   "overall": "Acceptance incomplete",
   "nextAction": "Continue N03 bulk icon/tag/metadata editing from the prepared allowlist, preview and acknowledged-write contract. N01 Copy code and N02 contextual Chat are accepted. Other November and independent storage/billing/native/human gates remain with their owning records.",
   "evidence": [
+    {
+      "label": "Workspace import same-file title default",
+      "state": "Verified",
+      "detail": "November 17: PR #317 merged as abc89d4. Distinct prompts that only share a title with another prompt in the same workspace file now default to Keep both and stay changeable; Library title or ID matches still require a choice and exact-text duplicates still default to Skip. Main was merged into the branch (17c2dca) and all 17 checks passed; Codex review found nothing; the production deployment succeeded and the live /app bundle carries revision abc89d4 with the new default. The new preview test fails on 9255f8b and passes; locally on Node 22 the 20 related files pass (252 tests after merging main). Read-only preview of the owner's 2026-10-28 and 2026-10-31 exports into an empty Library reports 0 unresolved choices (main: 1), importing 213 and 220 prompts; the 2026-10-26 export named in the report was no longer available. A local dev-server check showed Apply enabled for a same-title pair, a Library title match still required, and Cancel writing nothing. No storage or export format change; no signed-in production import checked.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/317"
+    },
     {
       "label": "Inline rename and result editor recovery",
       "state": "Open",
@@ -1938,14 +1944,14 @@
     {
       "id": "410255fc8f4481b6a622e52ec2419f86",
       "title": "Workspace backup import asks about prompts that only share a title within the same file",
-      "status": "In progress",
+      "status": "Done",
       "severity": "Medium",
       "area": "Import",
       "type": "Bug",
       "url": "https://app.notion.com/410255fc8f4481b6a622e52ec2419f86",
       "inPlan": false,
-      "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this refresh."
+      "nextAction": "Optional: restore a workspace backup that holds a same-title pair in the signed-in production app and confirm Apply import is enabled without a choice.",
+      "verification": "2026-11-17: PR #317 merged as abc89d4. Main was merged into the branch (17c2dca) and all 17 checks passed; Codex review found nothing; the production deployment succeeded and the live /app bundle carries revision abc89d4 with the new default. New workspaceImportPreview test fails on 9255f8b and passes; Library title or ID matches still require a choice. Read-only preview of the owner's 2026-10-28 and 2026-10-31 exports into an empty Library: 0 unresolved (main: 1). Local dev-server dialog check passed. No signed-in production import checked."
     },
     {
       "id": "41a255fc8f44814e909ccd9df60ca800",

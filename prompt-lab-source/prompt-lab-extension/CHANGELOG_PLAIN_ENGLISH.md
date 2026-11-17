@@ -1,6 +1,6 @@
 # Prompt Lab Changelog (Plain English)
 
-## Pending delivery: Workspace backups restore without extra questions
+## Workspace backups restore without extra questions (unreleased)
 
 - Restoring a workspace backup no longer stops to ask about two different
   prompts in the same file that happen to have the same title. Both are kept,
