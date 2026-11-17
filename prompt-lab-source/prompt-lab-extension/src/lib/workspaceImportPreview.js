@@ -63,12 +63,18 @@ export function buildWorkspaceImportPreview(source, context, resolutions = {}) {
   context.library.forEach(entry => indexEntry(entry, 'existing'));
   const effective = {};
   for (const entry of source.library) {
-    const exact = uniqueTargets(byBody.get(getLibraryEntryCanonicalBody(entry)) || []);
+    const body = getLibraryEntryCanonicalBody(entry);
+    const exact = uniqueTargets(byBody.get(body) || []);
     const conflicts = exact.length ? exact : uniqueTargets([
       ...(byTitle.get(normalizePromptText(entry.title).toLowerCase()) || []),
       ...(byId.get(entry.id) || []),
     ]);
-    const choice = resolutions[entry.id] || (exact.length ? { action: 'skip', existingId: exact[0].id } : conflicts.length ? null : { action: 'keep' });
+    // Distinct prompts that only share a title with other prompts in the same
+    // file are kept by default; matches against the Library still need a choice.
+    const sameFileOnly = conflicts.length > 0 && conflicts.every(target => target.targetSource === 'incoming'
+      && target.id !== entry.id && getLibraryEntryCanonicalBody(target) !== body);
+    const needsChoice = conflicts.length > 0 && !sameFileOnly;
+    const choice = resolutions[entry.id] || (exact.length ? { action: 'skip', existingId: exact[0].id } : needsChoice ? null : { action: 'keep' });
     if (choice && !['keep', 'replace', 'skip'].includes(choice.action)) throw new Error('Unknown import conflict choice.');
     if (choice?.action === 'replace' && !conflicts.some(target => target.id === choice.existingId && target.targetSource === (choice.targetSource || 'existing'))) throw new Error('Select a listed replacement target.');
     rows.push({ entry, kind: exact.length ? 'duplicate' : conflicts.length ? 'conflict' : 'new', conflicts, choice });

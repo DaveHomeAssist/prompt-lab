@@ -23,6 +23,28 @@ describe('workspace import preview', () => {
     expect(preview([prompt('old', 'New title', 'Different body')]).unresolved).toBe(1);
   });
 
+  it('keeps distinct prompts that only share a title within the file without asking', () => {
+    const source = normalizeWorkspaceImportSource([
+      prompt('first', 'An image has been provided', 'Describe the image'),
+      prompt('second', 'An image has been provided', 'Rename the chat'),
+    ]);
+    const result = buildWorkspaceImportPreview(source, { ...context(), library: [] });
+    expect(result.error).toBe('');
+    expect(result.unresolved).toBe(0);
+    expect(result.rows[1]).toMatchObject({ kind: 'conflict', choice: { action: 'keep' } });
+    expect(result.rows[1].conflicts.map(target => [target.targetSource, target.id])).toEqual([['incoming', 'first']]);
+    expect(result.plan.importedCount).toBe(2);
+    expect(result.plan.library.map(row => row.enhanced).sort()).toEqual(['Describe the image', 'Rename the chat']);
+    const skipped = buildWorkspaceImportPreview(source, { ...context(), library: [] }, { second: { action: 'skip' } });
+    expect(skipped.plan.importedCount).toBe(1);
+  });
+
+  it('still asks when a same-file title also matches a Library prompt', () => {
+    const result = preview([prompt('a', 'Shared title', 'Body A'), prompt('b', 'Shared title', 'Body B')]);
+    expect(result.unresolved).toBe(2);
+    expect(result.rows[1].conflicts.map(target => target.targetSource).sort()).toEqual(['existing', 'incoming']);
+  });
+
   it('keeps both using unique IDs and maps associated records to the incoming identity', () => {
     const result = preview({ library: [prompt('old', 'Shared title', 'Different body')], runs: [{ promptId: 'old', output: 'Incoming run' }] }, { old: { action: 'keep' } });
     expect(result.plan.library).toHaveLength(2);
