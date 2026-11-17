@@ -50,11 +50,6 @@ const ownerAccessEnabled = typeof import.meta !== 'undefined' && (
     (import.meta.env?.DEV || import.meta.env?.VITE_PROMPTLAB_OWNER_ACCESS === 'true')
   )
 );
-const ownerEmail = (
-  typeof import.meta !== 'undefined' && import.meta.env?.VITE_PROMPTLAB_OWNER_EMAIL
-    ? String(import.meta.env.VITE_PROMPTLAB_OWNER_EMAIL)
-    : 'dave@promptlab.tools'
-).trim().toLowerCase();
 
 export function createDefaultBillingState() {
   return {
@@ -112,7 +107,10 @@ export function createOwnerBillingState() {
     status: BILLING_STATUS_OWNER,
     billingPeriod: BILLING_STATUS_OWNER,
     productName: 'Prompt Lab Pro',
-    customerEmail: ownerEmail,
+    // Signed-in owner email comes from the server license response
+    // (PROMPTLAB_OWNER_CLERK_USER_IDS and the verified Clerk account).
+    // This local shortcut must not embed an address in the client bundle.
+    customerEmail: '',
     customerName: 'Dave',
     lastValidatedAt: new Date().toISOString(),
   });

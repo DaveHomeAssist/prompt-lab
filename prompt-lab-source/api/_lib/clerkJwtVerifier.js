@@ -35,10 +35,20 @@ const SDK_IAT_SKEW_MS = 5 * 1000;
 const MANUAL_JWKS_CACHE_MS = 10 * 60 * 1000;
 const SDK_JWKS_CACHE_MS = 5 * 60 * 1000;
 const MANUAL_JWKS_TIMEOUT_MS = 5000;
+const SDK_JWKS_TIMEOUT_MS = 5000;
+// After a miss or a failed fetch, the Clerk JWKS issuer is not fetched again
+// until this elapses. An unknown kid must not open a new request every time.
+const SDK_JWKS_COOLDOWN_MS = 30 * 1000;
+// One try plus one retry. Only an HTTP 5xx is retried; each attempt is aborted
+// at SDK_JWKS_TIMEOUT_MS. The previous loop retried every failure five times
+// with no deadline.
+const SDK_JWKS_MAX_ATTEMPTS = 2;
+const SDK_JWKS_USER_AGENT = 'prompt-lab-api';
 const SDK_ALGORITHMS = ['RS256', 'RS384', 'RS512'];
 
 const manualJwksCache = new Map();
 let sdkJwksCache = { fetchedAt: 0, keys: [] };
+let sdkJwksNegativeCooldownUntil = 0;
 const pemKeyCache = new Map();
 let proxySigningKeys = null;
 
@@ -195,47 +205,75 @@ async function manualVerificationKey(header) {
   return importJWK(jwk, 'RS256');
 }
 
+function jwksFailureStatus(error) {
+  const match = /^JWKS request failed with (\d+)\.$/.exec(String(error?.message || ''));
+  return match ? Number(match[1]) : 0;
+}
+
 async function retryClerkFetch(fetchKeys) {
-  let iterations = 0;
-  let delayMs = 125;
-  while (true) {
+  let lastError;
+  for (let attempt = 1; attempt <= SDK_JWKS_MAX_ATTEMPTS; attempt += 1) {
     try {
       return await fetchKeys();
     } catch (error) {
-      iterations += 1;
-      if (iterations >= 5) throw error;
-      const waited = delayMs * (1 + Math.random());
-      await new Promise((resolve) => setTimeout(resolve, waited));
-      delayMs *= 2;
+      lastError = error;
+      const status = jwksFailureStatus(error);
+      if (attempt >= SDK_JWKS_MAX_ATTEMPTS || status < 500) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 125));
     }
   }
+  throw lastError;
+}
+
+function armSdkJwksCooldown() {
+  sdkJwksNegativeCooldownUntil = Date.now() + SDK_JWKS_COOLDOWN_MS;
 }
 
 async function fetchSdkJwks(secretKey) {
-  const payload = await retryClerkFetch(() => fetchJson(CLERK_BACKEND_JWKS_URL, {
-    headers: {
-      Authorization: `Bearer ${secretKey}`,
-      'Clerk-API-Version': CLERK_BACKEND_API_VERSION,
-      'Content-Type': 'application/json',
-      'User-Agent': '@clerk/backend@3.8.4',
-    },
-  }));
+  let payload;
+  try {
+    payload = await retryClerkFetch(() => fetchJson(CLERK_BACKEND_JWKS_URL, {
+      timeoutMs: SDK_JWKS_TIMEOUT_MS,
+      headers: {
+        Authorization: `Bearer ${secretKey}`,
+        'Clerk-API-Version': CLERK_BACKEND_API_VERSION,
+        'Content-Type': 'application/json',
+        'User-Agent': SDK_JWKS_USER_AGENT,
+      },
+    }));
+  } catch (error) {
+    armSdkJwksCooldown();
+    throw error;
+  }
   const keys = Array.isArray(payload?.keys) ? payload.keys : [];
-  if (!keys.length) throw new Error('The JWKS endpoint did not contain any signing keys.');
+  if (!keys.length) {
+    armSdkJwksCooldown();
+    throw new Error('The JWKS endpoint did not contain any signing keys.');
+  }
   sdkJwksCache = { keys, fetchedAt: Date.now() };
   return keys;
 }
 
 async function getSdkJwks(secretKey, kid) {
+  const now = Date.now();
   const fresh = sdkJwksCache.keys.length > 0
-    && (Date.now() - sdkJwksCache.fetchedAt) < SDK_JWKS_CACHE_MS;
+    && (now - sdkJwksCache.fetchedAt) < SDK_JWKS_CACHE_MS;
   const cached = fresh
     ? sdkJwksCache.keys.find((key) => String(key?.kid || '') === kid)
     : null;
   if (cached) return sdkJwksCache.keys;
-  // A kid Clerk has not cached yet is fetched again, which is how the SDK
-  // picked up a rotated signing key without waiting out the cache.
-  return fetchSdkJwks(secretKey);
+  // Outside that cache, a kid the last response did not contain is fetched
+  // again so a rotated signing key is picked up. During the issuer cooldown
+  // that follows a miss or a failed fetch, the request fails closed.
+  if (now < sdkJwksNegativeCooldownUntil) {
+    throw new Error('Clerk token key id was not found.');
+  }
+  const keys = await fetchSdkJwks(secretKey);
+  if (!keys.some((key) => String(key?.kid || '') === kid)) {
+    armSdkJwksCooldown();
+    throw new Error('Clerk token key id was not found.');
+  }
+  return keys;
 }
 
 async function sdkVerificationKey(header) {
