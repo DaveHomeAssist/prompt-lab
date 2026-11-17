@@ -356,11 +356,14 @@ export function parseEnhancedPayload(rawText, options = {}) {
     }
   }
   // A closed primary string with a cut-off tail keeps the prompt. An unclosed
-  // string is still the user's text: keep it and mark the result partial.
+  // string is kept only for a truncated contract (schema_version / primary_id,
+  // or an explicit truncation flag). A bare unterminated fragment stays unparseable.
   if (parsed === null) {
+    const contractCut = options.truncated === true || options.allowPartial === true
+      || /"schema_version"\s*:/.test(cleaned) || /"primary_id"\s*:/.test(cleaned);
     const recovered = PRIMARY_TEXT_FIELDS
       .map((field) => ({ field, read: readJsonStringField(cleaned, field) }))
-      .find((item) => item.read && item.read.value.trim());
+      .find((item) => item.read && item.read.value.trim() && (item.read.closed || contractCut));
     if (recovered) {
       const partial = recovered.read.closed !== true;
       parsed = {

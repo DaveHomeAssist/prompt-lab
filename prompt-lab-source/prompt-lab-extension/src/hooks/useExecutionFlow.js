@@ -318,7 +318,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
       };
       let parsed;
       try {
-        parsed = parseEnhancedPayload(txt, { modern: true });
+        parsed = parseEnhancedPayload(txt, { modern: true, truncated: responseWasTruncated(data) });
       } catch (parseErr) {
         continuationRef.current = { prefix: txt, maxTokens: payload.max_tokens };
         const err = responseWasTruncated(data) ? truncationError(parseErr?.message) : parseErr;
@@ -343,7 +343,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
         const correctionText = extractTextFromAnthropic(correctionData);
         let corrected;
         try {
-          corrected = parseEnhancedPayload(correctionText, { modern: true });
+          corrected = parseEnhancedPayload(correctionText, { modern: true, truncated: responseWasTruncated(correctionData) });
         } catch (parseErr) {
           const err = responseWasTruncated(correctionData) ? truncationError(parseErr?.message) : parseErr;
           err.partialText = correctionText;

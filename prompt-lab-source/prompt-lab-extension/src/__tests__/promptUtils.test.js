@@ -121,6 +121,9 @@ describe('parseEnhancedPayload', () => {
     const result = parseEnhancedPayload('{"enhanced":"Keep the exact intent.\\nReturn a verified result.","variants":[{"label":"Compact","content":"Cut off');
     expect(result.enhanced).toBe('Keep the exact intent.\nReturn a verified result.'); expect(result.variants).toEqual([]); expect(result.notes).toMatch(/hosted output limit/i);
   });
+  it('leaves a bare unterminated fragment unparseable', () => {
+    expect(() => parseEnhancedPayload('{"enhanced": "unterminated fragment')).toThrow(/not valid JSON/i);
+  });
   it('keeps an enhanced string that was itself cut off and marks it partial', () => {
     const cut = '{"schema_version":2,"primary_id":"expanded","enhanced":"# handle-intake and route the request';
     const result = parseEnhancedPayload(cut, { modern: true });

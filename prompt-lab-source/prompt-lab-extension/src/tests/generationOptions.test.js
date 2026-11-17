@@ -62,14 +62,13 @@ describe('generation recalibration', () => {
     expect(generationOutputBudget('x'.repeat(20000), { budget: 128000 }, { provider: 'openai', model: 'gpt-4o' })).toBe(16384);
     expect(generationOutputBudget('x'.repeat(20000), DEFAULT_GENERATION_OPTIONS, { provider: 'ollama', model: 'llama3.2' })).toBe(32768);
   });
-  it('preserves literal JSON and embedded fences and keeps an incomplete prompt as partial', () => {
+  it('preserves literal JSON and embedded fences and rejects a bare unfinished fragment', () => {
     const content = 'Return JSON using this example:\n```json\n{"answer":"exact"}\n```';
     expect(parseEnhancedPayload(JSON.stringify({ schema_version: 2, enhanced: content })).enhanced).toBe(content);
     const jsonPrompt = '{"task":"Explain the current code","format":"two sentences"}';
     expect(parseEnhancedPayload(JSON.stringify({ enhanced: jsonPrompt }), { modern: true }).enhanced).toBe(jsonPrompt);
-    const partial = parseEnhancedPayload('{"enhanced":"unfinished', { modern: true });
-    expect(partial.enhanced).toBe('unfinished');
-    expect(partial.partial).toBe(true);
+    expect(() => parseEnhancedPayload('{"enhanced":"unfinished', { modern: true })).toThrow();
+    expect(parseEnhancedPayload('{"enhanced":"unfinished', { modern: true, truncated: true }).partial).toBe(true);
   });
   it('keeps modern identities and exact selected text through save and reload', () => {
     const resultMeta = normalizeResultMeta({ schema_version: 2, primary_id: 'expanded', selectedCandidateId: 'rebuilt', candidates: [
