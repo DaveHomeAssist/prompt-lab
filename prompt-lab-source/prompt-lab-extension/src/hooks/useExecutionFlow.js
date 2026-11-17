@@ -167,6 +167,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
     const enhanceModeId = meta?.modeId || enhMode;
     const options = resolveGenerationOptions(enhanceModeId, { ...generationOptions, ...meta?.options });
     const payload = safeOverridePayload || buildEnhancePayloadFor(raw, enhanceModeId, meta?.options);
+    const sentSource = ensureString(payload?.messages?.find(message => message?.role === 'user')?.content || raw);
     const reviewed = preflight.review({
       payload, scope: 'enhance', label: `Enhance (${enhanceModeId})`,
       isCurrent: () => ownerRef.current === ownerKey,
@@ -177,7 +178,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
         promptId: editingId,
         promptTitle: (saveTitle || suggestTitleFromText(raw)).trim() || suggestTitleFromText(raw),
         mode: 'enhance', enhanceMode: enhanceModeId, provider: 'blocked',
-        model: payload?.model || 'unknown', input: raw,
+        model: payload?.model || 'unknown', input: sentSource,
         output: 'Prompt blocked before send due to sensitive data detection.',
         latencyMs: 0, status: 'blocked', notes: 'Sensitive data detected before send.',
       }).then(() => evalRunsHook.refreshEvalRuns(editingId)).catch(caught => logWarn('save blocked eval run', caught));
@@ -189,6 +190,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
   // Only review() and its private one-use continuation enter this function.
   const executeEnhance = async (payload, enhanceModeId, options) => {
     if (enhanceInFlightRef.current || ownerRef.current !== ownerKey) return;
+    const sentSource = ensureString(payload?.messages?.find(message => message?.role === 'user')?.content || raw);
     enhanceInFlightRef.current = true;
     const reqId = enhanceReqRef.current + 1;
     enhanceReqRef.current = reqId;
@@ -229,7 +231,6 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
       accumulatedUsage = combineTokenUsage(data?.usage);
       let txt = extractTextFromAnthropic(data);
       let parsed = parseEnhancedPayload(txt, { modern: true });
-      const sentSource = ensureString(payload?.messages?.find(message => message?.role === 'user')?.content || raw);
       let correctionUsed = false;
       let qualityAssessment = assessEnhancementQuality(sentSource, parsed);
       if (!qualityAssessment.passed) {
@@ -292,7 +293,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
       saveEvalRun({
         id: runId, promptId: editingId, promptTitle: (saveTitle || nextTitle).trim() || nextTitle,
         mode: 'enhance', enhanceMode: enhanceModeId, provider: executionProvider, model: executionModel,
-        input: raw, output: parsed.enhanced || txt, latencyMs, notes: notesText,
+        input: sentSource, output: parsed.enhanced || txt, latencyMs, notes: notesText,
         schemaVersion: nextResultMeta.schemaVersion, primaryId: nextResultMeta.primaryId,
         requestedOutputTokens: nextResultMeta.requestedOutputTokens,
         metadataIncomplete: nextResultMeta.metadataIncomplete,
@@ -312,7 +313,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
           promptId: editingId,
           promptTitle: (saveTitle || suggestTitleFromText(raw)).trim() || suggestTitleFromText(raw),
           mode: 'enhance', enhanceMode: enhanceModeId, provider: executionProvider, model: executionModel,
-          input: raw, output: 'Enhance cancelled before completion.', latencyMs: nowMs() - startedAt,
+          input: sentSource, output: 'Enhance cancelled before completion.', latencyMs: nowMs() - startedAt,
           status: 'canceled', usage: accumulatedUsage,
         }).then(() => evalRunsHook.refreshEvalRuns(editingId)).catch(err => logWarn('save canceled eval run', err));
         if (reqId === enhanceReqRef.current) {
@@ -333,7 +334,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
           promptId: editingId,
           promptTitle: (saveTitle || suggestTitleFromText(raw)).trim() || suggestTitleFromText(raw),
           mode: 'enhance', enhanceMode: enhanceModeId, provider: executionProvider, model: executionModel,
-          input: raw, output: caught?.partialText || appError.userMessage || appError.message || 'Enhance failed.',
+          input: sentSource, output: caught?.partialText || appError.userMessage || appError.message || 'Enhance failed.',
           latencyMs: nowMs() - startedAt, status: 'error', usage: accumulatedUsage,
           notes: [appError.category ? `Error category: ${appError.category}` : '',
             qualityGateFailure?.failures?.length ? `Quality gate: ${qualityGateFailure.failures.join(', ')}` : '',

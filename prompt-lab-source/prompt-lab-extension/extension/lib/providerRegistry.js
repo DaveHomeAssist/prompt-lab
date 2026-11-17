@@ -48,6 +48,22 @@ export function normalizeProvider(provider) {
   return VALID_PROVIDERS.includes(provider) ? provider : DEFAULT_PROVIDER;
 }
 
+const MODEL_FIELD = Object.freeze({
+  anthropic: 'anthropicModel',
+  ollama: 'ollamaModel',
+  openai: 'openaiModel',
+  gemini: 'geminiModel',
+  openrouter: 'openrouterModel',
+});
+
+/** The selected provider and model. Never includes API keys or other secrets. */
+export function activeProviderSelection(settings = {}) {
+  const provider = normalizeProvider(settings?.provider);
+  const field = MODEL_FIELD[provider];
+  const model = String(settings?.[field] || DEFAULTS[field] || '').trim() || DEFAULTS[field];
+  return { provider, model };
+}
+
 export function normalizeBaseUrl(baseUrl, fallback = DEFAULTS.ollamaBaseUrl) {
   const raw = String(baseUrl || fallback).trim();
   return raw.replace(/\/+$/, '');

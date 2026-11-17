@@ -57,7 +57,11 @@ export default function usePromptVariableGate({ promptId } = {}) {
     const current = requestRef.current;
     if (!current) return;
     const filled = valuesForFill(current.manual, entered);
-    rememberVariableValues(current.promptKey, filled);
+    try {
+      rememberVariableValues(current.promptKey, filled);
+    } catch {
+      // Recent values are a convenience. The entered values still go out.
+    }
     finish({
       cancelled: false,
       text: fillTemplateVars(current.text, { ...current.ghostValues, ...filled }),

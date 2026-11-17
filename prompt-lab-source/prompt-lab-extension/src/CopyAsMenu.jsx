@@ -20,7 +20,7 @@ export default function CopyAsMenu({
       ? await preparePromptText(source, promptKey)
       : { cancelled: false, text: source };
     if (!prepared || prepared.cancelled) return;
-    const active = readActiveModel();
+    const active = await readActiveModel();
     const snippet = buildCopyAs(format, prepared.text, {
       title,
       model: model || active.model,

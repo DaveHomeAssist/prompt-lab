@@ -87,7 +87,11 @@ export function rememberVariableValues(promptKey, values, storage = memoryStorag
     row[name] = { last: text, recent: [text, ...prev.filter((item) => item !== text)].slice(0, MAX_RECENT) };
   }
   all[promptKey] = row;
-  storage.setItem(STORAGE_KEY, JSON.stringify(all));
+  try {
+    storage.setItem(STORAGE_KEY, JSON.stringify(all));
+  } catch {
+    // A full or blocked store must not stop the run or copy that already has values.
+  }
 }
 
 export function initialVariableValues(variables, recent = {}) {

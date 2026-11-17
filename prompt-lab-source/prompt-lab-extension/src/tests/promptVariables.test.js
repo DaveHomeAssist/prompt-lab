@@ -44,6 +44,12 @@ describe('recent values', () => {
     expect(otherDraft).not.toBe(variablePromptKey('', 'Hello {{place}}'));
   });
 
+  it('keeps going when the store rejects the write', () => {
+    const key = variablePromptKey('prompt-1', '');
+    const storage = { getItem: () => '{}', setItem: () => { throw new Error('quota'); } };
+    expect(() => rememberVariableValues(key, { name: 'Ada' }, storage)).not.toThrow();
+  });
+
   it('prefills from the last value, then the default', () => {
     const variables = parsePromptVariables('{{name|Ada}} {{topic}}');
     expect(initialVariableValues(variables, {})).toEqual({ name: 'Ada', topic: '' });
