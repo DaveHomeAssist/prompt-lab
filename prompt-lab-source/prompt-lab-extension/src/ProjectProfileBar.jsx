@@ -199,9 +199,11 @@ function ProjectProfilesManager({ state, onClose }) {
 
 export default function ProjectProfileBar({ state, suggestion, onUseSuggestion }) {
   const [query, setQuery] = useState('');
+  const [layer, setLayer] = useState({ menu: null, preview: null });
   const searchRef = useRef(null);
   const chipRef = useRef(null);
   const rootRef = useRef(null);
+  const menuRef = useRef(null);
   const closePickerRef = useRef(state.closePicker);
   closePickerRef.current = state.closePicker;
   const listId = useId();
@@ -214,13 +216,34 @@ export default function ProjectProfileBar({ state, suggestion, onUseSuggestion }
       : 'This profile has no instructions yet, so nothing extra is sent. Your prompt text is sent as written.';
 
   useEffect(() => {
+    if (!state.pickerOpen && !state.previewOpen) return undefined;
+    const place = () => {
+      const chip = chipRef.current?.getBoundingClientRect();
+      const header = rootRef.current?.closest('header')?.getBoundingClientRect();
+      setLayer({
+        menu: chip ? { top: chip.bottom + 6, left: Math.max(8, Math.min(chip.left, window.innerWidth - 296)) } : null,
+        preview: header ? { top: header.bottom } : null,
+      });
+    };
+    place();
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
+    return () => {
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place, true);
+    };
+  }, [state.pickerOpen, state.previewOpen]);
+
+  useEffect(() => {
     if (state.pickerOpen) searchRef.current?.focus();
   }, [state.pickerOpen]);
 
   useEffect(() => {
     if (!state.pickerOpen) return undefined;
     const onPointer = (event) => {
-      if (rootRef.current && !rootRef.current.contains(event.target)) closePickerRef.current();
+      const target = event.target;
+      if (rootRef.current?.contains(target) || menuRef.current?.contains(target)) return;
+      closePickerRef.current();
     };
     const onKey = (event) => {
       if (event.key !== 'Escape') return;
@@ -260,12 +283,15 @@ export default function ProjectProfileBar({ state, suggestion, onUseSuggestion }
         <span className="pl-profile-chip-name">{active ? active.name : 'No profile'}</span>
         {active?.example && <span className="pl-profile-example">Example</span>}
       </button>
-      {state.pickerOpen && (
+      {state.managerOpen && <ProjectProfilesManager state={state} onClose={state.closeManager} />}
+      {state.pickerOpen && createPortal(
         <div
+          ref={menuRef}
           className="pl-profile-menu"
           id={listId}
           role="listbox"
           aria-label="Project profiles"
+          style={layer.menu ? { top: layer.menu.top, left: layer.menu.left } : { top: 0, left: 0 }}
           onKeyDown={(event) => {
             if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
             const options = [...event.currentTarget.querySelectorAll('[role="option"]')];
@@ -306,20 +332,20 @@ export default function ProjectProfileBar({ state, suggestion, onUseSuggestion }
             Preview what gets sent
           </button>
           <button type="button" onClick={() => state.openManager()}>Manage profiles</button>
-        </div>
+        </div>,
+        document.body,
       )}
-      {state.managerOpen && <ProjectProfilesManager state={state} onClose={state.closeManager} />}
       {state.previewOpen && createPortal(
-        <SendPreview state={state} active={active} previewText={previewText} />,
-        rootRef.current?.closest('header') || document.body,
+        <SendPreview state={state} active={active} previewText={previewText} top={layer.preview?.top} />,
+        document.body,
       )}
     </div>
   );
 }
 
-function SendPreview({ state, active, previewText }) {
+function SendPreview({ state, active, previewText, top = 0 }) {
   return (
-    <div className="pl-profile-preview" data-testid="project-profile-preview" role="region" aria-label="What gets sent">
+    <div className="pl-profile-preview" data-testid="project-profile-preview" role="region" aria-label="What gets sent" style={{ top }}>
       {active && (
         <label className="pl-profile-override">
           <input
