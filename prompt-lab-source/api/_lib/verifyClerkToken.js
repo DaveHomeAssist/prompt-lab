@@ -1,10 +1,6 @@
-import { createPublicKey, createVerify } from 'node:crypto';
+import { verifyClerkSession } from './clerkJwtVerifier.js';
 
-const DEFAULT_CLERK_JWKS_URL = 'https://api.clerk.com/v1/jwks';
-const DEFAULT_AUTHORIZED_PARTIES = ['https://promptlab.tools'];
-const JWKS_CACHE_MS = 10 * 60 * 1000;
 const CLERK_PROFILE_CACHE_MS = 5 * 60 * 1000;
-const jwksCache = new Map();
 const clerkProfileCache = new Map();
 
 function readStringEnv(...names) {
@@ -13,56 +9,6 @@ function readStringEnv(...names) {
     if (typeof value === 'string' && value.trim()) return value.trim();
   }
   return '';
-}
-
-function getHeader(request, name) {
-  if (typeof request?.headers?.get === 'function') {
-    return request.headers.get(name) || request.headers.get(name.toLowerCase()) || '';
-  }
-  const headers = request?.headers || {};
-  return headers[name] || headers[name.toLowerCase()] || '';
-}
-
-function getBearerToken(request) {
-  const header = String(getHeader(request, 'authorization') || '').trim();
-  const match = header.match(/^Bearer\s+(.+)$/i);
-  return match?.[1]?.trim() || '';
-}
-
-function base64UrlToBuffer(value) {
-  const input = String(value || '').replace(/-/g, '+').replace(/_/g, '/');
-  const padded = input.padEnd(input.length + ((4 - (input.length % 4)) % 4), '=');
-  return Buffer.from(padded, 'base64');
-}
-
-function parseBase64UrlJson(value) {
-  return JSON.parse(base64UrlToBuffer(value).toString('utf8'));
-}
-
-function splitCsv(value) {
-  return String(value || '')
-    .split(',')
-    .map((part) => part.trim())
-    .filter(Boolean);
-}
-
-function normalizeOrigin(value) {
-  if (!value) return '';
-  try {
-    return new URL(value).origin;
-  } catch {
-    return '';
-  }
-}
-
-function buildAuthorizedParties(request) {
-  const parties = new Set([
-    ...DEFAULT_AUTHORIZED_PARTIES,
-    ...splitCsv(readStringEnv('CLERK_AUTHORIZED_PARTIES')),
-  ]);
-  const requestOrigin = normalizeOrigin(request?.url);
-  if (requestOrigin) parties.add(requestOrigin);
-  return Array.from(parties);
 }
 
 async function fetchJson(url, { headers = {}, timeoutMs = 5000 } = {}) {
@@ -78,100 +24,6 @@ async function fetchJson(url, { headers = {}, timeoutMs = 5000 } = {}) {
   } finally {
     clearTimeout(timeout);
   }
-}
-
-async function getJwks() {
-  const jwksUri = readStringEnv('CLERK_JWKS_URL') || DEFAULT_CLERK_JWKS_URL;
-  const cached = jwksCache.get(jwksUri);
-  if (cached && (Date.now() - cached.fetchedAt) < JWKS_CACHE_MS) {
-    return cached.keys;
-  }
-  const payload = await fetchJson(jwksUri);
-  const keys = Array.isArray(payload?.keys) ? payload.keys : [];
-  jwksCache.set(jwksUri, { keys, fetchedAt: Date.now() });
-  return keys;
-}
-
-async function getSigningKey(header) {
-  if (header?.alg !== 'RS256') {
-    throw new Error('Unsupported Clerk token algorithm.');
-  }
-  if (!header?.kid) {
-    throw new Error('Missing Clerk token key id.');
-  }
-  const keys = await getJwks();
-  const jwk = keys.find((key) => String(key?.kid || '') === header.kid);
-  if (!jwk) throw new Error('Clerk token key id was not found.');
-  return createPublicKey({ key: jwk, format: 'jwk' });
-}
-
-function audienceMatches(claimAudience, expectedAudience) {
-  if (!expectedAudience) return true;
-  if (Array.isArray(claimAudience)) return claimAudience.includes(expectedAudience);
-  return String(claimAudience || '') === expectedAudience;
-}
-
-function assertValidClaims(claims) {
-  // A valid signature can still represent unfinished MFA or recovery tasks.
-  // Legacy active session tokens omit sts; an explicit status must be active.
-  if (claims?.sts !== undefined && claims.sts !== 'active') {
-    throw new Error('Clerk session has unfinished authentication tasks.');
-  }
-  const now = Math.floor(Date.now() / 1000);
-  if (!Number.isFinite(Number(claims?.exp)) || Number(claims.exp) <= now) {
-    throw new Error('Clerk token is expired.');
-  }
-  if (Number.isFinite(Number(claims?.nbf)) && Number(claims.nbf) > now) {
-    throw new Error('Clerk token is not active yet.');
-  }
-
-  const issuer = readStringEnv('CLERK_JWT_ISSUER');
-  if (issuer && claims?.iss !== issuer) {
-    throw new Error('Clerk token issuer is invalid.');
-  }
-
-  const audience = readStringEnv('CLERK_JWT_AUDIENCE');
-  if (audience && !audienceMatches(claims?.aud, audience)) {
-    throw new Error('Clerk token audience is invalid.');
-  }
-}
-
-async function verifyClerkJwt(token, request) {
-  const parts = String(token || '').split('.');
-  if (parts.length !== 3) throw new Error('Malformed Clerk token.');
-
-  const [encodedHeader, encodedClaims, encodedSignature] = parts;
-  const header = parseBase64UrlJson(encodedHeader);
-  const claims = parseBase64UrlJson(encodedClaims);
-  const publicKey = await getSigningKey(header);
-  const verifier = createVerify('RSA-SHA256');
-  verifier.update(`${encodedHeader}.${encodedClaims}`);
-  verifier.end();
-  const valid = verifier.verify(publicKey, base64UrlToBuffer(encodedSignature));
-  if (!valid) throw new Error('Invalid Clerk token signature.');
-  assertValidClaims(claims);
-  if (claims.azp && !buildAuthorizedParties(request).includes(claims.azp)) {
-    throw new Error('Clerk token authorized party is invalid.');
-  }
-  return claims;
-}
-
-async function verifyClerkToken(token, request) {
-  if (readStringEnv('CLERK_JWKS_URL') || !readStringEnv('CLERK_SECRET_KEY')) {
-    return verifyClerkJwt(token, request);
-  }
-
-  const { verifyToken } = await import('@clerk/backend');
-  const claims = await verifyToken(token, {
-    secretKey: readStringEnv('CLERK_SECRET_KEY'),
-    ...(readStringEnv('CLERK_JWT_KEY') ? { jwtKey: readStringEnv('CLERK_JWT_KEY') } : {}),
-    authorizedParties: buildAuthorizedParties(request),
-    ...(readStringEnv('CLERK_JWT_AUDIENCE') ? { audience: readStringEnv('CLERK_JWT_AUDIENCE') } : {}),
-  });
-  // The pinned SDK has no issuer option. Apply the configured claim rules to
-  // its verified payload as well as to the custom JWKS verification path.
-  assertValidClaims(claims);
-  return claims;
 }
 
 function extractEmailFromClaims(claims = {}) {
@@ -244,15 +96,13 @@ export class ClerkAuthError extends Error {
 }
 
 export async function verifyClerkRequest(request) {
-  const token = getBearerToken(request);
-  if (!token) {
-    throw new ClerkAuthError('Missing Clerk authorization.');
-  }
-
   let claims;
   try {
-    claims = await verifyClerkToken(token, request);
-  } catch {
+    claims = await verifyClerkSession(request, 'billing');
+  } catch (error) {
+    if (error?.code === 'missing-token') {
+      throw new ClerkAuthError('Missing Clerk authorization.');
+    }
     throw new ClerkAuthError('Invalid or expired Clerk authorization.');
   }
 
