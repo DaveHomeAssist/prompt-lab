@@ -30,5 +30,8 @@
     "postcss": "^8.5.26",
     "tailwindcss": "3.4.17",
     "vite": "^8.2.4"
+  },
+  "overrides": {
+    "playwright-core": "1.61.1"
   }
 }
