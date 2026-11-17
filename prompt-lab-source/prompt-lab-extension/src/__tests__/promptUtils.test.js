@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { encodeShare, decodeShare, extractVars, fillTemplateVars, isGhostVar, looksSensitive, ngramSimilarity,
-  parseEnhancedPayload, resolveGhostVars, scorePrompt, wordDiff } from '../promptUtils.js';
+  parseEnhancedPayload, resolveGhostVars, scorePrompt, testCaseOutcome, wordDiff } from '../promptUtils.js';
 
 describe('extractVars', () => {
   it('extracts template variables from text', () => {
@@ -121,13 +121,29 @@ describe('parseEnhancedPayload', () => {
     const result = parseEnhancedPayload('{"enhanced":"Keep the exact intent.\\nReturn a verified result.","variants":[{"label":"Compact","content":"Cut off');
     expect(result.enhanced).toBe('Keep the exact intent.\nReturn a verified result.'); expect(result.variants).toEqual([]); expect(result.notes).toMatch(/hosted output limit/i);
   });
-  it('does not recover an enhanced string that was itself truncated', () => {
-    expect(() => parseEnhancedPayload('{"enhanced":"This prompt is still being generated')).toThrow(/not valid JSON/i);
+  it('leaves a bare unterminated fragment unparseable', () => {
+    expect(() => parseEnhancedPayload('{"enhanced": "unterminated fragment')).toThrow(/not valid JSON/i);
+  });
+  it('keeps an enhanced string that was itself cut off and marks it partial', () => {
+    const cut = '{"schema_version":2,"primary_id":"expanded","enhanced":"# handle-intake and route the request';
+    const result = parseEnhancedPayload(cut, { modern: true });
+    expect(result.enhanced).toBe('# handle-intake and route the request');
+    expect(result.partial).toBe(true);
+    expect(result.primary_id).toBe('expanded');
+    expect(result.schema_version).toBe(2);
   });
   it('throws on empty content', () => { expect(() => parseEnhancedPayload('')).toThrow(); expect(() => parseEnhancedPayload(null)).toThrow(); });
   it('throws on non-JSON content', () => { expect(() => parseEnhancedPayload('This is not JSON at all')).toThrow(); });
   it('throws when enhanced field is missing', () => { expect(() => parseEnhancedPayload('{"notes":"only notes"}')).toThrow(); });
   it('throws when enhanced field is empty', () => { expect(() => parseEnhancedPayload('{"enhanced":"","notes":"notes"}')).toThrow(); });
+  it('does not treat a salvaged partial prompt as a finished test case', () => {
+    const parsed = parseEnhancedPayload('{"schema_version":2,"primary_id":"expanded","enhanced":"# handle-intake includes the trait');
+    const outcome = testCaseOutcome(parsed);
+    expect(outcome.complete).toBe(false);
+    expect(outcome.traitResults.verdict).toBeNull();
+    expect(outcome.output).toContain('handle-intake');
+    expect(testCaseOutcome({ enhanced: 'A finished prompt', partial: false }).complete).toBe(true);
+  });
 });
 describe('wordDiff', () => {
   it('returns single eq token for identical empty strings', () => { expect(wordDiff('', '')).toEqual([{ t: 'eq', v: '' }]); });

@@ -69,6 +69,29 @@ describe('CreateEditorPane', () => {
     expect(screen.getByText('Incomplete fixture output')).toBeInTheDocument();
   });
 
+  it('names a cut-off response and offers continue and a larger retry', () => {
+    const enhance = vi.fn();
+    renderPane({
+      enhanced: '# handle-intake',
+      streamPreview: '',
+      error: {
+        userMessage: 'Response was cut off at the output limit',
+        code: 'output_truncated',
+        category: 'provider',
+        suggestions: ['Continue asks the model to finish from the cutoff and stitches the text.'],
+        actions: ['continue', 'retry_larger'],
+      },
+      enhance,
+      resultMeta: { schemaVersion: 2, primaryId: 'expanded', partial: true, candidates: [{ id: 'expanded', label: 'Expanded', content: '# handle-intake' }] },
+    });
+    expect(screen.getByText('Response was cut off at the output limit')).toBeInTheDocument();
+    expect(screen.getByTestId('partial-result')).toHaveTextContent('Partial result');
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Retry with a larger limit' }));
+    expect(enhance).toHaveBeenNthCalledWith(1, undefined, { continue: true });
+    expect(enhance).toHaveBeenNthCalledWith(2, undefined, { retryLarger: true });
+  });
+
   it('saves the first draft without passing the click event as a Library entry', () => {
     const openSavePanel = vi.fn();
     renderPane({ raw: 'A first draft', currentEntry: null, enhanced: '', error: null, libraryCount: 0, evalRunCount: 0, openSavePanel });

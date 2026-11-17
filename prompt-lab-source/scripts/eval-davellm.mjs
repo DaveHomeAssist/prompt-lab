@@ -162,13 +162,16 @@ export function buildEvalRequest(appPayload, { node, model, format }) {
 
 // Sorts an /eval/chat reply the way the app would treat it, with the error cases kept apart:
 // parseEnhancedPayload throws for empty, non-JSON and enhanced-less replies, and the app scores
-// nothing for them. A reply cut off by max_tokens is "truncated" unless the parser could still
-// recover a complete enhanced string, in which case it is scored and flagged.
+// nothing for them. A complete enhanced string recovered from a cut-off tail is scored and
+// flagged. A salvaged partial string is an unscored truncated attempt.
 export function classifyReply(body) {
   const doneReason = body?.done_reason ?? null;
   if (body?.reason === 'tool_call_only') return { outcome: 'tool_call_only', doneReason };
   try {
-    const parsed = parseEnhancedPayload(body?.response);
+    const parsed = parseEnhancedPayload(body?.response, { truncated: doneReason === 'length' });
+    if (parsed.partial === true) {
+      return { outcome: 'truncated', enhanced: parsed.enhanced, partial: true, doneReason };
+    }
     return { outcome: 'parsed', enhanced: parsed.enhanced, truncated: doneReason === 'length', doneReason };
   } catch (error) {
     const message = String(error?.message || error);
