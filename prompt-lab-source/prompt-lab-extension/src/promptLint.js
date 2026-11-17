@@ -1,3 +1,6 @@
+import { isGhostVar } from './promptUtils.js';
+import { parsePromptVariables } from './lib/promptVariables.js';
+
 const COMPLEX_THRESHOLD = 420;
 
 export const LINT_FIXES = {
@@ -22,7 +25,7 @@ function hasGoalNearTop(text) {
   const top = text.split('\n').slice(0, 6).join(' ').toLowerCase();
   return /\b(goal|intent|objective|task|outcome|i need|i want|please|create|generate|write|explain|analyze)\b/.test(top);
 }
-function hasRole(text) { return /\b(you are|act as|your role|persona|as an expert|as a)\b/i.test(text); }
+function hasRole(text) { return /\b(you are|act as|your role|persona|as an expert|as a|audience|readers?|written for|intended for)\b/i.test(text); }
 function hasConstraints(text) { return /\b(constraints?|must|must not|do not|don't|avoid|limit|max(?:imum)?|minimum|exactly|only|never|always)\b/i.test(text); }
 function hasOutputFormat(text) { return /\b(output format|respond with|return as|json|markdown|table|list|bullet points|sections?)\b/i.test(text); }
 function hasExample(text) { return /\b(example|sample input|sample output|few-shot|input:\s|output:\s)\b/i.test(text); }
@@ -36,7 +39,7 @@ export function lintPrompt(prompt, opts = {}) {
   const issues = [];
   if (!hasGoalNearTop(text)) issues.push(issue('goal_near_top', 'Add an explicit goal/intent sentence near the top.', 'warning', text, 0));
   const nonTrivial = text.length > 140 || text.split('\n').length > 4;
-  if (nonTrivial && !hasRole(text)) issues.push(issue('role_definition', 'Consider defining a role (for example: "You are ...") for this task.', 'info', text, 0));
+  if (nonTrivial && !hasRole(text)) issues.push(issue('role_definition', 'Name an audience or a role (for example, "Audience: …" or "You are …").', 'info', text, 0));
   if (!hasConstraints(text)) issues.push(issue('constraints', 'Add constraints (length, style, guardrails, or required/forbidden content).', 'info', text, 0));
   if (!hasOutputFormat(text)) issues.push(issue('output_format', 'Describe the expected output format (list, JSON, markdown sections, etc.).', 'warning', text, 0));
   if (text.length > complexityThreshold && !hasExample(text)) {
@@ -44,6 +47,96 @@ export function lintPrompt(prompt, opts = {}) {
       text.indexOf('\n') >= 0 ? text.indexOf('\n') : text.length));
   }
   return issues;
+}
+
+export const VERY_LONG_PROMPT_CHARS = 4000;
+
+function normalizedInstructions(text) {
+  return text
+    .split(/[\n]+|(?<=[.!?])\s+/)
+    .map((line) => line.replace(/^[\s\-*•\d.)]+/, '').trim().toLowerCase().replace(/\s+/g, ' '))
+    .filter((line) => line.length >= 24);
+}
+
+function duplicateInstruction(text) {
+  const seen = new Set();
+  for (const line of normalizedInstructions(text)) {
+    if (seen.has(line)) return line;
+    seen.add(line);
+  }
+  return '';
+}
+
+/**
+ * Extra non-blocking hints. These are separate from lintPrompt so the checked
+ * corpus, which pins the original rule ids, stays stable. The editor shows
+ * both lists and lets each hint be dismissed.
+ */
+export function promptLintHints(prompt) {
+  const text = typeof prompt === 'string' ? prompt : '';
+  if (!text.trim()) return [];
+  const hints = [];
+  if (!hasOutputFormat(text)) {
+    hints.push(issue('output_format', 'Describe the expected output format (list, JSON, markdown sections, etc.).', 'warning', text, 0));
+  }
+  if (!hasRole(text)) {
+    hints.push(issue('audience_or_role', 'Name an audience or a role (for example, "Audience: …" or "You are …").', 'info', text, 0));
+  }
+  if (text.length > VERY_LONG_PROMPT_CHARS) {
+    hints.push(issue('very_long', `This prompt is very long (${text.length} characters). Shorter prompts are easier to run and cheaper.`, 'info', text, 0));
+  }
+  if (duplicateInstruction(text)) {
+    hints.push(issue('duplicated_instructions', 'The same instruction appears more than once. Keep one copy so the model is not pulled both ways.', 'info', text, 0));
+  }
+  const unresolved = parsePromptVariables(text)
+    .filter((variable) => variable.defaultValue == null && !isGhostVar(variable.name))
+    .map((variable) => variable.name);
+  if (unresolved.length) {
+    const sample = unresolved.slice(0, 3).map((name) => `{{${name}}}`).join(', ');
+    hints.push(issue('unresolved_vars', `Unresolved ${sample}. Fill ${unresolved.length === 1 ? 'it' : 'them'} in before you run or copy, or add a default with {{name|default}}.`, 'warning', text, text.indexOf('{{')));
+  }
+  return hints;
+}
+
+export function listPromptLint(prompt) {
+  const base = lintPrompt(prompt);
+  const seen = new Set(base.map((item) => item.id));
+  const extra = promptLintHints(prompt).filter((hint) => {
+    if (seen.has(hint.id)) return false;
+    if (hint.id === 'audience_or_role' && seen.has('role_definition')) return false;
+    if (hint.id === 'output_format' && seen.has('output_format')) return false;
+    return true;
+  });
+  return [...base, ...extra];
+}
+
+const DISMISS_KEY = 'pl2-lint-dismissed';
+
+export function readDismissedLintHints(promptKey, storage = typeof localStorage === 'undefined' ? null : localStorage) {
+  if (!storage || !promptKey) return [];
+  try {
+    const parsed = JSON.parse(storage.getItem(DISMISS_KEY) || '{}');
+    const ids = parsed?.[promptKey];
+    return Array.isArray(ids) ? ids.filter((id) => typeof id === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+export function dismissLintHint(promptKey, hintId, storage = typeof localStorage === 'undefined' ? null : localStorage) {
+  if (!storage || !promptKey || !hintId) return [];
+  let parsed = {};
+  try { parsed = JSON.parse(storage.getItem(DISMISS_KEY) || '{}') || {}; } catch { parsed = {}; }
+  const ids = new Set(Array.isArray(parsed[promptKey]) ? parsed[promptKey] : []);
+  ids.add(hintId);
+  parsed[promptKey] = [...ids];
+  storage.setItem(DISMISS_KEY, JSON.stringify(parsed));
+  return parsed[promptKey];
+}
+
+export function visibleLintIssues(issues, dismissed) {
+  const hidden = new Set(dismissed || []);
+  return (issues || []).filter((item) => item && !hidden.has(item.id));
 }
 function normalizeSelection(text, selection) {
   const length = typeof text === 'string' ? text.length : 0;

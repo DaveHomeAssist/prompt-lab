@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import Ic from './icons';
 import { wordDiff } from './promptUtils';
+import { computeDiff, DELETE, INSERT } from './DiffEngine';
 import { getPromptSnapshot } from './lib/promptSchema.js';
 import useDialogA11y from './hooks/useDialogA11y.js';
 
@@ -14,6 +15,30 @@ function DiffTokens({ fromText, toText, m }) {
         if (segment.t === 'del') return <del key={`${segment.t}-${index}`} className={className}>{segment.v}</del>;
         return <span key={`${segment.t}-${index}`} className={className}>{segment.v}</span>;
       })}
+    </div>
+  );
+}
+
+function SideBySideDiff({ fromText, toText, m, label }) {
+  const delta = computeDiff(fromText || '', toText || '');
+  const column = (side) => delta.map((part, index) => {
+    if (side === 'old' && part.type === INSERT) return null;
+    if (side === 'new' && part.type === DELETE) return null;
+    const changed = (side === 'old' && part.type === DELETE) || (side === 'new' && part.type === INSERT);
+    const className = `${changed ? (side === 'old' ? m.diffDel : m.diffAdd) : m.diffEq} px-0.5 rounded`;
+    const Tag = changed ? (side === 'old' ? 'del' : 'ins') : 'span';
+    return <Tag key={`${side}-${index}`} className={className}>{part.text}</Tag>;
+  });
+  return (
+    <div data-testid="version-side-by-side-diff" className="grid grid-cols-1 gap-3 xl:grid-cols-2" aria-label={`${label} side-by-side diff`}>
+      <div>
+        <h4 className={`text-[11px] font-semibold uppercase tracking-wider ${m.textSub} mb-1.5`}>Selected version</h4>
+        <div className={`text-xs leading-relaxed ${m.codeBlock} rounded-lg p-3 whitespace-pre-wrap break-words max-h-64 overflow-y-auto`}>{column('old')}</div>
+      </div>
+      <div>
+        <h4 className={`text-[11px] font-semibold uppercase tracking-wider ${m.textSub} mb-1.5`}>Current prompt</h4>
+        <div className={`text-xs leading-relaxed ${m.codeBlock} rounded-lg p-3 whitespace-pre-wrap break-words max-h-64 overflow-y-auto`}>{column('new')}</div>
+      </div>
     </div>
   );
 }
@@ -140,7 +165,7 @@ export default function VersionDiffModal({
                         </span>
                       )}
                     </div>
-                    <p className={`text-xs ${m.textMuted} mt-1`}>{new Date(version.savedAt).toLocaleString()}</p>
+                    <p className={`text-xs ${m.textMuted} mt-1`}><time dateTime={version.savedAt}>{new Date(version.savedAt).toLocaleString()}</time></p>
                     {version.changeNote && (
                       <p className={`text-xs ${m.textAlt} mt-2 line-clamp-2`}>{version.changeNote}</p>
                     )}
@@ -158,7 +183,7 @@ export default function VersionDiffModal({
               <>
                 <div className={`${m.surface} border ${m.border} rounded-xl p-4`}>
                   <div className="flex flex-wrap items-center gap-2 mb-2">
-                    <span className={`text-xs ${m.textMuted}`}>{new Date(selectedVersion.savedAt).toLocaleString()}</span>
+                    <time className={`text-xs ${m.textMuted}`} dateTime={selectedVersion.savedAt}>{new Date(selectedVersion.savedAt).toLocaleString()}</time>
                     {selectedVersion.source && (
                       <span className={`rounded px-1.5 py-0.5 text-[10px] ${selectedVersion.source === 'restore' ? 'bg-blue-500/15 text-blue-400' : 'bg-orange-500/15 text-orange-400'}`}>
                         {selectedVersion.source}
@@ -179,8 +204,8 @@ export default function VersionDiffModal({
 
                 <div className={`${m.surface} border ${m.border} rounded-xl p-4 flex flex-col gap-4`}>
                   <div>
-                    <p className={`text-[11px] font-semibold uppercase tracking-wider ${m.textSub} mb-2`}>Enhanced Diff</p>
-                    <DiffTokens fromText={selectedVersion.enhanced} toText={currentSnapshot?.enhanced} m={m} />
+                    <p className={`text-[11px] font-semibold uppercase tracking-wider ${m.textSub} mb-2`}>Enhanced diff</p>
+                    <SideBySideDiff fromText={selectedVersion.enhanced} toText={currentSnapshot?.enhanced} m={m} label="Enhanced" />
                   </div>
                   {(selectedVersion.original || currentSnapshot?.original) && (
                     <div>

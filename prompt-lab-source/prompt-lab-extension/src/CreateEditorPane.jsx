@@ -3,7 +3,9 @@ import Ic from './icons';
 import { wordDiff } from './promptUtils';
 import MarkdownPreview from './MarkdownPreview';
 import EditorActions from './EditorActions';
-import { getLintQuickFixMeta } from './promptLint';
+import CopyAsMenu from './CopyAsMenu.jsx';
+import RunCostEstimate from './RunCostEstimate.jsx';
+import { dismissLintHint, getLintQuickFixMeta, readDismissedLintHints, visibleLintIssues } from './promptLint';
 import FollowUpOrigin from './FollowUpOrigin.jsx';
 import { describeFollowUpSource } from './lib/followUpProvenance.js';
 import PostEnhanceResults from './PostEnhanceResults.jsx';
@@ -42,6 +44,8 @@ export default function CreateEditorPane({
   recentPrompts,
   loadEntry,
   copy,
+  preparePromptText,
+  writeClipboard,
   bumpUse,
   // Context
   showCreateContext,
@@ -159,6 +163,11 @@ export default function CreateEditorPane({
 }) {
   // ── Scoring strip (inline) ──
   const rawInputRef = useRef(null);
+  const lintScope = editingId || 'draft';
+  const [dismissedHints, setDismissedHints] = useState(() => readDismissedLintHints(lintScope));
+  useEffect(() => { setDismissedHints(readDismissedLintHints(lintScope)); }, [lintScope]);
+  const visibleLint = visibleLintIssues(lintIssues, dismissedHints);
+  const dismissHint = (id) => setDismissedHints(dismissLintHint(lintScope, id));
   const [activePane, setActivePane] = useState('source');
   const [saveBarTarget, setSaveBarTarget] = useState(null);
   // A refine run lands in the result pane, so follow it there on narrow widths.
@@ -179,7 +188,7 @@ export default function CreateEditorPane({
     : 'p-4 flex flex-col gap-2 h-full min-h-0 overflow-hidden';
   const resultsClass = scrollWithWorkspace
     ? 'space-y-3'
-    : 'min-h-0 flex-1 overflow-y-auto pr-1 space-y-3';
+    : 'min-h-48 flex-1 overflow-y-auto pr-1 space-y-3';
   const accentTextClass = colorMode === 'dark' ? 'text-orange-400' : 'text-orange-800';
   const accentHoverTextClass = 'hover:text-orange-300';
   const accentSolidClass = 'bg-orange-500/90 text-white hover:bg-orange-400';
@@ -303,7 +312,7 @@ export default function CreateEditorPane({
       </div>
 
       {/* ── Scoring strip + Lint badge (merged single row) ── */}
-      {(score || lintIssues.length > 0) && (
+      {(score || visibleLint.length > 0) && (
         <div className="flex items-center gap-3 flex-wrap">
           {score && (
             <div className="flex items-center gap-2">
@@ -321,14 +330,15 @@ export default function CreateEditorPane({
               </div>
             </div>
           )}
-          {lintIssues.length > 0 && (
+          {visibleLint.length > 0 && (
             <button
               type="button"
               onClick={() => setLintOpen(p => !p)}
+              aria-expanded={lintOpen}
               className={`flex items-center gap-1 text-[10px] font-semibold ${m.textSub} hover:text-yellow-400 transition-colors`}
             >
               <Ic n="AlertTriangle" size={9} className="text-yellow-500" />
-              {lintIssues.length} lint {lintIssues.length === 1 ? 'issue' : 'issues'}
+              {visibleLint.length} lint {visibleLint.length === 1 ? 'hint' : 'hints'}
               <Ic n={lintOpen ? 'ChevronUp' : 'ChevronDown'} size={8} />
             </button>
           )}
@@ -336,22 +346,35 @@ export default function CreateEditorPane({
       )}
 
       {/* Lint detail (expandable) */}
-      {lintOpen && lintIssues.length > 0 && (
-        <div className={`${m.surface} border ${m.border} rounded-lg px-3 py-2 flex flex-col gap-1`}>
-          {lintIssues.map(issue => (
+      {lintOpen && visibleLint.length > 0 && (
+        <div className={`${m.surface} border ${m.border} rounded-lg px-3 py-2 flex flex-col gap-1`} data-testid="prompt-lint-hints">
+          {visibleLint.map(issue => {
+            const fix = getLintQuickFixMeta(issue.id);
+            return (
             <div key={issue.id} className={`flex items-start justify-between gap-2 text-xs ${
               issue.severity === 'warning' ? 'text-yellow-400' : m.textAlt
             }`}>
               <span className="flex-1">{issue.message}</span>
+              {fix && (
+                <button
+                  type="button"
+                  onClick={() => handleLintQuickFix(issue.id)}
+                  className="shrink-0 min-h-11 text-amber-300 hover:text-amber-200 text-xs underline"
+                >
+                  {fix.label}
+                </button>
+              )}
               <button
                 type="button"
-                onClick={() => handleLintQuickFix(issue.id)}
-                className="shrink-0 text-amber-300 hover:text-amber-200 text-xs underline"
+                onClick={() => dismissHint(issue.id)}
+                className="shrink-0 min-h-11 text-xs underline"
               >
-                {getLintQuickFixMeta(issue.id)?.label || 'Quick Fix'}
+                Dismiss hint
+                <span className="sr-only">: {issue.message}</span>
               </button>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -382,7 +405,11 @@ export default function CreateEditorPane({
           hasResult={Boolean(enhanced)}
         />
 
-        <HostedQuotaBadge m={m} colorMode={colorMode} onOpenSettings={openOptions} />
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <HostedQuotaBadge m={m} colorMode={colorMode} onOpenSettings={openOptions} />
+          <RunCostEstimate text={raw} />
+          <CopyAsMenu text={raw} title={saveTitle} preparePromptText={preparePromptText} onCopy={writeClipboard || copy} />
+        </div>
 
         {/* Status + test cases merged indicator strip */}
         {(loading || batchProgress.active || optimisticSaveVisible || (editingId && currentTestCases.length > 0)) && (
@@ -830,7 +857,9 @@ export default function CreateEditorPane({
   return (
     <div className={shellClass}>
       <div className={contentClass}>
-        {sourceSections}
+        <div className={scrollWithWorkspace ? undefined : 'min-h-0 shrink overflow-y-auto'}>
+          {sourceSections}
+        </div>
 
         {/* ── Scrollable results container ── */}
         <div className={resultsClass} role="region" aria-label="Enhancement results" tabIndex={scrollWithWorkspace ? undefined : 0}>

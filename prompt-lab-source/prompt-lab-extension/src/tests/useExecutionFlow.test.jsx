@@ -291,6 +291,20 @@ describe('useExecutionFlow', () => {
     expect(result.current.saveTitle).toBe('Name entered during refinement');
   });
 
+  it('records the filled prompt in run history and leaves the editor template alone', async () => {
+    const { result } = renderExecutionFlow({ raw: 'Write about {{topic}}' });
+    await act(async () => {
+      await result.current.enhance({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 800,
+        messages: [{ role: 'user', content: 'Write about launch' }],
+      });
+    });
+    expect(result.current.raw).toBe('Write about {{topic}}');
+    await waitFor(() => expect(savedRuns).toHaveLength(1));
+    expect(savedRuns[0]).toEqual(expect.objectContaining({ input: 'Write about launch', status: 'success' }));
+  });
+
   it('enhance_success_creates_eval_run', async () => {
     const { result } = renderExecutionFlow();
 
