@@ -67,12 +67,11 @@ export default function CommandPaletteModal({ m, cmdQuery, setCmdQuery, filtered
           <input
             ref={inputRef}
             className={`flex-1 bg-transparent text-sm ${m.text} focus:outline-none placeholder-gray-500`}
-            role="combobox"
             aria-autocomplete="list"
             aria-expanded="true"
             aria-controls="command-palette-results"
             aria-activedescendant={items[activeIndex] ? `command-palette-option-${activeIndex}` : undefined}
-            aria-label="Search prompts, actions, and settings"
+            aria-label="Search commands"
             placeholder="Search prompts, actions, and settings…"
             value={cmdQuery}
             onChange={e => setCmdQuery(e.target.value)}

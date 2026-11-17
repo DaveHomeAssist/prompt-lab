@@ -24,7 +24,7 @@ describe('CommandPaletteModal', () => {
       ]}
       />,
     );
-    const search = screen.getByRole('combobox', { name: 'Search prompts, actions, and settings' });
+    const search = screen.getByRole('textbox', { name: 'Search commands' });
     expect(screen.getByRole('region', { name: 'Prompts' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Settings' })).toBeInTheDocument();
     fireEvent.keyDown(search, { key: 'ArrowDown' });

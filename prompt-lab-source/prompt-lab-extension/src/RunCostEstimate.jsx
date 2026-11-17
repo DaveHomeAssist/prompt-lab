@@ -48,7 +48,7 @@ export default function RunCostEstimate({ text }) {
   }, []);
   const estimate = estimateRunCost({ text, model: selection.model });
   return (
-    <p data-testid="run-cost-estimate" className="text-xs leading-relaxed" role="note">
+    <p data-testid="run-cost-estimate" className="m-0 max-w-full text-[11px] leading-4" role="note">
       {describeRunEstimate(estimate)}
     </p>
   );

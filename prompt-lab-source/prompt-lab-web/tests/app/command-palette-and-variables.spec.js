@@ -52,7 +52,7 @@ test('command palette finds a prompt and a setting from the keyboard', async ({ 
   await page.keyboard.press('Control+k');
   const palette = page.getByRole('dialog', { name: 'Command palette' });
   await expect(palette).toBeVisible();
-  const search = palette.getByRole('combobox', { name: 'Search prompts, actions, and settings' });
+  const search = palette.getByRole('textbox', { name: 'Search commands' });
   await search.fill('brif');
   await expect(palette.getByRole('button', { name: /Quarterly briefing/ })).toBeVisible();
   await search.press('Enter');
@@ -92,7 +92,7 @@ test('variable form appears before refine and copy, and remembers values', async
   expect(sent.postData() || '').not.toContain('{{topic}}');
   await expect(page.getByTestId('prompt-input')).toHaveValue(prompt);
 
-  await page.getByTestId('copy-as').locator('summary').click();
+  await page.getByTestId('copy-as').getByRole('button', { name: /Copy as/ }).click();
   await page.getByRole('menuitem', { name: 'Plain text' }).click();
   await expect(dialog.getByLabel('{{topic}}')).toHaveValue('launch');
   await dialog.getByRole('button', { name: 'Use these values' }).click();

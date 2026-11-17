@@ -57,7 +57,7 @@ describe('shared modal accessibility', () => {
     trigger.focus();
     fireEvent.click(trigger);
 
-    const search = screen.getByRole('combobox', { name: 'Search prompts, actions, and settings' });
+    const search = screen.getByRole('textbox', { name: 'Search commands' });
     await waitFor(() => expect(search).toHaveFocus());
     const last = screen.getByRole('button', { name: 'Open Scratch' });
 

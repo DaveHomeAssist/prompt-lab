@@ -405,9 +405,11 @@ export default function CreateEditorPane({
           hasResult={Boolean(enhanced)}
         />
 
-        <HostedQuotaBadge m={m} colorMode={colorMode} onOpenSettings={openOptions} />
-        <RunCostEstimate text={raw} />
-        <CopyAsMenu text={raw} title={saveTitle} preparePromptText={preparePromptText} onCopy={writeClipboard || copy} />
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <HostedQuotaBadge m={m} colorMode={colorMode} onOpenSettings={openOptions} />
+          <RunCostEstimate text={raw} />
+          <CopyAsMenu text={raw} title={saveTitle} preparePromptText={preparePromptText} onCopy={writeClipboard || copy} />
+        </div>
 
         {/* Status + test cases merged indicator strip */}
         {(loading || batchProgress.active || optimisticSaveVisible || (editingId && currentTestCases.length > 0)) && (
