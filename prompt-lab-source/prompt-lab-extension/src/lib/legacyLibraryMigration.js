@@ -3,12 +3,12 @@ import { normalizeLibrary } from './promptSchema.js';
 import { getLibraryEntrySignature, mergeLibraryEntries } from './libraryMatching.js';
 import { ensureString } from './utils.js';
 
-export const LEGACY_WEB_APP_ORIGIN = 'https://prompt-lab-tawny.vercel.app';
 export const APEX_WEB_APP_ORIGIN = 'https://promptlab.tools';
 export const WWW_WEB_APP_ORIGIN = 'https://www.promptlab.tools';
 export const LEGACY_LIBRARY_BRIDGE_PATH = '/legacy-library-bridge.html';
-// The tawny source keeps the original key so people who were already checked
-// are not asked again. Every other source gets its own suffixed key.
+// The unsuffixed key belonged to the retired prompt-lab-tawny.vercel.app source
+// (removed: S-24 showed its frame recovers nothing in Chrome). It stays exported
+// so old checked flags are still recognised; www uses its own suffixed key.
 export const LEGACY_LIBRARY_CHECK_KEY = 'pl2-legacy-web-library-checked';
 export const LEGACY_LIBRARY_ATTEMPTS_KEY = 'pl2-legacy-web-library-attempts';
 // An unreachable www bridge is retried on later loads, up to this many times.
@@ -17,21 +17,16 @@ export const MAX_UNREACHABLE_ATTEMPTS = 3;
 // S-06: www.promptlab.tools and promptlab.tools are the same site, so a www
 // iframe inside the apex app reads www's real (unpartitioned) localStorage.
 // That makes www the one source worth merging into a non-empty apex library.
-// tawny is cross-site: modern browsers hand its iframe partitioned storage
-// (S-24), so it keeps its original empty-library-only behavior.
+// The cross-site prompt-lab-tawny.vercel.app source was removed: modern
+// browsers hand its iframe partitioned storage (S-24), so it recovered nothing.
 export const LEGACY_LIBRARY_SOURCES = Object.freeze([
   Object.freeze({
     id: 'www', origin: WWW_WEB_APP_ORIGIN, label: 'www.promptlab.tools',
     checkKey: `${LEGACY_LIBRARY_CHECK_KEY}:www`, attemptsKey: `${LEGACY_LIBRARY_ATTEMPTS_KEY}:www`,
     mergeIntoExisting: true, retryUnreachable: true,
   }),
-  Object.freeze({
-    id: 'tawny', origin: LEGACY_WEB_APP_ORIGIN, label: 'your legacy web library',
-    checkKey: LEGACY_LIBRARY_CHECK_KEY, attemptsKey: `${LEGACY_LIBRARY_ATTEMPTS_KEY}:tawny`,
-    mergeIntoExisting: false, retryUnreachable: false,
-  }),
 ]);
-export const DEFAULT_LEGACY_SOURCE = LEGACY_LIBRARY_SOURCES.find(source => source.id === 'tawny');
+export const DEFAULT_LEGACY_SOURCE = LEGACY_LIBRARY_SOURCES[0];
 
 export function getLegacyLibrarySource(idOrSource) {
   if (idOrSource && typeof idOrSource === 'object') return idOrSource;
@@ -40,7 +35,6 @@ export function getLegacyLibrarySource(idOrSource) {
 
 const REQUEST_TYPE = 'pl2:request-legacy-library';
 const RESPONSE_TYPE = 'pl2:legacy-library-payload';
-const LOCAL_PREVIEW_HOSTNAMES = new Set(['localhost', '127.0.0.1', '::1']);
 
 export { getLibraryEntrySignature, mergeLibraryEntries };
 
@@ -71,14 +65,7 @@ export function shouldAttemptLegacyWebMigration(currentOrigin = '', protocol = '
   }
   // Only the apex reads www. www never requests itself, and previews,
   // desktop (tauri.localhost) and other hosts are not framed by www's bridge.
-  if (source.id === 'www') return currentOrigin === APEX_WEB_APP_ORIGIN && /^https:$/i.test(protocol);
-
-  try {
-    const hostname = new URL(currentOrigin).hostname;
-    return !LOCAL_PREVIEW_HOSTNAMES.has(hostname);
-  } catch {
-    return false;
-  }
+  return source.id === 'www' && currentOrigin === APEX_WEB_APP_ORIGIN && /^https:$/i.test(protocol);
 }
 
 export function parseLegacyLibraryPayload(messageData) {

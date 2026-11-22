@@ -14,6 +14,14 @@
       "maxDuration": 10
     }
   },
+  "redirects": [
+    {
+      "source": "/((?!legacy-library-bridge\\.html$).*)",
+      "has": [{ "type": "host", "value": "www.promptlab.tools" }],
+      "destination": "https://promptlab.tools/$1",
+      "permanent": true
+    }
+  ],
   "headers": [
     {
       "source": "/((?!legacy-library-bridge\\.html|companion/pilot-overview\\.html).*)",
