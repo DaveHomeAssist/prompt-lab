@@ -6,7 +6,9 @@ import {
   mergeCollections,
   parseLegacyLibraryPayload,
   shouldAttemptLegacyWebMigration,
-  LEGACY_WEB_APP_ORIGIN,
+  APEX_WEB_APP_ORIGIN,
+  WWW_WEB_APP_ORIGIN,
+  LEGACY_LIBRARY_SOURCES,
   LEGACY_LIBRARY_BRIDGE_PATH,
   LEGACY_LIBRARY_CHECK_KEY,
 } from '../lib/legacyLibraryMigration.js';
@@ -78,12 +80,14 @@ describe('isSeedOnlyLibrary', () => {
 // shouldAttemptLegacyWebMigration
 // ──────────────────────────────────────────────────────────────────────────────
 describe('shouldAttemptLegacyWebMigration', () => {
-  it('returns true for https origin different from legacy', () => {
-    expect(shouldAttemptLegacyWebMigration('https://my-app.vercel.app', 'https:')).toBe(true);
+  it('returns true only for the https apex (the one origin that reads www)', () => {
+    expect(shouldAttemptLegacyWebMigration(APEX_WEB_APP_ORIGIN, 'https:')).toBe(true);
   });
 
-  it('returns true for http protocol', () => {
-    expect(shouldAttemptLegacyWebMigration('http://my-dev.example.com', 'http:')).toBe(true);
+  it('returns false for other https and http origins', () => {
+    expect(shouldAttemptLegacyWebMigration('https://my-app.vercel.app', 'https:')).toBe(false);
+    expect(shouldAttemptLegacyWebMigration('http://my-dev.example.com', 'http:')).toBe(false);
+    expect(shouldAttemptLegacyWebMigration('http://promptlab.tools', 'http:')).toBe(false);
   });
 
   it('returns false for localhost dev origins', () => {
@@ -91,8 +95,9 @@ describe('shouldAttemptLegacyWebMigration', () => {
     expect(shouldAttemptLegacyWebMigration('http://127.0.0.1:5173', 'http:')).toBe(false);
   });
 
-  it('returns false for legacy origin itself', () => {
-    expect(shouldAttemptLegacyWebMigration(LEGACY_WEB_APP_ORIGIN, 'https:')).toBe(false);
+  it('returns false for the www origin itself and the retired tawny origin', () => {
+    expect(shouldAttemptLegacyWebMigration(WWW_WEB_APP_ORIGIN, 'https:')).toBe(false);
+    expect(shouldAttemptLegacyWebMigration('https://prompt-lab-tawny.vercel.app', 'https:')).toBe(false);
   });
 
   it('returns false for non-http protocols', () => {
@@ -157,8 +162,8 @@ describe('parseLegacyLibraryPayload', () => {
 // Constants
 // ──────────────────────────────────────────────────────────────────────────────
 describe('legacy migration constants', () => {
-  it('has expected legacy origin', () => {
-    expect(LEGACY_WEB_APP_ORIGIN).toBe('https://prompt-lab-tawny.vercel.app');
+  it('has no tawny source (S-24) and only the www source', () => {
+    expect(LEGACY_LIBRARY_SOURCES.map((source) => source.origin)).toEqual([WWW_WEB_APP_ORIGIN]);
   });
 
   it('has expected bridge path', () => {
