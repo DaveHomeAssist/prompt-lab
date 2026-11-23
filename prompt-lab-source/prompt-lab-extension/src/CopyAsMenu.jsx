@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { COPY_AS_FORMATS, buildCopyAs, copyAsMessage } from './lib/copyAs.js';
 import { readActiveModel } from './RunCostEstimate.jsx';
 
@@ -14,7 +14,15 @@ export default function CopyAsMenu({
   onCopy,
   className = '',
 }) {
+  const anchorRef = useRef(null);
   const [open, setOpen] = useState(false);
+  const [dropUp, setDropUp] = useState(false);
+  const toggle = () => {
+    // The short-window Write footer is clipped by overflow:hidden, so the
+    // format list has to open upward or the choices sit outside the column.
+    setDropUp(Boolean(anchorRef.current?.closest('.is-pinned-actions')));
+    setOpen((value) => !value);
+  };
 
   const choose = async (format) => {
     setOpen(false);
@@ -33,19 +41,19 @@ export default function CopyAsMenu({
   };
 
   return (
-    <div className={`relative inline-flex ${className}`} data-testid="copy-as">
+    <div ref={anchorRef} className={`relative inline-flex ${className}`} data-testid="copy-as">
       <button
         type="button"
         className="ui-control inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-semibold"
         aria-expanded={open}
         aria-controls="copy-as-formats"
-        onClick={() => setOpen((value) => !value)}
+        onClick={toggle}
       >
         Copy as…
         <span className="sr-only"> plain text, Markdown, JSON messages, or a curl command that uses $API_KEY</span>
       </button>
       {open && (
-        <div id="copy-as-formats" role="menu" aria-label="Copy as" className="absolute left-0 top-full z-20 mt-1 flex min-w-[10rem] flex-col rounded-lg border bg-[var(--pl-brand-ink)] p-1 shadow-lg">
+        <div id="copy-as-formats" role="menu" aria-label="Copy as" className={`absolute left-0 z-20 flex min-w-[10rem] flex-col rounded-lg border bg-[var(--pl-brand-ink)] p-1 shadow-lg ${dropUp ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
           {COPY_AS_FORMATS.map((format) => (
             <button
               key={format.id}

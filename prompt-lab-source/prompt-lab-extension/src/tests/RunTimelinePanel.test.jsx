@@ -28,6 +28,10 @@ const theme = {
   diffEq: 'bg-slate-700 text-slate-100',
 };
 
+function visibleTimelineQuery() {
+  return useEvalRunsMock.mock.calls.map((call) => call[0]).filter((query) => query.limit !== 1).at(-1);
+}
+
 function renderPanel(overrides = {}) {
   return render(
     <RunTimelinePanel
@@ -85,7 +89,7 @@ describe('RunTimelinePanel', () => {
     renderPanel();
 
     expect(useEvalRunsMock).toHaveBeenCalled();
-    const query = useEvalRunsMock.mock.calls.at(-1)[0];
+    const query = visibleTimelineQuery();
     expect(query).toMatchObject({ promptId: null, mode: '' });
     expect(query).not.toHaveProperty('defaultMode');
   });
@@ -222,6 +226,38 @@ describe('RunTimelinePanel', () => {
     expect(onQuickStart).toHaveBeenCalledTimes(1);
   });
 
+  it('keeps the date filter when saved runs sit outside the default 30-day window', () => {
+    const idle = {
+      loading: false,
+      error: null,
+      hasMore: false,
+      loadMore: vi.fn(),
+      refreshEvalRuns: vi.fn(),
+      updateRun: vi.fn(),
+    };
+    const olderHistory = {
+      ...idle,
+      totalRuns: 1,
+      evalRuns: [{
+        id: 'old-run',
+        provider: 'openai',
+        model: 'gpt-4.1',
+        mode: 'enhance',
+        status: 'success',
+        createdAt: '2020-01-01T00:00:00.000Z',
+        output: 'Older output',
+      }],
+    };
+    const recentWindow = { ...idle, evalRuns: [], totalRuns: 0 };
+    useEvalRunsMock.mockImplementation((opts) => (opts?.dateRange ? recentWindow : olderHistory));
+
+    renderPanel();
+
+    expect(screen.queryByTestId('evaluate-empty')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Filter by date range')).toHaveValue('30d');
+    expect(screen.getByText('No runs match current filters.')).toBeInTheDocument();
+  });
+
   // M-2: Evaluate rendered a verdict select and a "Regressions only" toggle,
   // badged them as active filters, and never passed either into the query --
   // so both controls changed the chrome while the run list stayed put.
@@ -231,17 +267,13 @@ describe('RunTimelinePanel', () => {
     fireEvent.change(screen.getByLabelText('Filter by verdict'), { target: { value: 'fail' } });
 
     await waitFor(() => {
-      expect(useEvalRunsMock).toHaveBeenLastCalledWith(
-        expect.objectContaining({ verdict: 'fail' })
-      );
+      expect(visibleTimelineQuery()).toEqual(expect.objectContaining({ verdict: 'fail' }));
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Regressions' }));
 
     await waitFor(() => {
-      expect(useEvalRunsMock).toHaveBeenLastCalledWith(
-        expect.objectContaining({ verdict: 'fail', regression: true })
-      );
+      expect(visibleTimelineQuery()).toEqual(expect.objectContaining({ verdict: 'fail', regression: true }));
     });
   });
 
@@ -261,9 +293,7 @@ describe('RunTimelinePanel', () => {
     renderPanel();
 
     expect(screen.getByLabelText('Filter by verdict')).toHaveValue('pass');
-    expect(useEvalRunsMock).toHaveBeenLastCalledWith(
-      expect.objectContaining({ verdict: 'pass', regression: true })
-    );
+    expect(visibleTimelineQuery()).toEqual(expect.objectContaining({ verdict: 'pass', regression: true }));
   });
 
   it('shows a no-match state when filters are active but no runs match', () => {

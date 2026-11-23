@@ -437,6 +437,15 @@ export default function RunTimelinePanel({
     search,
     dateRange,
   });
+  // The visible query includes the default 30-day window, so an older library
+  // looks empty. This probe ignores that window (and every other filter) so
+  // the date selector stays reachable when history exists outside it.
+  const historyProbe = useEvalRuns({
+    promptId: prompt?.id || null,
+    tab: 'history',
+    limit: 1,
+    dateRange: '',
+  });
 
   const copyBtn = 'border border-orange-400/35 bg-orange-500/12 text-orange-100 hover:border-orange-300';
 
@@ -477,8 +486,10 @@ export default function RunTimelinePanel({
   const showingSummary = totalRuns > evalRuns.length
     ? `Showing ${evalRuns.length} of ${totalRuns} runs`
     : `${totalRuns} run${totalRuns === 1 ? '' : 's'}`;
-  const showNoMatches = !loading && !error && evalRuns.length === 0 && hasActiveFilters;
-  const showEmptyState = !loading && !error && evalRuns.length === 0 && !hasActiveFilters;
+  const hasAnyRuns = historyProbe.totalRuns > 0 || (historyProbe.evalRuns?.length || 0) > 0;
+  const historyKnown = !loading && !historyProbe.loading && !historyProbe.error;
+  const showEmptyState = historyKnown && !error && evalRuns.length === 0 && !hasActiveFilters && !hasAnyRuns;
+  const showNoMatches = historyKnown && !error && evalRuns.length === 0 && !showEmptyState;
 
   const setTimelineFilter = (key, value) => {
     setTimelineFilters((prev) => {
