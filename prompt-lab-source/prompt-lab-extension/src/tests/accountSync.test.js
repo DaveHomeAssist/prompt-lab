@@ -3,8 +3,8 @@ import { readSyncConfig } from '../lib/sync/syncConfig.js';
 import { hashValue, stableStringify } from '../lib/sync/syncHash.js';
 import { backoffDelay, createSyncQueue, MAX_DELAY_MS } from '../lib/sync/syncQueue.js';
 import { applyRemoteRows, duplicateKey, mergeStructure, readLocalItems } from '../lib/sync/syncModel.js';
-import { createSupabaseTransport } from '../lib/sync/supabaseTransport.js';
-import { createSyncEngine } from '../lib/sync/syncEngine.js';
+import { createSupabaseTransport, downloadAccountExport, exportAccountData } from '../lib/sync/supabaseTransport.js';
+import { createSyncEngine, isKeptSeparate, KEPT_SEPARATE_KEY, OWNER_KEY, rememberKeptSeparate } from '../lib/sync/syncEngine.js';
 
 const memory = () => {
   const map = new Map();
@@ -107,6 +107,56 @@ describe('sync transport and engine', () => {
     const result = await createSyncEngine({ storage, transport, userId: 'user_1', deviceId: 'd' }).syncOnce();
     expect(result.status).toBe('auth');
     expect(JSON.parse(storage.getItem('pl2-library'))).toEqual([{ id: 'a', title: 'A' }]);
+  });
+
+  it('deletes synced data with an empty body so only the signed-in user is erased', async () => {
+    const calls = [];
+    const transport = createSupabaseTransport({
+      url: 'https://abc.supabase.co',
+      publishableKey: 'k',
+      getToken: async () => 'token-A',
+      fetchImpl: async (url, init) => {
+        calls.push({ url, body: init.body });
+        return { ok: true, status: 200, json: async () => ({ items: 2, conflicts: 1 }) };
+      },
+    });
+    const result = await transport.deleteMyData();
+    expect(result).toEqual({ items: 2, conflicts: 1 });
+    expect(calls).toEqual([{ url: 'https://abc.supabase.co/rest/v1/rpc/sync_delete_my_data', body: '{}' }]);
+    expect(calls[0].body).not.toContain('user_');
+  });
+
+  it('exports the signed-in account rows as a JSON download', async () => {
+    const transport = {
+      pull: async () => [{ kind: 'prompt', item_id: 'p1', change_seq: 1, payload: { entry: { id: 'p1' } } }],
+      listConflicts: async () => [],
+    };
+    const data = await exportAccountData(transport);
+    const clicks = [];
+    const json = downloadAccountExport(data, {
+      createUrl: () => 'blob:synced',
+      revoke: () => {},
+      click: (anchor) => clicks.push({ download: anchor.download, href: anchor.href }),
+    });
+    expect(clicks).toEqual([{ download: 'prompt-lab-synced-library.json', href: 'blob:synced' }]);
+    const parsed = JSON.parse(json);
+    expect(parsed.format).toBe('prompt-lab-account-export');
+    expect(parsed.items).toHaveLength(1);
+    expect(parsed.conflicts).toEqual([]);
+  });
+});
+
+describe('keep separate', () => {
+  it('records the signed-in account and leaves the local Library and its owner untouched', () => {
+    const storage = memory();
+    storage.setItem('pl2-library', JSON.stringify([{ id: 'p1', title: 'Stay' }]));
+    storage.setItem(OWNER_KEY, 'user_A');
+    expect(rememberKeptSeparate(storage, 'user_B')).toBe(true);
+    expect(isKeptSeparate(storage, 'user_B')).toBe(true);
+    expect(isKeptSeparate(storage, 'user_A')).toBe(false);
+    expect(storage.getItem(KEPT_SEPARATE_KEY)).toBe('user_B');
+    expect(storage.getItem(OWNER_KEY)).toBe('user_A');
+    expect(JSON.parse(storage.getItem('pl2-library'))).toEqual([{ id: 'p1', title: 'Stay' }]);
   });
 });
 

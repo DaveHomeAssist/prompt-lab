@@ -107,6 +107,7 @@ This is an operator-maintained snapshot, not a background sync service. Never pu
 
 ## Session Log
 
+[2026-11-23] [PLB] [prep] Add a read-only sync:preflight checklist for rollout steps R3–R7, and Keep separate, Delete my synced data, and Export synced Library behind VITE_PL_ACCOUNT_SYNC (flags stay off)
 [2026-11-17] [PLB] [fix] Bound SDK JWKS fetches (30s issuer cooldown, 5s abort, one 5xx retry), stop spoofing the Clerk User-Agent, and keep the owner email and starter-library attribution out of the CWS bundle (041)
 [2026-11-17] [PLB] [fix] sync_pull returns a contiguous safe prefix so a higher change_seq cannot skip an older change while another transaction holds the snapshot horizon (041)
 [2026-10-28] [PLB] [landing] Rebuild the promptlab.tools splash around the strategy model and the real sensitive data check, guard the release badge, and replace stale landing tests (tracker 039)

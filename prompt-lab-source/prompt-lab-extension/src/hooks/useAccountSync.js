@@ -4,8 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { notifyLocalWrite, onLocalWrite } from '../lib/storage.js';
 import { readSyncConfig } from '../lib/sync/syncConfig.js';
 import { readAccountAuth, subscribeAccountAuth } from '../lib/sync/accountAuthBridge.js';
-import { createSyncEngine } from '../lib/sync/syncEngine.js';
-import { createSupabaseTransport } from '../lib/sync/supabaseTransport.js';
+import { createSyncEngine, isKeptSeparate, rememberKeptSeparate, KEPT_SEPARATE_KEY } from '../lib/sync/syncEngine.js';
+import { createSupabaseTransport, downloadAccountExport, exportAccountData } from '../lib/sync/supabaseTransport.js';
 import { backoffDelay } from '../lib/sync/syncQueue.js';
 import { addUnseenConflicts, clearUnseenConflicts, readRestoredConflictIds, readUnseenConflicts, restoreConflictCopy } from '../lib/sync/syncConflicts.js';
 
@@ -72,7 +72,9 @@ export default function useAccountSync({ clerkUser, clerkGetToken, config = read
       if (stopped) return;
       for (const key of result.written || []) window.dispatchEvent(new StorageEvent('storage', { key }));
       const unseen = result.conflicts > 0 ? addUnseenConflicts(window.localStorage, runUserId, result.conflicts) : readUnseenConflicts(window.localStorage, runUserId);
-      setSyncState({ status: result.status, pending: result.pending, conflicts: result.conflicts, unseenConflicts: unseen, tooLarge: result.tooLarge || 0, error: result.error, at: Date.now(), needsReopen: Boolean(bridged.needsReopen) });
+      const keptSeparate = isKeptSeparate(window.localStorage, runUserId);
+      const status = result.status === 'owner-mismatch' && keptSeparate ? 'kept-separate' : result.status;
+      setSyncState({ status, keptSeparate: status === 'kept-separate', pending: result.pending, conflicts: result.conflicts, unseenConflicts: unseen, tooLarge: result.tooLarge || 0, error: result.error, at: Date.now(), needsReopen: Boolean(bridged.needsReopen) });
       failures = result.status === 'synced' || result.status === 'owner-mismatch' ? 0 : failures + 1;
       // Signed out, another account's data on this device, or over quota:
       // wait for the next local change or sign-in instead of retrying.
@@ -106,6 +108,30 @@ export default function useAccountSync({ clerkUser, clerkGetToken, config = read
   }, [config.enabled, config.url, config.publishableKey, userId, bridged.needsReopen]);
 
   const syncNow = useCallback(() => { runRef.current?.(); }, []);
+  // Declines merging this device's Library with the signed-in account. Does not
+  // upload, download, or change the Library or the account it already belongs to.
+  const keepSeparate = useCallback(() => {
+    if (!userId || typeof window === 'undefined') return false;
+    rememberKeptSeparate(window.localStorage, userId);
+    notifyLocalWrite(KEPT_SEPARATE_KEY);
+    setSyncState((prev) => ({ ...prev, status: 'kept-separate', keptSeparate: true }));
+    return true;
+  }, [userId]);
+  // Server deletes only the rows for the token's user id. The body carries no id.
+  const deleteSyncedData = useCallback(async () => {
+    const transport = transportRef.current;
+    if (!transport?.deleteMyData) throw new Error('Sync is not connected.');
+    const result = await transport.deleteMyData();
+    if (result?.error) throw new Error(String(result.error).slice(0, 200));
+    return result;
+  }, []);
+  const exportSyncedLibrary = useCallback(async () => {
+    const transport = transportRef.current;
+    if (!transport) throw new Error('Sync is not connected.');
+    const data = await exportAccountData(transport);
+    downloadAccountExport(data);
+    return data;
+  }, []);
   // Conflict copies: the losing side of each conflict, kept by the server.
   const listConflicts = useCallback(async () => {
     const transport = transportRef.current;
@@ -136,6 +162,9 @@ export default function useAccountSync({ clerkUser, clerkGetToken, config = read
     // published through the bridge. Web passes Clerk's own sign-out to the panel.
     signOut: !clerkUser && typeof bridged.signOut === 'function' ? bridged.signOut : undefined,
     syncNow,
+    keepSeparate,
+    deleteSyncedData,
+    exportSyncedLibrary,
     listConflicts,
     markConflictsSeen,
     restoreConflict,

@@ -19,6 +19,10 @@ on:
       - prompt-lab-source/tests/account-sync-build.test.mjs
       - prompt-lab-source/tests/desktop-token-bridge.test.mjs
       - prompt-lab-source/scripts/account-sync-build.mjs
+      - prompt-lab-source/scripts/sync-preflight.mjs
+      - prompt-lab-source/scripts/sync-preflight.test.mjs
+      - prompt-lab-source/scripts/check-app-bundle-no-supabase.mjs
+      - prompt-lab-source/tests/app-bundle-no-supabase.test.mjs
   pull_request:
     paths:
       - prompt-lab-source/scripts/diagnostic-sourcemaps*
@@ -35,6 +39,10 @@ on:
       - prompt-lab-source/tests/account-sync-build.test.mjs
       - prompt-lab-source/tests/desktop-token-bridge.test.mjs
       - prompt-lab-source/scripts/account-sync-build.mjs
+      - prompt-lab-source/scripts/sync-preflight.mjs
+      - prompt-lab-source/scripts/sync-preflight.test.mjs
+      - prompt-lab-source/scripts/check-app-bundle-no-supabase.mjs
+      - prompt-lab-source/tests/app-bundle-no-supabase.test.mjs
 
 permissions:
   contents: read

@@ -11,12 +11,28 @@ import { resolve } from 'path';
 const versionErrors = checkVersions().errors;
 if (versionErrors.length) throw new Error(versionErrors.join('\n'));
 
+// With the sync flag off, the hosted /app bundle must not contain the sync
+// client. App.jsx imports the hook by this path; the stub has no vendor name.
+function accountSyncOffStub() {
+  const enabled = String(process.env.VITE_PL_ACCOUNT_SYNC || '').toLowerCase() === 'on';
+  const stub = resolve(__dirname, 'app/useAccountSync.off.js');
+  return {
+    name: 'account-sync-off-stub',
+    enforce: 'pre',
+    resolveId(source) {
+      if (enabled) return null;
+      if (source === './hooks/useAccountSync.js' || source.endsWith('/hooks/useAccountSync.js')) return stub;
+      return null;
+    },
+  };
+}
+
 export default defineConfig(({ command }) => ({
   appType: 'mpa',
   // inlineScriptCspHashes runs last and swaps script-src 'unsafe-inline' for
   // per-build sha256 hashes (scripts/inline-script-csp-hashes.mjs).
   // accountSyncWebCsp is a no-op unless VITE_PL_ACCOUNT_SYNC=on (docs/ACCOUNT_SYNC_DESIGN.md).
-  plugins: [react(), diagnosticSourceMaps('web'), previewClerkCsp(), accountSyncWebCsp(), inlineScriptCspHashes()],
+  plugins: [accountSyncOffStub(), react(), diagnosticSourceMaps('web'), previewClerkCsp(), accountSyncWebCsp(), inlineScriptCspHashes()],
   define: {
     ...buildIdentity(),
     'import.meta.env.VITE_WEB_MODE': JSON.stringify('true'),

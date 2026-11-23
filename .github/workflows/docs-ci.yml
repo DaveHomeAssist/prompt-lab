@@ -88,6 +88,9 @@ jobs:
         working-directory: prompt-lab-source/prompt-lab-web
         run: npm run build
 
+      - name: Confirm the hosted /app bundle has no Supabase reference
+        run: node prompt-lab-source/scripts/check-app-bundle-no-supabase.mjs prompt-lab-source/prompt-lab-web/dist
+
       - name: Check internal docs links
         uses: lycheeverse/lychee-action@v2
         with:

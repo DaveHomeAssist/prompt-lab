@@ -42,6 +42,8 @@ export function createSupabaseTransport({ url, publishableKey, getToken, fetchIm
   };
 }
 
+export const SYNCED_LIBRARY_EXPORT_FILENAME = 'prompt-lab-synced-library.json';
+
 /** "Export my data": every synced row, including tombstones, as plain JSON. */
 export async function exportAccountData(transport) {
   const items = [];
@@ -53,4 +55,21 @@ export async function exportAccountData(transport) {
     cursor = Math.max(...page.map((row) => Number(row.change_seq)));
   }
   return { format: 'prompt-lab-account-export', version: 1, exportedAt: new Date().toISOString(), items, conflicts: await transport.listConflicts() };
+}
+
+/** Download an account export. The file is the signed-in account's rows only. */
+export function downloadAccountExport(data, {
+  createUrl = URL.createObjectURL,
+  click = (anchor) => anchor.click(),
+  revoke = URL.revokeObjectURL,
+  filename = SYNCED_LIBRARY_EXPORT_FILENAME,
+} = {}) {
+  const json = JSON.stringify(data, null, 2);
+  const url = createUrl(new Blob([json], { type: 'application/json' }));
+  const anchor = globalThis.document
+    ? Object.assign(globalThis.document.createElement('a'), { href: url, download: filename })
+    : { href: url, download: filename };
+  click(anchor);
+  setTimeout(() => revoke(url), 0);
+  return json;
 }

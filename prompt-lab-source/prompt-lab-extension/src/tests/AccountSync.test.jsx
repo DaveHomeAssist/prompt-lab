@@ -93,6 +93,59 @@ describe('account sync UI', () => {
     expect(addUnseenConflicts(broken, 'user_A', 1)).toBe(1);
   });
 
+  it('keeps a different account separate without uploading or merging', () => {
+    window.localStorage.setItem('pl2-library', JSON.stringify([{ id: 'p1', title: 'Stay' }]));
+    window.localStorage.setItem('pl2-sync-owner', 'user_A');
+    const keepSeparate = vi.fn();
+    const listConflicts = vi.fn(async () => []);
+    render(<AccountSyncPanel sync={{ ...base, status: 'owner-mismatch', keepSeparate, listConflicts }} m={m} open onClose={() => {}} onSignOut={() => {}} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Keep separate' }));
+    expect(keepSeparate).toHaveBeenCalledTimes(1);
+    expect(listConflicts).not.toHaveBeenCalled();
+    expect(JSON.parse(window.localStorage.getItem('pl2-library'))[0].title).toBe('Stay');
+    expect(window.localStorage.getItem('pl2-sync-owner')).toBe('user_A');
+    expect(screen.queryByText('Sync now')).toBeNull();
+  });
+
+  it('says the libraries stay separate after that choice', () => {
+    render(<AccountSyncPanel sync={{ ...base, status: 'kept-separate', keptSeparate: true }} m={m} open onClose={() => {}} />);
+    expect(screen.getByTestId('sync-kept-separate').textContent).toMatch(/not merged/);
+    expect(screen.queryByTestId('sync-owner-mismatch')).toBeNull();
+    expect(describeSyncStatus({ status: 'kept-separate' }).label).toBe('Libraries kept separate');
+  });
+
+  it('asks before deleting synced data and does not clear this device', async () => {
+    window.localStorage.setItem('pl2-library', JSON.stringify([{ id: 'p1', title: 'Stay' }]));
+    const deleteSyncedData = vi.fn(async () => ({ items: 1, conflicts: 0 }));
+    render(<AccountSyncPanel sync={{ ...base, status: 'synced', deleteSyncedData }} m={m} open onClose={() => {}} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Delete my synced data' }));
+    expect(deleteSyncedData).not.toHaveBeenCalled();
+    expect(screen.getByTestId('sync-delete-confirm')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(deleteSyncedData).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('sync-delete-confirm')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Delete my synced data' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete synced data' }));
+    await waitFor(() => expect(deleteSyncedData).toHaveBeenCalledTimes(1));
+    expect(deleteSyncedData.mock.calls[0]).toEqual([]);
+    expect(JSON.parse(window.localStorage.getItem('pl2-library'))[0].title).toBe('Stay');
+    expect(screen.getByText(/This device's Library was not changed/)).toBeTruthy();
+  });
+
+  it('downloads the synced Library for the signed-in account', async () => {
+    const exportSyncedLibrary = vi.fn(async () => ({ format: 'prompt-lab-account-export' }));
+    render(<AccountSyncPanel sync={{ ...base, status: 'synced', exportSyncedLibrary }} m={m} open onClose={() => {}} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Export synced Library' }));
+    await waitFor(() => expect(exportSyncedLibrary).toHaveBeenCalledTimes(1));
+  });
+
+  it('hides the account actions while the flag is off', () => {
+    render(<AccountSyncPanel sync={{ ...base, enabled: false, status: 'synced' }} m={m} open onClose={() => {}} />);
+    expect(screen.queryByRole('button', { name: 'Keep separate' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Delete my synced data' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Export synced Library' })).toBeNull();
+  });
+
   it('signs out without touching local data', () => {
     window.localStorage.setItem('pl2-library', JSON.stringify([{ id: 'p1', title: 'Keep me' }]));
     const onSignOut = vi.fn();
@@ -139,6 +192,51 @@ describe('useAccountSync account binding (#277 review P1)', () => {
       await act(async () => { release(); await new Promise((resolve) => setTimeout(resolve, 50)); });
       expect(sent).toEqual(['Bearer token-A']);
       unmount();
+    } finally { vi.unstubAllGlobals(); }
+  });
+
+  it('keeps libraries separate for the signed-in account without a merge request', async () => {
+    const fetchMock = vi.fn(async () => new Response('[]', { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    vi.stubGlobal('fetch', fetchMock);
+    window.localStorage.setItem('pl2-sync-owner', 'user_A');
+    window.localStorage.setItem('pl2-library', JSON.stringify([{ id: 'p1', title: 'Stay' }]));
+    try {
+      const { result } = renderHook(() => useAccountSync({
+        clerkUser: { id: 'user_B' },
+        clerkGetToken: async () => 'token-B',
+        config: { enabled: true, url: 'https://abcd.supabase.co', publishableKey: 'sb_publishable_test' },
+      }));
+      await waitFor(() => expect(result.current.status).toBe('owner-mismatch'));
+      expect(fetchMock).not.toHaveBeenCalled();
+      act(() => { result.current.keepSeparate(); });
+      expect(result.current.status).toBe('kept-separate');
+      expect(window.localStorage.getItem('pl2-sync-kept-separate')).toBe('user_B');
+      expect(window.localStorage.getItem('pl2-sync-owner')).toBe('user_A');
+      expect(JSON.parse(window.localStorage.getItem('pl2-library'))[0].title).toBe('Stay');
+      expect(fetchMock).not.toHaveBeenCalled();
+    } finally { vi.unstubAllGlobals(); }
+  });
+
+  it('delete sends no user id and leaves the device Library in place', async () => {
+    const calls = [];
+    vi.stubGlobal('fetch', vi.fn(async (url, init) => {
+      calls.push({ url: String(url), body: init.body });
+      const body = String(url).includes('sync_delete_my_data') ? '{"items":1,"conflicts":0}' : '[]';
+      return new Response(body, { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }));
+    window.localStorage.setItem('pl2-library', JSON.stringify([{ id: 'p1', title: 'Stay' }]));
+    try {
+      const { result } = renderHook(() => useAccountSync({
+        clerkUser: { id: 'user_A' },
+        clerkGetToken: async () => 'token-A',
+        config: { enabled: true, url: 'https://abcd.supabase.co', publishableKey: 'sb_publishable_test' },
+      }));
+      await waitFor(() => expect(calls.length).toBeGreaterThan(0));
+      await act(async () => { await result.current.deleteSyncedData(); });
+      const deleted = calls.find((call) => call.url.includes('sync_delete_my_data'));
+      expect(deleted.body).toBe('{}');
+      expect(deleted.body).not.toContain('user_A');
+      expect(JSON.parse(window.localStorage.getItem('pl2-library'))[0].title).toBe('Stay');
     } finally { vi.unstubAllGlobals(); }
   });
 });

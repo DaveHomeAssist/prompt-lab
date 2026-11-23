@@ -12,6 +12,20 @@ import { addSnapshotUndoKey, takeLocalSnapshot } from './syncBackup.js';
 
 export const DEVICE_KEY = 'pl2-sync-device-id';
 export const OWNER_KEY = 'pl2-sync-owner';
+// The signed-in account declined merging this device's Library with that account.
+// Local prompts and the previous owner stay as they are; nothing is uploaded.
+export const KEPT_SEPARATE_KEY = 'pl2-sync-kept-separate';
+
+export function rememberKeptSeparate(storage, userId) {
+  if (!storage || !userId) return false;
+  storage.setItem(KEPT_SEPARATE_KEY, String(userId));
+  return true;
+}
+
+export function isKeptSeparate(storage, userId) {
+  try { return Boolean(userId) && storage.getItem(KEPT_SEPARATE_KEY) === String(userId); }
+  catch { return false; }
+}
 export const stateKey = (userId) => `pl2-sync-state:${userId}`;
 export const queueKey = (userId) => `pl2-sync-queue:${userId}`;
 const PULL_LIMIT = 500;

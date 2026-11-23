@@ -156,12 +156,12 @@ Already on Clerk (`@clerk/clerk-react`). `App` passes `clerkUser` and `clerkGetT
 ## 9. Sign-out, account switch, delete and export
 
 - **Sign-out** stops sync and keeps all local data. Queue, shadow and cursor stay scoped to that user id.
-- **Different account on the same device:** `pl2-sync-owner` records the account the local Library was merged with. Another account gets status `owner-mismatch` and nothing is uploaded or merged. The choice UI (keep separate, merge or start empty) is not built.
-- **Delete my synced data:** `sync_delete_my_data()` erases the caller's rows and conflict copies, even while sync is paused; rate-limit counters, download budgets and the first-seen record stay (R-10), and the call itself is limited to 2 a minute and 10 a day. Local data stays. UI not built.
+- **Different account on the same device:** `pl2-sync-owner` records the account the local Library was merged with. Another account gets status `owner-mismatch` and nothing is uploaded or merged. **Keep separate** records that decline (`pl2-sync-kept-separate`) and leaves both libraries as they are. Merge and start empty are not built.
+- **Delete my synced data:** `sync_delete_my_data()` erases the caller's rows and conflict copies, even while sync is paused; rate-limit counters, download budgets and the first-seen record stay (R-10), and the call itself is limited to 2 a minute and 10 a day. The sync panel asks for confirmation, then calls that RPC with an empty body so only the signed-in user's rows are deleted. Local data stays.
 - **Account deletion** (review F-09): [`api/sync/clerk-webhook.js`](../api/sync/clerk-webhook.js) handles Clerk `user.deleted`. It verifies the Svix signature (HMAC-SHA256, 5-minute tolerance, constant-time compare) before parsing, then calls `sync_admin_delete_user` with the server-only secret key. Non-2xx responses make Clerk retry, and the delete is idempotent. Off (503) until its env vars exist.
   - Raw body (re-review R-07): the deployed Node entry point reads the raw request stream itself and verifies the HMAC over those exact bytes. If a runtime has already drained the stream it accepts only an unparsed Buffer or string body; a framework-parsed object is refused (400), never re-serialized. It also exports `config = { api: { bodyParser: false } }` for runtimes that honor it.
   - `sync_admin_delete_user` takes the same per-user advisory lock as `sync_push`, so a push in flight cannot land after the erase (re-review, low).
-- **Export:** `exportAccountData()` (account rows plus conflict copies, as JSON) and the device snapshot file (`snapshotFileText`). Buttons not built.
+- **Export:** `exportAccountData()` (account rows plus conflict copies, as JSON) and the device snapshot file (`snapshotFileText`). **Export synced Library** downloads that account JSON. The snapshot-file button is not built.
 
 ## 10. Security summary
 
@@ -225,7 +225,7 @@ Estimates, from the payload format and this design's polling. These are not meas
 | Desktop PKCE and token exchange in Rust, loopback state/path checks, keychain, token bridge with client_id/scope checks and rate limit, CSP overlay | Built; Rust module logic compiled and tested standalone with the same crates (the Tauri command wrappers and a full Tauri build need webkit2gtk, not on the build box) |
 | Desktop ticket to Clerk session (clerk-js non-browser mode) | Not built |
 | UI: status bar, sign-in prompt, "close and reopen the panel" hint, conflict copies with restore (the status bar keeps an "N conflict copies" link, counted on the device from sync results, until the list is opened; re-review 5), owner-mismatch block, sign-out keeping local data ([`AccountSync.jsx`](../prompt-lab-extension/src/AccountSync.jsx)) | Built; flag off |
-| UI: owner-mismatch choice (keep separate, merge, start empty), delete-my-data, export and snapshot-restore buttons | Not built (engine and RPCs exist) |
+| UI: Keep separate, delete-my-data (confirm, signed-in user only) and Export synced Library | Built; flag off. Merge, start empty and the snapshot-file button are not built |
 | Runs, evals, Scratch, settings | Not synced |
 | Telemetry of sync status counts | Not built |
 
@@ -280,6 +280,7 @@ Proposed `D-0xx`, for Dave to accept or edit: hosted account sync (Supabase Free
 | Engine end to end | `supabase/tests/sync-engine.e2e.test.mjs` | two devices, first-run merge, dedupe, snapshot and restore, edits, conflicts, delete, offline, fresh device, second user, owner mismatch, manifest repair, paused, quota, oversize, paging through byte-capped reads, export via RPC |
 | Client units | `prompt-lab-extension/src/tests/accountSync.test.js` (vitest) | flag off by default, hash, backoff, queue, model, transport headers and list-conflicts RPC, desktop commands never handle secrets, page continuation, extension token cache in session storage, restore merge, status map, bridge |
 | API and build | `tests/clerk-sync-webhook.test.mjs`, `tests/desktop-token-bridge.test.mjs`, `tests/account-sync-build.test.mjs` | signature verification, raw-body Node path, bridge client_id/scope/revocation checks and rate limits, CSP and manifest changes only with the flag |
+| Rollout preflight | `scripts/sync-preflight.mjs` (`npm run sync:preflight`) | read-only R3–R7 checklist; env names only; tables and policies when the project answers. A paused project prints `project unreachable or paused` and exits cleanly |
 | Desktop Rust | `src-tauri/src/account_auth.rs` `#[cfg(test)]` (run standalone) | callback classification, listener ignores bad path/state and keeps waiting, timeout, PKCE vector (RFC 7636), code exchange keeps the refresh token in the store, refresh rotation and forget-on-refusal |
 
 Run: `npm run test:sync` from `prompt-lab-source` (Node 22).
