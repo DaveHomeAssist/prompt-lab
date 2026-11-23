@@ -3,6 +3,9 @@
 // this worker, through the same callProvider module as the side panel.
 
 import { PROVIDER_SETTINGS_KEYS } from './lib/providerRegistry.js';
+// Static import: Manifest V3 service workers reject import(), so a dynamic
+// load of the enhance module never reaches the provider.
+import { enhanceSelection } from './highlight-worker.js';
 
 export const HIGHLIGHT_MENU_KEY = 'pl2-highlight-context-menu';
 export const HIGHLIGHT_GENERATION_KEY = 'pl2-generation-options-v1';
@@ -29,10 +32,6 @@ function storageGet(keys) {
 
 export function highlightMenuEnabled(stored) {
   return stored?.[HIGHLIGHT_MENU_KEY] !== false;
-}
-
-function loadWorker() {
-  return import('./highlight-worker.js');
 }
 
 function frameIdOf(info) {
@@ -155,8 +154,7 @@ async function onEnhance(tab, info) {
   const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
   aborts.set(tab.id, { token, controller });
   try {
-    const worker = await loadWorker();
-    const result = await worker.enhanceSelection(text, themeStore, themeStore[HIGHLIGHT_GENERATION_KEY], controller?.signal);
+    const result = await enhanceSelection(text, themeStore, themeStore[HIGHLIGHT_GENERATION_KEY], controller?.signal);
     if (aborts.get(tab.id)?.token !== token) return;
     if (captured.ok) {
       await sendToFrame(tab.id, captured.frameId, {

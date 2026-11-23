@@ -3,6 +3,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { mountAcceptCard } from '../../prompt-lab-extension/src/lib/highlight/acceptCard.js';
+import { cancelHighlight } from '../../prompt-lab-extension/src/lib/highlight/cancelHighlight.js';
 import { enhanceHighlightText } from '../../prompt-lab-extension/src/lib/highlight/enhancePayload.js';
 import { readGenerationOptions } from '../../prompt-lab-extension/src/lib/generationOptions.js';
 import { activeProviderRoute } from '../../prompt-lab-extension/src/lib/providerRegistry.js';
@@ -27,8 +28,9 @@ let request = null;
 let chain = Promise.resolve();
 
 function closeCard() {
-  request?.abort();
+  const controller = request;
   request = null;
+  try { controller?.abort(); } catch { /* Already settled. */ }
   card?.close();
   card = null;
 }
@@ -41,21 +43,21 @@ async function present(payload) {
     card = mountAcceptCard(document, {
       fill: true,
       theme,
-      onCancel: () => { invoke('highlight_cancel').catch(() => {}); },
+      onCancel: () => { cancelHighlight(null, () => invoke('highlight_cancel')); },
     });
     card.showResult({
       error: payload?.message || 'Highlight enhance could not start.',
     });
     return;
   }
-  request = new AbortController();
-  const signal = request.signal;
+  const controller = new AbortController();
+  request = controller;
+  const signal = controller.signal;
   card = mountAcceptCard(document, {
     fill: true,
     theme,
     onCancel: () => {
-      signal.abort();
-      invoke('highlight_cancel').catch(() => {});
+      cancelHighlight(controller, () => invoke('highlight_cancel'));
     },
     onAccept: async (value) => {
       await invoke('highlight_accept', { text: value });

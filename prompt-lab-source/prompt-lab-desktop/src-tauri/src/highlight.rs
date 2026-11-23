@@ -52,27 +52,61 @@ pub fn permission_message() -> &'static str {
     "Prompt Lab needs Accessibility permission to read the selection and paste the enhanced text.\n\n1. Open System Settings.\n2. Go to Privacy & Security, then Accessibility.\n3. Turn Prompt Lab on.\n4. Press the shortcut again.\n\nThe clipboard was not changed."
 }
 
-pub(crate) trait ClipboardPort {
-    fn read(&mut self) -> Result<String, String>;
-    fn write(&mut self, text: &str) -> Result<(), String>;
+/// What was on the clipboard before we borrowed it. Text is the common case.
+/// Image, HTML, and file lists have no plain-text form; they are snapshotted
+/// and put back so a picture or a copied file is not replaced by an empty string.
+#[derive(Clone)]
+pub(crate) enum ClipHold {
+    Text(String),
+    Html(String),
+    Image(arboard::ImageData<'static>),
+    Files(Vec<PathBuf>),
+    Empty,
 }
 
-/// Same steps as src/lib/highlight/clipboardEnhance.js.
+impl ClipHold {
+    fn text_content(&self) -> Option<&str> {
+        match self {
+            ClipHold::Text(text) => Some(text),
+            _ => None,
+        }
+    }
+}
+
+pub(crate) trait ClipboardPort {
+    fn capture_hold(&mut self) -> Result<ClipHold, String>;
+    fn apply_hold(&mut self, hold: &ClipHold) -> Result<(), String>;
+    fn write_text(&mut self, text: &str) -> Result<(), String>;
+}
+
+fn restore_hold<C: ClipboardPort>(clip: &mut C, hold: &ClipHold) -> Result<(), String> {
+    clip.apply_hold(hold)?;
+    // Text is compared exactly. An image the OS re-encodes can come back with
+    // different bytes even though apply_hold succeeded, so a failed re-read
+    // there is not treated as data loss.
+    if let ClipHold::Text(text) = hold {
+        let restored = clip.capture_hold()?;
+        if restored.text_content() != Some(text.as_str()) {
+            return Err("Couldn't restore the clipboard.".into());
+        }
+    }
+    Ok(())
+}
+
+/// Same steps as src/lib/highlight/clipboardEnhance.js, plus a snapshot of a
+/// clipboard that has no text (an image, HTML, or a file list).
 pub fn capture_selection<C: ClipboardPort>(clip: &mut C, copy: impl FnOnce(&mut C) -> Result<(), String>, nonce: u64) -> Result<String, String> {
-    let original = clip.read().unwrap_or_default();
+    let original = clip.capture_hold()?;
     let sentinel = format!("\u{0}promptlab-{nonce}");
-    if let Err(error) = clip.write(&sentinel) {
+    if let Err(error) = clip.write_text(&sentinel) {
         return Err(error);
     }
     if let Err(error) = copy(clip) {
-        let _ = clip.write(&original);
+        let _ = clip.apply_hold(&original);
         return Err(error);
     }
-    let selected = clip.read().unwrap_or_default();
-    clip.write(&original)?;
-    if clip.read().unwrap_or_default() != original {
-        return Err("Couldn't restore the clipboard after copying the selection.".into());
-    }
+    let selected = clip.capture_hold().ok().and_then(|hold| hold.text_content().map(str::to_string)).unwrap_or_default();
+    restore_hold(clip, &original).map_err(|_| "Couldn't restore the clipboard after copying the selection.".to_string())?;
     if selected == sentinel {
         return Err("Couldn't copy the selection. On macOS, grant Accessibility permission and try again.".into());
     }
@@ -93,20 +127,16 @@ pub fn paste_and_restore<C: ClipboardPort>(clip: &mut C, enhanced: &str, paste: 
     if enhanced.contains('\u{0}') || enhanced.chars().count() > LIMIT {
         return Err("Refusing to paste that text.".into());
     }
-    let current = clip.read().unwrap_or_default();
+    let current = clip.capture_hold()?;
     let pasted = (|| {
-        clip.write(enhanced)?;
+        clip.write_text(enhanced)?;
         paste(clip)
     })();
     if let Err(error) = pasted {
-        let _ = clip.write(&current);
+        let _ = clip.apply_hold(&current);
         return Err(error);
     }
-    clip.write(&current)?;
-    if clip.read().unwrap_or_default() != current {
-        return Err("The enhanced text was pasted, but the clipboard could not be restored.".into());
-    }
-    Ok(())
+    restore_hold(clip, &current).map_err(|_| "The enhanced text was pasted, but the clipboard could not be restored.".to_string())
 }
 
 struct OsClipboard {
@@ -121,15 +151,47 @@ impl OsClipboard {
     }
 }
 
+impl OsClipboard {
+    fn capture_non_text(&mut self) -> Result<ClipHold, String> {
+        match self.inner.get_image() {
+            Ok(image) => return Ok(ClipHold::Image(image)),
+            Err(arboard::Error::ContentNotAvailable) => {}
+            Err(error) => return Err(format!("The clipboard isn't plain text and couldn't be saved: {error}")),
+        }
+        match self.inner.get().file_list() {
+            Ok(files) if !files.is_empty() => return Ok(ClipHold::Files(files)),
+            Ok(_) => {}
+            Err(arboard::Error::ContentNotAvailable) => {}
+            Err(error) => return Err(format!("The clipboard isn't plain text and couldn't be saved: {error}")),
+        }
+        match self.inner.get().html() {
+            Ok(html) if !html.is_empty() => return Ok(ClipHold::Html(html)),
+            Ok(_) => {}
+            Err(arboard::Error::ContentNotAvailable) => {}
+            Err(error) => return Err(format!("The clipboard isn't plain text and couldn't be saved: {error}")),
+        }
+        Ok(ClipHold::Empty)
+    }
+}
+
 impl ClipboardPort for OsClipboard {
-    fn read(&mut self) -> Result<String, String> {
+    fn capture_hold(&mut self) -> Result<ClipHold, String> {
         match self.inner.get_text() {
-            Ok(text) => Ok(text),
-            Err(arboard::Error::ContentNotAvailable) => Ok(String::new()),
+            Ok(text) => Ok(ClipHold::Text(text)),
+            Err(arboard::Error::ContentNotAvailable) => self.capture_non_text(),
             Err(error) => Err(format!("Couldn't read the clipboard: {error}")),
         }
     }
-    fn write(&mut self, text: &str) -> Result<(), String> {
+    fn apply_hold(&mut self, hold: &ClipHold) -> Result<(), String> {
+        match hold {
+            ClipHold::Text(text) => self.inner.set_text(text).map_err(|error| format!("Couldn't write the clipboard: {error}")),
+            ClipHold::Html(html) => self.inner.set_html(html.as_str(), None::<&str>).map_err(|error| format!("Couldn't restore clipboard HTML: {error}")),
+            ClipHold::Image(image) => self.inner.set_image(image.clone()).map_err(|error| format!("Couldn't restore the clipboard image: {error}")),
+            ClipHold::Files(files) => self.inner.set().file_list(files).map_err(|error| format!("Couldn't restore the clipboard files: {error}")),
+            ClipHold::Empty => self.inner.clear().map_err(|error| format!("Couldn't clear the clipboard: {error}")),
+        }
+    }
+    fn write_text(&mut self, text: &str) -> Result<(), String> {
         self.inner.set_text(text).map_err(|error| format!("Couldn't write the clipboard: {error}"))
     }
 }
@@ -537,8 +599,20 @@ mod tests {
     struct MemoryClipboard { value: String }
 
     impl ClipboardPort for MemoryClipboard {
-        fn read(&mut self) -> Result<String, String> { Ok(self.value.clone()) }
-        fn write(&mut self, text: &str) -> Result<(), String> { self.value = text.to_string(); Ok(()) }
+        fn capture_hold(&mut self) -> Result<ClipHold, String> { Ok(ClipHold::Text(self.value.clone())) }
+        fn apply_hold(&mut self, hold: &ClipHold) -> Result<(), String> {
+            self.value = hold.text_content().unwrap_or("").to_string();
+            Ok(())
+        }
+        fn write_text(&mut self, text: &str) -> Result<(), String> { self.value = text.to_string(); Ok(()) }
+    }
+
+    struct HoldClipboard { hold: ClipHold }
+
+    impl ClipboardPort for HoldClipboard {
+        fn capture_hold(&mut self) -> Result<ClipHold, String> { Ok(self.hold.clone()) }
+        fn apply_hold(&mut self, hold: &ClipHold) -> Result<(), String> { self.hold = hold.clone(); Ok(()) }
+        fn write_text(&mut self, text: &str) -> Result<(), String> { self.hold = ClipHold::Text(text.to_string()); Ok(()) }
     }
 
     #[test]
@@ -598,6 +672,27 @@ mod tests {
         let error = paste_and_restore(&mut clip, "enhanced", |_clip| Err("paste failed".into())).unwrap_err();
         assert_eq!(error, "paste failed");
         assert_eq!(clip.value, "original");
+    }
+
+    #[test]
+    fn capture_restores_html_when_the_clipboard_has_no_plain_text() {
+        let mut clip = HoldClipboard { hold: ClipHold::Html("<b>picture</b>".into()) };
+        let selected = capture_selection(&mut clip, |clip| {
+            clip.write_text("selected text")?;
+            Ok(())
+        }, 9).unwrap();
+        assert_eq!(selected, "selected text");
+        assert!(matches!(clip.hold, ClipHold::Html(html) if html == "<b>picture</b>"));
+    }
+
+    #[test]
+    fn accept_restores_a_file_list_after_the_paste() {
+        let mut clip = HoldClipboard { hold: ClipHold::Files(vec![PathBuf::from("/tmp/notes.txt")]) };
+        paste_and_restore(&mut clip, "enhanced", |clip| {
+            assert!(matches!(&clip.hold, ClipHold::Text(text) if text == "enhanced"));
+            Ok(())
+        }).unwrap();
+        assert!(matches!(clip.hold, ClipHold::Files(files) if files == vec![PathBuf::from("/tmp/notes.txt")]));
     }
 
     #[test]

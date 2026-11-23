@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { ALL_TAGS, DEFAULT_ENHANCE_TEMPERATURE } from '../constants.js';
 import { buildGenerationSystemPrompt, resolveGenerationOptions } from '../lib/generationOptions.js';
 import { mountAcceptCard } from '../lib/highlight/acceptCard.js';
+import { cancelHighlight } from '../lib/highlight/cancelHighlight.js';
 import { captureSelectionFromClipboard, pasteEnhancedAndRestore } from '../lib/highlight/clipboardEnhance.js';
 import { buildHighlightPayload, enhanceHighlightText, readEnhancedText } from '../lib/highlight/enhancePayload.js';
 import { captureSelection, confirmReplace } from '../lib/highlight/selectionReplace.js';
@@ -218,6 +219,24 @@ describe('highlight settings and Write handoff', () => {
     expect(applyHighlightDraft({ text: '  ' }, actions)).toBe(false);
     expect(applyHighlightDraft({ text: 'Selected line', notice: 'Selection loaded in Write' }, actions)).toBe(true);
     expect(actions).toMatchObject({ opened: true, cleared: true, raw: 'Selected line', notice: 'Selection loaded in Write' });
+  });
+});
+
+describe('desktop cancel', () => {
+  it('aborts the controller and still closes the native session', () => {
+    const controller = new AbortController();
+    let nativeCalls = 0;
+    cancelHighlight(controller, () => { nativeCalls += 1; });
+    expect(controller.signal.aborted).toBe(true);
+    expect(nativeCalls).toBe(1);
+  });
+
+  it('still closes the native session when abort is called on the signal', () => {
+    const signal = new AbortController().signal;
+    let nativeCalls = 0;
+    cancelHighlight(signal, () => { nativeCalls += 1; });
+    expect(signal.aborted).toBe(false);
+    expect(nativeCalls).toBe(1);
   });
 });
 
