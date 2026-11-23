@@ -79,11 +79,14 @@ describe('AppHeader', () => {
     expect(screen.queryByRole('tab', { name: 'Build' })).not.toBeInTheDocument();
   });
 
-  it('shows Compare and History sub-tabs when Evaluate is active', () => {
+  it('keeps Evaluate sub-tabs out of the header so only one tab is highlighted', () => {
     renderHeader({ activeSection: 'evaluate', primaryView: 'runs', runsView: 'compare' });
 
-    expect(screen.getByRole('tab', { name: 'Compare' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'History' })).toBeInTheDocument();
+    expect(screen.getAllByRole('tablist')).toHaveLength(1);
+    expect(screen.queryByRole('tablist', { name: 'Evaluate views' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'Compare' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'History' })).not.toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Evaluate' })).toHaveAttribute('aria-selected', 'true');
   });
 
   it('shows a workbench-oriented utility label instead of the old create workbench copy', () => {

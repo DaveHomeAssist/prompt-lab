@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Ic from './icons.jsx';
 import useDialogA11y from './hooks/useDialogA11y.js';
@@ -25,6 +25,23 @@ function draftFrom(profile) {
     defaultTags: (profile.defaultTags || []).join(', '),
     outputFormat: profile.outputFormat || '',
   };
+}
+
+function useShellPortal(anchorRef) {
+  const [portalEl, setPortalEl] = useState(null);
+  const assignAnchor = useCallback((node) => {
+    anchorRef.current = node;
+    const shell = node?.closest?.('.pl-app-shell') || null;
+    setPortalEl((current) => (current === shell ? current : shell));
+  }, [anchorRef]);
+  return { assignAnchor, portalEl };
+}
+
+function placeInShell(node, portalEl) {
+  if (!node) return null;
+  // Stay inside the app shell so light and dark theme tokens (and palette
+  // overrides) apply. Portaling to document.body inherits the dark :root tokens.
+  return portalEl ? createPortal(node, portalEl) : node;
 }
 
 function ProfileMark({ profile }) {
@@ -194,7 +211,7 @@ function ProjectProfilesManager({ state, onClose }) {
       </div>
     </div>
   );
-  return typeof document === 'undefined' ? dialog : createPortal(dialog, document.body);
+  return dialog;
 }
 
 export default function ProjectProfileBar({ state, suggestion, onUseSuggestion }) {
@@ -203,6 +220,7 @@ export default function ProjectProfileBar({ state, suggestion, onUseSuggestion }
   const searchRef = useRef(null);
   const chipRef = useRef(null);
   const rootRef = useRef(null);
+  const { assignAnchor, portalEl } = useShellPortal(rootRef);
   const menuRef = useRef(null);
   const closePickerRef = useRef(state.closePicker);
   closePickerRef.current = state.closePicker;
@@ -267,7 +285,7 @@ export default function ProjectProfileBar({ state, suggestion, onUseSuggestion }
   };
 
   return (
-    <div className="pl-profile-anchor" ref={rootRef}>
+    <div className="pl-profile-anchor" ref={assignAnchor}>
       <button
         ref={chipRef}
         type="button"
@@ -283,8 +301,8 @@ export default function ProjectProfileBar({ state, suggestion, onUseSuggestion }
         <span className="pl-profile-chip-name">{active ? active.name : 'No profile'}</span>
         {active?.example && <span className="pl-profile-example">Example</span>}
       </button>
-      {state.managerOpen && <ProjectProfilesManager state={state} onClose={state.closeManager} />}
-      {state.pickerOpen && createPortal(
+      {state.managerOpen && placeInShell(<ProjectProfilesManager state={state} onClose={state.closeManager} />, portalEl)}
+      {state.pickerOpen && placeInShell(
         <div
           ref={menuRef}
           className="pl-profile-menu"
@@ -312,7 +330,15 @@ export default function ProjectProfileBar({ state, suggestion, onUseSuggestion }
               placeholder="Search profiles"
             />
           </label>
-          <button type="button" role="option" aria-selected={!active} onClick={() => choose('')}>None</button>
+          {state.profiles.length === 0 && (
+            <div className="pl-profile-empty-state">
+              <p>No project profiles yet. A profile adds voice and context without pasting it into the prompt.</p>
+              <button type="button" className="pl-profile-create" onClick={() => state.openManager()}>Create a profile</button>
+            </div>
+          )}
+          {state.profiles.length > 0 && (
+            <button type="button" role="option" aria-selected={!active} onClick={() => choose('')}>None</button>
+          )}
           {visible.map((profile) => (
             <button type="button" role="option" aria-selected={profile.id === active?.id} key={profile.id} onClick={() => choose(profile.id)}>
               <ProfileMark profile={profile} />
@@ -333,11 +359,11 @@ export default function ProjectProfileBar({ state, suggestion, onUseSuggestion }
           </button>
           <button type="button" onClick={() => state.openManager()}>Manage profiles</button>
         </div>,
-        document.body,
+        portalEl,
       )}
-      {state.previewOpen && createPortal(
+      {state.previewOpen && placeInShell(
         <SendPreview state={state} active={active} previewText={previewText} top={layer.preview?.top} />,
-        document.body,
+        portalEl,
       )}
     </div>
   );

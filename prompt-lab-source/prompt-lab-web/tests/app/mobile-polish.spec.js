@@ -1,8 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 // Oct 27 web QA leftovers: at 320px the "New unsaved prompt" heading was drawn
-// under the Scratch toggle, and the compact tab bar said "Dual" while every
-// other surface says "Dual Pane".
+// under the Scratch toggle. The phone tab bar hides Dual Pane (five tabs).
 
 const overlaps = (a, b) => a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
 
@@ -28,7 +27,7 @@ for (const width of [320, 375]) {
     }
 
     const nav = page.getByRole('navigation', { name: 'Primary mobile navigation' });
-    await expect(nav.getByRole('button', { name: 'Dual Pane', exact: true })).toBeVisible();
-    await expect(nav.getByRole('button', { name: 'Dual', exact: true })).toHaveCount(0);
+    await expect(nav.getByRole('button')).toHaveText(['Write', 'Library', 'Compose', 'Evaluate', 'Scratch']);
+    await expect(nav.getByRole('button', { name: 'Dual Pane', exact: true })).toHaveCount(0);
   });
 }
