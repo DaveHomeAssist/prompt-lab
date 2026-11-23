@@ -1,5 +1,5 @@
 // S-06: the www -> apex Library migration frames /legacy-library-bridge.html
-// on www (and the old tawny demo). The bridge must answer the apex with the
+// on www (the old tawny demo source was removed, S-24). The bridge must answer the apex with the
 // library stored on its own origin, and must stay silent when it is served
 // from the apex itself or asked by its own origin or a stranger.
 import assert from 'node:assert/strict';
@@ -55,10 +55,14 @@ test('the bridge ignores its own origin, strangers and other message types', () 
   assert.deepEqual(bridge.ask('https://promptlab.tools', { type: 'other' }), []);
 });
 
-test('the tawny bridge still answers the apex and www', () => {
+test('a retired tawny origin no longer answers anyone (S-24: it recovers nothing)', () => {
   const bridge = runBridge('https://prompt-lab-tawny.vercel.app', stored);
-  assert.equal(bridge.ask('https://promptlab.tools').length, 1);
-  assert.equal(bridge.ask('https://www.promptlab.tools').length, 1);
+  assert.deepEqual(bridge.ask('https://promptlab.tools'), []);
+  assert.deepEqual(bridge.ask('https://www.promptlab.tools'), []);
+});
+
+test('the bridge page no longer names the tawny origin', () => {
+  assert.doesNotMatch(readFileSync(new URL('../prompt-lab-web/public/legacy-library-bridge.html', import.meta.url), 'utf8'), /tawny/);
 });
 
 test('a corrupt or missing stored library is sent as empty arrays', () => {

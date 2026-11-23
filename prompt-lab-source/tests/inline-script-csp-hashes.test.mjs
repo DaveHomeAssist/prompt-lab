@@ -42,12 +42,13 @@ for (const page of ['app/index.html', 'index.html']) {
   });
 }
 
-test('/app/ keeps the production Clerk, Turnstile and GTM script hosts and the legacy bridge frame', () => {
+test('/app/ keeps the production Clerk, Turnstile and GTM script hosts and the www legacy bridge frame', () => {
   const built = applyInlineScriptHashes(read('app/index.html'));
   for (const host of ['https://clerk.promptlab.tools', 'https://challenges.cloudflare.com', 'https://www.googletagmanager.com']) {
     assert.ok(scriptSrc(built).includes(host), host);
   }
-  assert.match(built, /frame-src 'self' https:\/\/challenges\.cloudflare\.com https:\/\/www\.promptlab\.tools https:\/\/prompt-lab-tawny\.vercel\.app/);
+  assert.match(built, /frame-src 'self' https:\/\/challenges\.cloudflare\.com https:\/\/www\.promptlab\.tools;/);
+  assert.doesNotMatch(built, /tawny/);
 });
 
 test('works after the preview Clerk widening (plugin order)', () => {

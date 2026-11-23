@@ -225,7 +225,7 @@ export default function usePromptLibrary(notify) {
   }, []);
   const isLegacySourceChecked = (source) => loadJson(source.checkKey, false) === true;
   // An unreachable source that retries (www) is marked checked only after
-  // MAX_UNREACHABLE_ATTEMPTS loads; others (tawny) are checked at once, as before.
+  // MAX_UNREACHABLE_ATTEMPTS loads; others are checked at once, as before.
   const noteLegacySourceUnreachable = useCallback((source) => {
     if (!source.retryUnreachable) { markLegacyLibraryChecked(source); return; }
     const attempts = Number(loadJson(source.attemptsKey, 0)) + 1;
