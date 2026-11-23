@@ -7,6 +7,7 @@ async function visible(locator) {
 export async function closeLibraryFilters(page) {
   const sheet = page.getByRole('dialog', { name: 'Library filters' });
   if (await visible(sheet)) await sheet.getByRole('button', { name: 'Done', exact: true }).click();
+  await sheet.waitFor({ state: 'hidden' }).catch(() => {});
 }
 
 export async function showLibraryFilters(page) {

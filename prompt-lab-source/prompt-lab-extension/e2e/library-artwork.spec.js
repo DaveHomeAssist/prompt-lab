@@ -1,4 +1,4 @@
-import { libraryViewButton } from '../../prompt-lab-web/tests/app/library-toolbar.js';
+import { closeLibraryFilters, libraryViewButton } from '../../prompt-lab-web/tests/app/library-toolbar.js';
 import { switchTheme } from '../../prompt-lab-web/tests/app/theme-toggle.js';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -34,6 +34,7 @@ for (const [width, height] of [[375, 812], [844, 390], [1440, 900], [3840, 1080]
       await expect(page.locator('.pl-app-shell')).toHaveAttribute('data-theme', theme);
       for (const view of ['List view', 'Tile view', 'Compact view', 'Gallery view']) {
         await (await libraryViewButton(page, view)).click();
+        await closeLibraryFilters(page);
         const trigger = page.getByRole('button', { name: `Change artwork for ${entry.title}` });
         await trigger.focus(); await page.keyboard.press('Enter');
         const picker = page.getByRole('dialog', { name: `Artwork for ${entry.title}` });
@@ -56,6 +57,7 @@ for (const [width, height] of [[375, 812], [844, 390], [1440, 900], [3840, 1080]
       await picker.getByRole('button', { name: 'Clear artwork', exact: true }).click();
       await picker.getByRole('button', { name: 'Apply', exact: true }).click();
       await (await libraryViewButton(page, 'Gallery view')).click();
+      await closeLibraryFilters(page);
       await page.getByRole('button', { name: `Add image for ${entry.title}` }).click();
       await expect(picker).toBeVisible();
       await page.screenshot({ path: test.info().outputPath(`artwork-${width}-${theme}.png`) });

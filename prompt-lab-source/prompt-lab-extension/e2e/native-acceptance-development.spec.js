@@ -58,8 +58,17 @@ for (const width of [400, 480, 1180]) test(`native scenario browser development 
       fill: (selector, text) => page.locator(selector).fill(text),
       click: async (selector, using) => {
         const locator = page.locator(using === 'xpath' ? `xpath=${selector}` : selector);
+        const inPhoneFilters = /aria-label="(Sort prompts|Filter by status)"/.test(selector);
+        if (inPhoneFilters && !(await locator.first().isVisible().catch(() => false))) {
+          const filters = page.getByRole('button', { name: 'Filters', exact: true });
+          if (await filters.isVisible().catch(() => false)) await filters.click();
+        }
         if (selector.includes(' option[')) await locator.locator('..').selectOption(await locator.getAttribute('value'));
         else await locator.click();
+        if (inPhoneFilters && selector.includes(' option[')) {
+          const done = page.getByRole('dialog', { name: 'Library filters' }).getByRole('button', { name: 'Done', exact: true });
+          if (await done.isVisible().catch(() => false)) await done.click();
+        }
       },
       uploadJson: (selector, data) => page.locator(selector).setInputFiles({ name: 'native-workspace.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(data)) }),
       screenshot: name => page.screenshot({ path: testInfo.outputPath(`${name}.png`) }),

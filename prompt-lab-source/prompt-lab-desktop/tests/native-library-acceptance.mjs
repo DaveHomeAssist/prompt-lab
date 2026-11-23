@@ -5,13 +5,22 @@ import assert from 'node:assert/strict';
 const ids = ['native-library-alpha', 'native-library-hidden', 'native-library-beta'];
 const collection = 'Native acceptance collection';
 
-// Phones (<=520 px) fold the theme toggle into the header's More menu.
+// Theme lives in More. Skip the click when the shell is already in that mode,
+// because the menu only offers the other one.
 async function switchTheme({ execute, click }, mode) {
+  const current = await execute('return document.querySelector(".pl-app-shell")?.getAttribute("data-theme");');
+  if (current === mode) return;
   const label = `Switch to ${mode} mode`;
   const visible = await execute('const b = document.querySelector(`[aria-label="${arguments[0]}"]`); return Boolean(b && b.getClientRects().length);', [label]);
   if (visible) return click(`[aria-label="${label}"]`);
   await click('button[aria-label="More actions"]');
-  return click(`//div[@id="pl-header-more-panel"]//button[normalize-space()="${mode === 'dark' ? 'Dark' : 'Light'} mode"]`, 'xpath');
+  await click(`//div[@id="pl-header-more-panel"]//button[normalize-space()="${mode === 'dark' ? 'Dark' : 'Light'} mode"]`, 'xpath');
+}
+
+// Phone Library keeps sort and status inside the Filters sheet.
+async function ensureLibrarySelects({ execute, click }) {
+  const mounted = await execute('return Boolean(document.querySelector(`[aria-label="Sort prompts"]`));');
+  if (!mounted) await click('button[aria-controls="library-filters-sheet"]');
 }
 
 export async function checkLibraryPersisted({ readLibrary, execute, click, fill, waitFor, screenshot, recordDiagnostic }, expected) {
@@ -42,6 +51,7 @@ export async function checkLibraryPersisted({ readLibrary, execute, click, fill,
       classes: [...button.classList],
     };`, [theme]);
   await switchTheme({ execute, click }, 'light');
+  await ensureLibrarySelects({ execute, click });
   assert.equal(await execute('return getComputedStyle(document.querySelector(`[aria-label="Sort prompts"]`)).colorScheme;'), 'light');
   assert.equal(await execute('return getComputedStyle(document.querySelector(`button[aria-label="Settings"]`)).appearance;'), 'none');
   assert.equal(await execute('return getComputedStyle(document.querySelector(`button[aria-label="Settings"]`)).getPropertyValue("-webkit-appearance");'), 'none');
