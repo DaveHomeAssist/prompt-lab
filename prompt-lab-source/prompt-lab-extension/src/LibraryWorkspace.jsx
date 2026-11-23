@@ -380,6 +380,7 @@ export default function LibraryWorkspace({
   // inspector can't show one prompt's fields under another prompt's title.
   const pendingDetailsRef = useRef(new Map());
   const artworkSaveChain = useRef(Promise.resolve());
+  const artworkRevision = useRef(0);
   const expectedDetails = useMemo(() => detailsForEntry(selected), [selected]);
   const detailsDraft = (selected && pendingDetailsRef.current.get(selected.id)) || expectedDetails;
   const detailsDirty = selected ? JSON.stringify(detailsDraft) !== JSON.stringify(expectedDetails) : false;
@@ -443,15 +444,19 @@ export default function LibraryWorkspace({
     }}
   />;
   const commitCardArtwork = async (id, artwork) => {
+    const revisionAtStart = artworkRevision.current;
     if (smartView === 'trash' || !lib.library.some(entry => entry.id === id)) return false;
     const nextArtwork = safeArtwork(artwork);
     const saved = await lib.saveEntryDetails(id, entry => ({
       ...entry, metadata: { ...entry.metadata, artwork: nextArtwork }, updatedAt: new Date().toISOString(),
     }));
     if (saved !== true) return false;
-    // Keep every other inspector edit. Only the stored artwork moves forward.
+    // Keep every other inspector edit. Rebase artwork only when the inspector
+    // has not picked a newer icon or image while this write was in flight.
     const pending = pendingDetailsRef.current.get(id);
-    if (pending) pendingDetailsRef.current.set(id, { ...pending, artwork: nextArtwork });
+    if (pending && artworkRevision.current === revisionAtStart) {
+      pendingDetailsRef.current.set(id, { ...pending, artwork: nextArtwork });
+    }
     setDetailsRevision(revision => revision + 1);
     recordArtwork(nextArtwork);
     setAnnouncement('Prompt artwork saved.');
@@ -463,6 +468,7 @@ export default function LibraryWorkspace({
     return run;
   };
   const changeInspectorArtwork = (artwork, meta) => {
+    artworkRevision.current += 1;
     const currentDetails = (selected && pendingDetailsRef.current.get(selected.id)) || detailsDraft;
     const previousEmoji = safeArtwork(currentDetails.artwork).emoji || '';
     editDetails(current => ({ ...current, artwork }));

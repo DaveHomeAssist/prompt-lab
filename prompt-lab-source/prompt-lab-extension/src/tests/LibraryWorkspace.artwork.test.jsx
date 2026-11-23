@@ -92,4 +92,23 @@ describe('card artwork persistence', () => {
     expect(screen.getByTestId('library')).toHaveTextContent('👩🏽‍💻');
     expect(screen.getByTestId('library')).toHaveTextContent('Preserve me');
   });
+  it('keeps a newer inspector icon when an emoji save finishes later', async () => {
+    render(<Harness />);
+    fireEvent.click(screen.getByRole('button', { name: 'Inspect Handoff' }));
+    fireEvent.click(screen.getByText('Prompt artwork', { selector: 'summary' }));
+    let resolve;
+    save.mockImplementationOnce(() => new Promise(done => { resolve = done; }));
+    fireEvent.change(screen.getByLabelText('Prompt artwork emoji'), { target: { value: '🧪' } });
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole('button', { name: 'Prompt artwork: Clock', exact: true }));
+    resolve(true);
+    await waitFor(() => expect(screen.getByTestId('library')).toHaveTextContent('🧪'));
+    const clock = screen.getByRole('button', { name: 'Prompt artwork: Clock', exact: true });
+    expect(clock).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByLabelText('Prompt artwork emoji')).toHaveValue('');
+    fireEvent.click(screen.getByRole('button', { name: 'Save details', exact: true }));
+    await waitFor(() => expect(screen.getByTestId('library')).toHaveTextContent('Clock'));
+    expect(screen.getByTestId('library')).not.toHaveTextContent('🧪');
+    expect(screen.getByTestId('library')).toHaveTextContent('Preserve me');
+  });
 });
