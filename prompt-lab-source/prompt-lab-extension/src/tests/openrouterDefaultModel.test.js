@@ -153,6 +153,7 @@ describe('extension background worker', () => {
     const response = await send({ type: 'GET_PROVIDER_SETTINGS' });
 
     expect(response.providers).toContainEqual({ provider: 'openrouter', model: NEW_DEFAULT });
+    expect(response.selected).toEqual({ provider: 'openrouter', model: NEW_DEFAULT });
   });
 
   it('sends the current default for a saved retired default', async () => {

@@ -128,6 +128,13 @@ describe('eval-davellm', () => {
     assert.equal(classifyReply(reply('', { reason: 'tool_call_only' })).outcome, 'tool_call_only');
     const recovered = classifyReply(reply('{"enhanced":"done","variants":["a', { done_reason: 'length' }));
     assert.deepEqual([recovered.outcome, recovered.enhanced, recovered.truncated], ['parsed', 'done', true]);
+    const partial = classifyReply(reply(
+      '{"schema_version":2,"primary_id":"expanded","enhanced":"# handle-intake includes concise',
+      { done_reason: 'length' },
+    ));
+    assert.equal(partial.outcome, 'truncated');
+    assert.equal(partial.partial, true);
+    assert.notEqual(partial.outcome, 'parsed');
   });
 
   it('selects cases by limit or id and normalizes them like the app', () => {

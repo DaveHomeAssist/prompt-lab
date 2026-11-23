@@ -98,6 +98,14 @@ and `KV_REST_API_READ_ONLY_TOKEN`.
 These are throttles and feature flags, not credentials, but they live in the
 same place and changing them changes production behaviour.
 
+`HOSTED_MAX_TOKENS` limits output tokens on the shared hosted key only. When it
+is unset, that cap is 8,192 tokens, and it never exceeds the model's published
+output ceiling. A positive value overrides 8,192 and is still bounded by that
+ceiling. A request that carries the caller's own Anthropic key is not held to
+8,192; it may use the model's full output budget. Ollama does not go through
+this proxy. A shared-key reply that stops at the cap is one request; Continue
+sends another request under the same cap.
+
 ### Owner access
 
 | Name | Purpose |

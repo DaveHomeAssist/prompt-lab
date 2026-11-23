@@ -11,8 +11,12 @@ before inference rather than silently using another model.
 
 Keep the current shared-key cycle budget, daily allocation, request ceilings,
 input/output limits, timeouts, cancellation, owner policy and conservative
-reservation/settlement. No higher budget, provider expansion, account sync or
-new dependency. Pricing remains in the existing server budget table. Selection
+reservation/settlement. The shared-key output default is 8,192 tokens when
+`HOSTED_MAX_TOKENS` is unset, still bounded by the model ceiling; setting that
+variable overrides 8,192 without exceeding the ceiling. A caller's own key and
+Ollama are not held to the 8,192 default. No higher budget, provider expansion,
+account sync or new dependency. Pricing remains in the existing server budget
+table. Selection
 uses the existing local provider settings and does not alter saved prompts.
 
 Support the newer models' sampling restrictions. Record the upstream stream's

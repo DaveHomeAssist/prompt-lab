@@ -19,6 +19,7 @@ import {
   toGeminiContents,
 } from './providerRegistry.js';
 import { normalizeError, authError } from './errorTaxonomy.js';
+import { isOutputTruncated } from '../../../shared/outputLimits.js';
 
 export { DEFAULT_PROVIDER, normalizeProvider, getProvider, allProviders, providerHasCapability } from './providerRegistry.js';
 export { AppError, normalizeError, isRetryable, getUserMessage } from './errorTaxonomy.js';
@@ -79,6 +80,7 @@ async function readTextStream(stream, { onChunk, parser, signal }) {
   let usage = null;
   let completed = false;
   let model = null;
+  let stopReason = null;
 
   const mergeUsage = (next) => {
     if (!next) return;
@@ -108,6 +110,7 @@ async function readTextStream(stream, { onChunk, parser, signal }) {
     result.chunks.forEach(emitText);
     mergeUsage(result.usage);
     if (result.model) model = result.model;
+    if (result.stopReason) stopReason = result.stopReason;
     completed ||= result.done === true;
     if (result.error) throw result.error;
   };
@@ -126,7 +129,7 @@ async function readTextStream(stream, { onChunk, parser, signal }) {
     if (buffer) consume(parser(buffer, true));
     checkAbort(signal);
     if (!completed) throw new Error('Provider stream terminated before its completion event.');
-    return { text: fullText, usage, model };
+    return { text: fullText, usage, model, stopReason };
   } catch (error) {
     error.partialText = fullText;
     error.usage = usage;
@@ -174,6 +177,9 @@ async function executeProviderStream(descriptor, payload, settings, fetchImpl, o
     model: streamed.model || response.headers?.get?.('X-Hosted-Model') || resolvedModel,
     provider: descriptor.id,
     ...(streamed.usage ? { usage: streamed.usage } : {}),
+    ...(isOutputTruncated(descriptor.id, streamed.stopReason)
+      ? { truncated: true, stopReason: streamed.stopReason }
+      : {}),
   };
 }
 

@@ -210,8 +210,10 @@ billing state cannot grant this exemption. It works while billing is disabled.
 The service-wide shared-key daily budget, the cycle dollar ceiling (owner spend
 is metered but skips the daily pace and per-IP spend cap), persistent usage
 store, input/output ceilings, provider limits, and feature flags still apply to
-owners. Missing,
-expired, forged, or unverifiable sessions retain the ordinary limits.
+owners. The shared-key output ceiling defaults to 8,192 tokens when
+`HOSTED_MAX_TOKENS` is unset, stays inside the model ceiling, and yields to an
+explicit `HOSTED_MAX_TOKENS`. A caller's own key may use the model's full output
+budget. Missing, expired, forged, or unverifiable sessions retain the ordinary limits.
 
 Provider-specific request behavior is routed through shared provider abstraction modules rather than being inlined in the app surface.
 
