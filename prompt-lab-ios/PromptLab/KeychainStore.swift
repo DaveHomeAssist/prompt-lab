@@ -8,12 +8,15 @@ protocol APIKeyStoring {
 }
 
 struct KeychainStore: APIKeyStoring {
+    static let defaultService = "com.davehomeassist.promptlab"
+    static let defaultAccount = "anthropic-api-key"
+
     private let service: String
     private let account: String
 
     init(
-        service: String = "com.davehomeassist.promptlab",
-        account: String = "anthropic-api-key"
+        service: String = KeychainStore.defaultService,
+        account: String = KeychainStore.defaultAccount
     ) {
         self.service = service
         self.account = account

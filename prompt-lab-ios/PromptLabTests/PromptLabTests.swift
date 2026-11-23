@@ -432,6 +432,15 @@ final class PromptLabTests: XCTestCase {
         XCTAssertEqual(prompts.first?.tags, records.first?.response?.tags)
     }
 
+    func testAppIdentityAndAnthropicKeychainPath() {
+        XCTAssertEqual(Bundle.main.bundleIdentifier, "com.davehomeassist.promptlab")
+        let info = Bundle.main.infoDictionary
+        XCTAssertEqual(info?["CFBundleShortVersionString"] as? String, "1.9.0")
+        XCTAssertEqual(info?["CFBundleVersion"] as? String, "1.9.0")
+        XCTAssertEqual(KeychainStore.defaultService, "com.davehomeassist.promptlab")
+        XCTAssertEqual(KeychainStore.defaultAccount, "anthropic-api-key")
+    }
+
     func testKeychainStoreRetrieveUpdateDelete() throws {
         let service = "com.davehomeassist.promptlab.tests.\(UUID().uuidString)"
         let keychain = KeychainStore(service: service, account: "anthropic")
