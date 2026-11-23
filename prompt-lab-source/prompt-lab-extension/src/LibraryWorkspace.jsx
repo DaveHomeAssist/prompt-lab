@@ -21,6 +21,7 @@ import PanelResizer, { clampWidth } from './PanelResizer.jsx';
 import { INSPECTOR_WIDTH, LIBRARY_DRAWER_WIDTH, inspectorMaxWidth } from './lib/sidePane.js';
 import { APP_VERSION, DEFAULT_GOLDEN_THRESHOLD } from './constants.js';
 import { getVersionCount } from './lib/promptSchema.js';
+import { suggestProjectProfile } from './lib/projectProfiles.js';
 
 const SMART_VIEWS = Object.freeze([
   { id: 'all', icon: 'FolderOpen', label: 'All prompts' },
@@ -36,6 +37,7 @@ const SMART_VIEWS = Object.freeze([
 
 // Filter value for prompts with no lifecycle status (tracked by Incomplete).
 const STATUS_NOT_SET = '__not_set__';
+const PROFILE_NONE = '__none__';
 
 const INSPECTOR_TABS = Object.freeze([
   ['details', 'Details'],
@@ -153,7 +155,7 @@ function VersionComparison({ entry, onRestore }) {
 
 const GOLDEN_RESPONSE_HINT = 'Pin a golden response from a Create run, or promote one from Evaluate → Compare.';
 
-function InspectorContent({ m, selected, smartView, inspectorTab, detailsDraft, setDetailsDraft, detailsDirty, saveDetails, discardDetails, lib, canUseCollections, openBilling, copy, testCasesByPrompt, testCaseControls }) {
+function InspectorContent({ m, selected, smartView, inspectorTab, detailsDraft, setDetailsDraft, detailsDirty, saveDetails, discardDetails, lib, canUseCollections, openBilling, copy, testCasesByPrompt, testCaseControls, profileSuggestion, onUseProfile }) {
   const content = entryText(selected);
   const variableNames = uniqueStrings([
     ...extractVars(selected.original || ''), ...extractVars(selected.enhanced || ''),
@@ -173,6 +175,12 @@ function InspectorContent({ m, selected, smartView, inspectorTab, detailsDraft, 
       </div>
       <label>Compatibility<input value={detailsDraft.compatibility} onChange={(event) => setDetailsDraft((current) => ({ ...current, compatibility: event.target.value }))} placeholder="Claude, GPT, Gemini" disabled={smartView === 'trash'} /></label>
       <label>Tags<input value={detailsDraft.tags} onChange={(event) => setDetailsDraft((current) => ({ ...current, tags: event.target.value }))} placeholder="research, template" disabled={smartView === 'trash'} /></label>
+      {profileSuggestion && smartView !== 'trash' && (
+        <p className="pl-profile-suggestion">
+          <span>Suggested profile: {profileSuggestion.name}{profileSuggestion.example ? ' (example)' : ''}</span>
+          <button type="button" onClick={() => onUseProfile?.(profileSuggestion.id)}>Use {profileSuggestion.name}</button>
+        </p>
+      )}
       <label>Collection<select value={detailsDraft.collection} onChange={(event) => setDetailsDraft((current) => ({ ...current, collection: event.target.value }))} disabled={smartView === 'trash' || !canUseCollections}><option value="">None</option>{lib.collections.map((item) => <option key={item}>{item}</option>)}</select></label>
       {!canUseCollections && smartView !== 'trash' && <button type="button" className="pl-inline-upgrade" onClick={() => openBilling?.('collections')}>Unlock collections</button>}
       {smartView !== 'trash' && detailsDirty && <button type="button" className="pl-secondary-button" onClick={discardDetails}>Discard changes</button>}
@@ -246,6 +254,8 @@ export default function LibraryWorkspace({
   // TestCasesPanel needs (everything except `m`, `entry` and `cases`). Without
   // them the Tests tab stays read-only.
   testCasesByPrompt, testCaseControls,
+  projectProfiles = [],
+  onUseProfile,
 }) {
   const [localSmartView, setLocalSmartView] = useState(() => lib.activeCollection ? 'collection' : lib.activeTag ? 'tag' : 'all');
   const smartView = lib.smartView ?? localSmartView;
@@ -312,6 +322,7 @@ export default function LibraryWorkspace({
   const [checkedIds, setCheckedIds] = useState([]);
   const [searchDraft, setSearchDraft] = useState(lib.search || '');
   const [localStatusFilter, setLocalStatusFilter] = useState('');
+  const [profileFilter, setProfileFilter] = useState('');
   const statusFilter = lib.statusFilter ?? localStatusFilter;
   const setStatusFilter = lib.setStatusFilter || setLocalStatusFilter;
   const [bulkTag, setBulkTag] = useState('');
@@ -359,6 +370,8 @@ export default function LibraryWorkspace({
     }
   }, [smartView, lib.activeCollection, lib.activeTag, lib.collections, lib.allLibTags]);
   const selected = useMemo(() => (smartView === 'trash' ? lib.trash : lib.library).find((entry) => entry.id === selectedId) || null, [lib.library, lib.trash, selectedId, smartView]);
+  const matchedProfile = selected ? suggestProjectProfile(projectProfiles, { tags: selected.tags, collection: selected.collection }) : null;
+  const libraryProfileSuggestion = matchedProfile && matchedProfile.id !== selected?.profileId ? matchedProfile : null;
   // Unsaved Details edits are kept per prompt for this session, so switching
   // prompts or views, closing the inspector, or a background change to the
   // entry (Favorite, use count) never drops what the user typed. Save details
@@ -454,19 +467,21 @@ export default function LibraryWorkspace({
     source = source.filter((entry) => matchesLibrarySearch(entry, searchDraft));
     if (statusFilter === STATUS_NOT_SET) source = source.filter((entry) => !entry.metadata?.status?.trim());
     else if (statusFilter) source = source.filter((entry) => entry.metadata?.status === statusFilter);
+    if (profileFilter === PROFILE_NONE) source = source.filter((entry) => !entry.profileId);
+    else if (profileFilter) source = source.filter((entry) => entry.profileId === profileFilter);
     source = filterSmartView(source, smartView);
     if (smartView === 'collection') source = source.filter((entry) => folderMatches(entry.collection));
     if (smartView === 'tag') source = source.filter((entry) => (entry.tags || []).includes(lib.activeTag));
     if (smartView === 'trash') return source.sort((left, right) => timestamp(right.deletedAt) - timestamp(left.deletedAt));
     return orderSmartView(source, smartView, lib.sortBy);
-  }, [lib.activeCollection, lib.activeTag, lib.library, lib.sortBy, lib.trash, searchDraft, smartView, statusFilter, folderRecords]);
+  }, [lib.activeCollection, lib.activeTag, lib.library, lib.sortBy, lib.trash, searchDraft, smartView, statusFilter, profileFilter, folderRecords]);
 
   const checkedEntries = useMemo(() => {
     const ids = new Set(checkedIds);
     return entries.filter((entry) => ids.has(entry.id));
   }, [checkedIds, entries]);
   const allVisibleChecked = entries.length > 0 && entries.every((entry) => checkedIds.includes(entry.id));
-  const hasFilters = smartView !== 'all' || Boolean(searchDraft.trim() || statusFilter || lib.activeCollection || lib.activeTag);
+  const hasFilters = smartView !== 'all' || Boolean(searchDraft.trim() || statusFilter || profileFilter || lib.activeCollection || lib.activeTag);
 
   const closeInspector = () => setSelectedId(null);
   const chooseView = (nextView) => {
@@ -481,7 +496,7 @@ export default function LibraryWorkspace({
   // valid and is kept. A Recently Deleted selection does not exist in All
   // prompts and is dropped.
   const clearFilters = () => {
-    setSmartView('all'); setSearchDraft(''); setStatusFilter(''); lib.setSearch('');
+    setSmartView('all'); setSearchDraft(''); setStatusFilter(''); setProfileFilter(''); lib.setSearch('');
     lib.setActiveTag(null); lib.setActiveCollection(null);
     if (smartView === 'trash') setCheckedIds([]);
   };
@@ -635,6 +650,11 @@ export default function LibraryWorkspace({
         <button type="button" className="pl-secondary-button" aria-label={drawerOpen ? 'Hide Library drawer' : 'Show Library drawer'} aria-expanded={drawerOpen} aria-controls="library-drawer" onClick={() => setDrawerOpen(value => !value)}><Ic n="FolderOpen" size={14} /> Views</button>
         <label className="pl-library-search"><span className="sr-only">Search prompts</span><Ic n="Search" size={14} /><input data-testid="library-search" value={searchDraft} onChange={(event) => { setSearchDraft(event.target.value); lib.setSearch(event.target.value); }} placeholder="Search title, text, tags, metadata…" /></label>
         <select aria-label="Filter by status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="">All statuses</option><option value="draft">Draft</option><option value="active">Active</option><option value="deprecated">Deprecated</option><option value={STATUS_NOT_SET}>Not set</option></select>
+        <select aria-label="Filter by project profile" value={profileFilter} onChange={(event) => setProfileFilter(event.target.value)}>
+          <option value="">All profiles</option>
+          <option value={PROFILE_NONE}>No profile</option>
+          {projectProfiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.example ? `${profile.name} (example)` : profile.name}</option>)}
+        </select>
         <select aria-label="Sort prompts" value={lib.sortBy} onChange={(event) => lib.setSortBy(event.target.value)}><option value="newest">Newest</option><option value="oldest">Oldest</option><option value="most-used">Most used</option><option value="a-z">A–Z</option><option value="z-a">Z–A</option><option value="group">Collection</option><option value="manual">Manual</option></select>
         <div className="pl-layout-toggle" aria-label="Library layout"><button type="button" aria-pressed={layout === 'list'} onClick={() => setLayout('list')} aria-label="List view"><Ic n="List" size={14} /> List</button><button type="button" aria-pressed={layout === 'tiles'} onClick={() => setLayout('tiles')} aria-label="Tile view"><Ic n="LayoutGrid" size={14} /> Cards</button><button type="button" aria-pressed={layout === 'compact'} onClick={() => setLayout('compact')} aria-label="Compact view"><Ic n="List" size={12} /> Compact</button><button type="button" aria-pressed={layout === 'gallery'} onClick={() => setLayout('gallery')} aria-label="Gallery view"><Ic n="Eye" size={14} /> Gallery</button></div>
         <button type="button" className="pl-secondary-button" onClick={canExportLibrary ? lib.exportLib : () => openBilling?.('export')}><Ic n="Download" size={13} /> {canExportLibrary ? 'Export' : 'Export Pro'}</button>
@@ -653,6 +673,7 @@ export default function LibraryWorkspace({
         {smartView !== 'all' && smartView !== 'collection' && smartView !== 'tag' && <FilterChip label={SMART_VIEWS.find((view) => view.id === smartView)?.label || 'Recently Deleted'} onRemove={() => chooseView('all')} />}
         {searchDraft.trim() && <FilterChip label={`Search: ${searchDraft.trim()}`} onRemove={() => { setSearchDraft(''); lib.setSearch(''); }} />}
         {statusFilter && <FilterChip label={`Status: ${statusFilter === STATUS_NOT_SET ? 'not set' : statusFilter}`} onRemove={() => setStatusFilter('')} />}
+        {profileFilter && <FilterChip label={`Profile: ${profileFilter === PROFILE_NONE ? 'none' : (projectProfiles.find((profile) => profile.id === profileFilter)?.name || 'Removed profile')}`} onRemove={() => setProfileFilter('')} />}
         {lib.activeCollection && <FilterChip label={`Collection: ${lib.activeCollection}`} onRemove={() => { lib.setActiveCollection(null); setSmartView('all'); }} />}
         {lib.activeTag && <FilterChip label={`Tag: ${lib.activeTag}`} onRemove={() => { lib.setActiveTag(null); setSmartView('all'); }} />}
         <button type="button" className="pl-library-clear-filters" onClick={clearFilters}>Clear all</button>
@@ -786,7 +807,7 @@ export default function LibraryWorkspace({
             <h3>Follow-up prompts</h3>
             {lib.library.filter(child => child.metadata?.followUpOrigin?.sourcePromptId === selected.id).map(child => <button key={child.id} type="button" className="pl-secondary-button" onClick={() => selectEntry(child)}>{child.title}</button>)}
           </section>}
-          <InspectorContent m={m} selected={selected} smartView={smartView} inspectorTab={inspectorTab} detailsDraft={detailsDraft} setDetailsDraft={editDetails} detailsDirty={detailsDirty} saveDetails={saveDetails} discardDetails={discardDetails} lib={lib} canUseCollections={canUseCollections} openBilling={openBilling} copy={copy} testCasesByPrompt={testCasesByPrompt} testCaseControls={testCaseControls} />
+          <InspectorContent m={m} selected={selected} smartView={smartView} inspectorTab={inspectorTab} detailsDraft={detailsDraft} setDetailsDraft={editDetails} detailsDirty={detailsDirty} saveDetails={saveDetails} discardDetails={discardDetails} lib={lib} canUseCollections={canUseCollections} openBilling={openBilling} copy={copy} testCasesByPrompt={testCasesByPrompt} testCaseControls={testCaseControls} profileSuggestion={libraryProfileSuggestion} onUseProfile={onUseProfile} />
         </div>
         <footer>
           {smartView === 'trash' ? <><button type="button" className="pl-primary-button" onClick={() => { lib.restoreDeleted(selected.id); setSelectedId(null); }}>Restore prompt</button><button type="button" className="pl-secondary-button" onClick={() => { lib.permanentlyDelete(selected.id); setSelectedId(null); }}>Delete forever</button></> : <>

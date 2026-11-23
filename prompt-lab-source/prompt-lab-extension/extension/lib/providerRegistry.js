@@ -17,6 +17,23 @@ export const DEFAULTS = Object.freeze({
 // string exactly as older builds saved it.
 export const LEGACY_OPENROUTER_MODEL = 'anthropic/claude-sonnet-4-20250514';
 
+const MODEL_FIELDS = Object.freeze({
+  anthropic: 'anthropicModel',
+  openai: 'openaiModel',
+  gemini: 'geminiModel',
+  openrouter: 'openrouterModel',
+  ollama: 'ollamaModel',
+});
+
+/** The provider the user selected, not the first configured key in registry order. */
+export function activeProviderRoute(settings = {}) {
+  const requested = typeof settings.provider === 'string' ? settings.provider : '';
+  const provider = VALID_PROVIDERS.includes(requested) ? requested : DEFAULT_PROVIDER;
+  const field = MODEL_FIELDS[provider] || 'anthropicModel';
+  const configured = typeof settings[field] === 'string' ? settings[field].trim() : '';
+  return { provider, model: configured || DEFAULTS[field] };
+}
+
 export function migrateLegacyDefaults(settings) {
   if (settings?.openrouterModel !== LEGACY_OPENROUTER_MODEL) return settings;
   return { ...settings, openrouterModel: DEFAULTS.openrouterModel };

@@ -11,6 +11,8 @@ import { captureContext, openSettings } from './lib/platform.js';
 import { buildCaptureInsertion } from './lib/captureContext.js';
 import { T, DEFAULT_GOLDEN_THRESHOLD } from './constants';
 import useLibrary from './hooks/usePromptLibrary.js';
+import useProjectProfiles from './hooks/useProjectProfiles.js';
+import { suggestProjectProfile } from './lib/projectProfiles.js';
 import useUiState from './hooks/useUiState.js';
 import useNavigation from './hooks/useNavigation.js';
 import useEditorState from './hooks/useEditorState.js';
@@ -268,8 +270,9 @@ export default function App({
   };
 
   // ── Library hook ──
+  const projectProfiles = useProjectProfiles();
   const lib = useLibrary(notify);
-  const abTest = useABTest({ notify });
+  const abTest = useABTest({ notify, profileSendRef: projectProfiles.sendRef });
 
   // ── Editor controllers (state + execution + persistence) ──
   const editorState = useEditorState();
@@ -285,8 +288,9 @@ export default function App({
     },
     lib,
     editor: editorState,
+    profileSendRef: projectProfiles.sendRef,
   });
-  const executionFlow = useExecutionFlow({ ui, lib, editor: editorState, persistence: persistenceFlow });
+  const executionFlow = useExecutionFlow({ ui, lib, editor: editorState, persistence: persistenceFlow, profileSendRef: projectProfiles.sendRef });
   const [followUpSourceRunId, setFollowUpSourceRunId] = useState('');
   const [savedFollowUps, setSavedFollowUps] = useState({});
   const savedFollowUpsRef = useRef(new Map());
@@ -303,6 +307,7 @@ export default function App({
   const chat = usePromptChat({
     prompt: editorState.raw, ownerId: persistenceFlow.editingId, revision: resultContextRevision,
     visible: writeScratchOpen && writeSideTab === 'chat' && tab === 'editor' && primaryView === 'create' && workspaceView === 'editor',
+    profileSendRef: projectProfiles.sendRef,
   });
   const ed = {
     ...editorState,
@@ -586,6 +591,10 @@ export default function App({
     ? 'Cmd'
     : 'Ctrl';
   const currentEntry = editingId ? lib.library.find((entry) => entry.id === editingId) || null : null;
+  const profileSuggestion = suggestProjectProfile(projectProfiles.profiles, {
+    tags: currentEntry?.tags || [],
+    collection: currentEntry?.collection || saveCollection || '',
+  });
   const primarySaveLabel = getPrimarySaveLabel(editingId);
   const versionHistoryEntry = lib.expandedVersionId
     ? lib.library.find((entry) => entry.id === lib.expandedVersionId) || null
@@ -769,7 +778,9 @@ export default function App({
           break;
         case 'cmdPalette': setShowCmdPalette(p => !p); setCmdQuery(''); break;
         case 'shortcuts': setShowShortcuts(p => !p); break;
+        case 'projectProfiles': projectProfiles.togglePicker(); break;
         case 'escape':
+          projectProfiles.closePicker();
           setShowCmdPalette(false);
           setShowShortcuts(false);
           setShowSettings(false);
@@ -1224,6 +1235,7 @@ export default function App({
     openSettings: () => { setShowSettings(true); closePalette(); },
     openOptions: () => { openOptions(); closePalette(); },
     showShortcuts: () => { setShowShortcuts(true); closePalette(); },
+    openProfiles: () => { projectProfiles.togglePicker(); closePalette(); },
     manageAccount: clerkUser && clerkAccountActions?.manageAccount ? () => { closePalette(); clerkAccountActions.manageAccount(); } : undefined,
     signOut: clerkUser && clerkAccountActions?.signOut ? () => { closePalette(); clerkAccountActions.signOut(); } : undefined,
   });
@@ -1280,6 +1292,8 @@ export default function App({
         settingsButtonRef={settingsButtonRef}
         renderMobileNavigation={false}
         lockedRunsViews={{ compare: !canUseAbTesting }}
+        projectProfiles={projectProfiles}
+        profileSuggestion={profileSuggestion}
       />
 
       <PendingWritesNotice m={m} />
@@ -1538,6 +1552,8 @@ export default function App({
               openBilling={openBilling}
               compact={compact}
               testCasesByPrompt={testCasesByPrompt}
+              projectProfiles={projectProfiles.profiles}
+              onUseProfile={projectProfiles.select}
               testCaseControls={{
                 evalRuns, runningCases,
                 caseFormPromptId, editingCaseId,
@@ -1582,7 +1598,7 @@ export default function App({
         // panel-locally. Extension and desktop keep the bare wrapper unchanged.
         <div className={contained ? 'pl-tab-panel flex h-full min-h-0 flex-col overflow-hidden' : 'pl-tab-panel'}>
         <ComposerTab m={m} library={lib.library} composerBlocks={composerBlocks} setComposerBlocks={setComposerBlocks}
-          addToComposer={addToComposer} notify={notify} copy={copy} onSendToEditor={sendComposerToEditor} onClear={clearComposer} onUndoClear={undoComposerClear} canUndoClear={Boolean(composerRecovery)} saveChain={saveComposerChain} compact={compact} pageScroll={pageScroll} />
+          addToComposer={addToComposer} notify={notify} copy={copy} onSendToEditor={sendComposerToEditor} onClear={clearComposer} onUndoClear={undoComposerClear} canUndoClear={Boolean(composerRecovery)} saveChain={saveComposerChain} compact={compact} pageScroll={pageScroll} profileSendRef={projectProfiles.sendRef} />
         </div>
       )}
 

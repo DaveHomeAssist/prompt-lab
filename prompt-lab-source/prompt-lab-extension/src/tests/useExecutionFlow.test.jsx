@@ -16,6 +16,7 @@ const {
   isTransientError,
   ngramSimilarity,
   checkTraits,
+  testCaseOutcome,
 } = vi.hoisted(() => ({
   callModel: vi.fn(),
   saveEvalRun: vi.fn(),
@@ -34,6 +35,9 @@ const {
   isTransientError: vi.fn((error) => /429|rate/i.test(error?.message || '')),
   ngramSimilarity: vi.fn(() => 0.82),
   checkTraits: vi.fn(() => ({ passedTraits: [], failedTraits: [], excludedHits: [], verdict: null })),
+  testCaseOutcome: (parsed) => (parsed?.partial === true
+    ? { complete: false, output: parsed.enhanced || '', notes: 'partial', traitResults: { passedTraits: [], failedTraits: [], excludedHits: [], verdict: null } }
+    : { complete: true, output: parsed?.enhanced || '', traitResults: null }),
 }));
 
 const testCasesByPrompt = {};
@@ -60,11 +64,13 @@ vi.mock('../promptUtils', () => ({
   isTransientError,
   ngramSimilarity,
   checkTraits,
+  testCaseOutcome,
 }));
 
 vi.mock('../lib/platform.js', () => ({
   openSettings,
   getConfiguredProviders: vi.fn(async () => [{ provider: 'anthropic', model: 'claude-haiku-5-5' }]),
+  getActiveProviderRoute: undefined,
 }));
 
 vi.mock('../hooks/useEvalRuns.js', () => ({
@@ -758,6 +764,21 @@ describe('useExecutionFlow', () => {
     act(() => result.current.setRaw('A different prompt'));
     await act(async () => send());
     expect(callModel).not.toHaveBeenCalled();
+  });
+
+  it('sizes the output budget for the selected provider, not the first configured key', async () => {
+    localStorage.setItem('pl2-provider-settings', JSON.stringify({
+      provider: 'openai',
+      openaiModel: 'gpt-4o',
+      apiKey: 'sk-ant-present',
+      anthropicModel: 'claude-sonnet-4-6',
+      openaiApiKey: 'sk-openai',
+    }));
+    callModel.mockResolvedValue({ text: 'A longer rewritten prompt with a concrete task and a checkable result.', provider: 'openai', model: 'gpt-4o' });
+    const { result } = renderExecutionFlow({ raw: 'x'.repeat(20000) });
+    await act(async () => { await result.current.enhance(undefined, { modeId: 'expanded' }); });
+    expect(callModel.mock.calls[0][0].max_tokens).toBe(16384);
+    localStorage.removeItem('pl2-provider-settings');
   });
 
   it('aborts old editor work, discards late success, and releases the dispatch guard', async () => {

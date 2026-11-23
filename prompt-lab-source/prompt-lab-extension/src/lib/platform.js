@@ -131,7 +131,7 @@ function extCaptureContext() {
 // Page capture only exists on the extension surface.
 const desktopCaptureContext = () => Promise.resolve(null);
 
-function extAskProviderSettings() {
+function extProviderSettings() {
   return new Promise((resolve, reject) => {
     chrome.runtime.sendMessage(
       { type: 'GET_PROVIDER_SETTINGS' },
@@ -150,7 +150,7 @@ function extAskProviderSettings() {
 }
 
 function extGetConfiguredProviders() {
-  return extAskProviderSettings().then((response) => (
+  return extProviderSettings().then((response) => (
     Array.isArray(response.providers) ? response.providers : []
   ));
 }
@@ -158,11 +158,18 @@ function extGetConfiguredProviders() {
 const ACTIVE_PROVIDER_FALLBACK = Object.freeze({ provider: 'anthropic', model: 'claude-sonnet-4-6' });
 
 function extGetActiveProvider() {
-  return extAskProviderSettings().then((response) => {
+  return extProviderSettings().then((response) => {
     const active = response?.active;
     if (active?.provider && active?.model) return { provider: active.provider, model: active.model };
     const first = Array.isArray(response?.providers) ? response.providers[0] : null;
     return first?.provider && first?.model ? { provider: first.provider, model: first.model } : ACTIVE_PROVIDER_FALLBACK;
+  });
+}
+
+function extGetActiveProviderRoute() {
+  return extProviderSettings().then((response) => {
+    const selected = response?.selected;
+    return selected?.provider && selected?.model ? selected : null;
   });
 }
 
@@ -213,6 +220,12 @@ async function desktopGetConfiguredProviders() {
 async function desktopGetActiveProvider() {
   const { loadSettings } = await getDesktopApi();
   return activeProviderSelection(loadSettings());
+}
+
+async function desktopGetActiveProviderRoute() {
+  const { loadSettings } = await getDesktopApi();
+  const { activeProviderRoute } = await import('./providerRegistry.js');
+  return activeProviderRoute(loadSettings());
 }
 
 const ACTIVE_SETTING_KEYS = ['provider', 'anthropicModel', 'openaiModel', 'geminiModel', 'openrouterModel', 'ollamaModel', 'ollamaBaseUrl'];
@@ -334,6 +347,7 @@ export const saveProviderSettings = IS_EXTENSION ? extSaveProviderSettings : des
 export const testProviderConnection = IS_EXTENSION ? extTestProviderConnection : desktopTestProviderConnection;
 export const getConfiguredProviders = IS_EXTENSION ? extGetConfiguredProviders : desktopGetConfiguredProviders;
 export const getActiveProvider = IS_EXTENSION ? extGetActiveProvider : desktopGetActiveProvider;
+export const getActiveProviderRoute = IS_EXTENSION ? extGetActiveProviderRoute : desktopGetActiveProviderRoute;
 export const captureContext = IS_EXTENSION ? extCaptureContext : desktopCaptureContext;
 export const sessionGet = IS_EXTENSION ? extSessionGet : desktopSessionGet;
 export const sessionSet = IS_EXTENSION ? extSessionSet : desktopSessionSet;

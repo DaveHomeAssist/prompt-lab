@@ -151,6 +151,14 @@ export async function runChain({
       results.push({ index, label, status: 'success', prompt, output });
       prevOutput = output;
     } catch (caught) {
+      if (caught?.name === 'SensitiveChainBlock') {
+        const error = caught.message || 'Chain step blocked: sensitive data detected.';
+        stepRun.error(caught, { name: label });
+        onStepUpdate?.(index, { status: 'blocked', label, error });
+        results.push({ index, label, status: 'blocked', error });
+        parent.error(caught);
+        return { status: 'blocked', error, results, traceId: parent.trace_id };
+      }
       const canceled = signal?.aborted || caught?.name === 'AbortError';
       const error = canceled ? 'Chain canceled.' : (caught?.message || 'Chain step failed.');
       if (canceled) stepRun.cancel({ name: label, reason: error });

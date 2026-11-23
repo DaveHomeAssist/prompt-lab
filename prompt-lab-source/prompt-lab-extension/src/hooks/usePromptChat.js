@@ -2,13 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import { callModel } from '../api.js';
 import { extractTextFromAnthropic } from '../promptUtils.js';
 import { normalizeError } from '../lib/errorTaxonomy.js';
-import { buildChatPayload } from '../lib/promptChat.js';
+import { buildChatPayload, CHAT_MAX_CHARS } from '../lib/promptChat.js';
+import { applyProfilePreamble } from '../lib/projectProfiles.js';
 import { PROVIDER_SETTINGS_CHANGED } from '../lib/providerSettingsEvents.js';
 import { PROVIDER_SETTINGS_KEYS } from '../lib/providerRegistry.js';
 import useSensitivePreflight from './useSensitivePreflight.js';
 
 /** One memory-only conversation per mounted app. Successful turns alone enter later requests. */
-export default function usePromptChat({ prompt = '', ownerId = null, revision = 0, visible = true }) {
+export default function usePromptChat({ prompt = '', ownerId = null, revision = 0, visible = true, profileSendRef }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [includePrompt, setIncludePrompt] = useState(false);
@@ -84,7 +85,15 @@ export default function usePromptChat({ prompt = '', ownerId = null, revision = 
   const send = async () => {
     if (active.current || !visible) return;
     let payload;
-    try { payload = buildChatPayload({ messages, input, prompt, includePrompt }); }
+    try {
+      payload = applyProfilePreamble(
+        buildChatPayload({ messages, input, prompt, includePrompt }),
+        profileSendRef?.current?.profile,
+        { disabled: Boolean(profileSendRef?.current?.disabled) },
+      ).payload;
+      const size = payload.system.length + payload.messages.reduce((sum, message) => sum + message.content.length, 0);
+      if (size > CHAT_MAX_CHARS) throw new Error('This conversation is too long. Shorten your message or prompt context, or start a new chat.');
+    }
     catch (caught) { setError(caught.message); return; }
     const sourceDraft = prompt;
     const execute = async approved => {

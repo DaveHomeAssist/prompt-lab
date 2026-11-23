@@ -8,6 +8,24 @@ import { initRunPersistence } from './lib/runPersistence.js';
 import { scanSensitiveData } from './piiScanner.js';
 import { listRunsByTrace } from './experimentStore.js';
 import { buildGraphDataset } from './runs/buildGraphDataset.js';
+import { applyProfilePreamble } from './lib/projectProfiles.js';
+
+/** The request Chain Lab actually sends, including the active profile preamble. */
+export function chainStepRequest({ prompt, provider, model, profile, disabled = false } = {}) {
+  const payload = applyProfilePreamble({
+    model: model || 'claude-sonnet-4-6',
+    max_tokens: 1000,
+    messages: [{ role: 'user', content: prompt }],
+    ...(provider ? { provider } : {}),
+  }, profile, { disabled: Boolean(disabled) }).payload;
+  return { payload, matches: scanSensitiveData({ payload }).matches || [] };
+}
+
+export function sensitiveChainBlock() {
+  const error = new Error('Chain step blocked: sensitive data detected.');
+  error.name = 'SensitiveChainBlock';
+  return error;
+}
 
 const STEP_BADGE = {
   running: 'bg-orange-500/20 text-orange-300',
@@ -21,7 +39,7 @@ const STEP_BADGE = {
  * Chain Lab — pick a saved chain, feed it input, watch each step stream through
  * the trace layer, and hand the final output back to the editor.
  */
-export default function ChainRunnerPanel({ m, library, notify, copy, onSendToEditor, onClose }) {
+export default function ChainRunnerPanel({ m, library, notify, copy, onSendToEditor, onClose, profileSendRef }) {
   const chains = useMemo(() => library.filter(isChainEntry), [library]);
   const [chainId, setChainId] = useState('');
   const [chainInput, setChainInput] = useState('');
@@ -39,13 +57,15 @@ export default function ChainRunnerPanel({ m, library, notify, copy, onSendToEdi
 
   const selected = chains.find((entry) => entry.id === chainId) || null;
 
+  const profileForSend = () => ({
+    profile: profileSendRef?.current?.profile,
+    disabled: Boolean(profileSendRef?.current?.disabled),
+  });
+
   const execute = async ({ prompt, provider, model, signal }) => {
-    const data = await callModel({
-      model: model || 'claude-sonnet-4-6',
-      max_tokens: 1000,
-      messages: [{ role: 'user', content: prompt }],
-      ...(provider ? { provider } : {}),
-    }, { signal });
+    const request = chainStepRequest({ prompt, provider, model, ...profileForSend() });
+    if (request.matches.length) throw sensitiveChainBlock();
+    const data = await callModel(request.payload, { signal });
     return extractTextFromAnthropic(data);
   };
 
@@ -68,7 +88,7 @@ export default function ChainRunnerPanel({ m, library, notify, copy, onSendToEdi
       resolveEntry: (id) => library.find((entry) => entry.id === id) || null,
       input: chainInput,
       execute,
-      scan: scanSensitiveData,
+      scan: ({ prompt }) => ({ matches: chainStepRequest({ prompt, ...profileForSend() }).matches }),
       signal: controller?.signal,
       onStepUpdate: (index, update) => {
         setSteps((prev) => prev.map((row) => (row.index === index ? { ...row, ...update } : row)));

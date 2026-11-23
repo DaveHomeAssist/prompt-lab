@@ -271,6 +271,37 @@ export function platformError(source, detail) {
   });
 }
 
+export function truncationError(detail) {
+  return new AppError({
+    category: ErrorCategory.PROVIDER,
+    userMessage: 'Response was cut off at the output limit',
+    debugMessage: detail || 'The provider stopped because the output token limit was reached.',
+    retryable: true,
+    code: 'output_truncated',
+    recovery: {
+      suggestions: [
+        'Continue asks the model to finish from the cutoff and stitches the text.',
+        'Retry with a larger limit sends the prompt again with more output room.',
+      ],
+      actions: ['continue', 'retry_larger'],
+    },
+  });
+}
+
+export function parseResponseError(detail) {
+  return new AppError({
+    category: ErrorCategory.VALIDATION,
+    userMessage: 'Parse error — the model response could not be read. The raw text is kept below.',
+    debugMessage: detail || 'Model response was not valid JSON.',
+    retryable: true,
+    code: 'parse_error',
+    recovery: {
+      suggestions: ['Try again. If this keeps happening, shorten the draft or switch model.'],
+      actions: ['retry'],
+    },
+  });
+}
+
 export function unknownError(source, detail) {
   return new AppError({
     category: ErrorCategory.UNKNOWN,
@@ -301,6 +332,13 @@ export function normalizeError(err, source = 'unknown') {
   const rawMessage = err?.message || String(err);
   const msg = rawMessage.toLowerCase();
   const status = err?.status;
+
+  if (err?.code === 'output_truncated' || msg.includes('cut off at the output limit')) {
+    return truncationError(rawMessage);
+  }
+  if (msg.includes('not valid json') || msg.includes('missing an enhanced prompt')) {
+    return parseResponseError(rawMessage);
+  }
 
   // Hosted proxy limits carry an explicit code. Classify them before the
   // message heuristics so they are never reported as a provider rate limit.

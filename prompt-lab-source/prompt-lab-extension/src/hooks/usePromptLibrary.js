@@ -12,6 +12,7 @@ import {
   updatePromptEntry,
 } from '../lib/promptSchema.js';
 import { loadJson, saveJson, removeKey, storageKeys, getAnticipation, setAnticipation } from '../lib/storage.js';
+import { loadProjectProfiles, mergeProfileLists, writeProjectProfiles } from '../lib/projectProfiles.js';
 import { commitLibrarySave } from '../lib/libraryJournal.js';
 import { assertScratchJournalReady, commitScratchSave } from '../lib/scratchJournal.js';
 import { ensureString } from '../lib/utils.js';
@@ -523,6 +524,8 @@ export default function usePromptLibrary(notify) {
     sourceNoteId,
     savedFromDeletedTarget = false,
     copyAsNew = false,
+    profileId,
+    profileName,
   }) => {
     const cleanTitle = ensureString(title).trim() || suggestTitleFromText(enhanced || raw);
     const payload = {
@@ -534,6 +537,7 @@ export default function usePromptLibrary(notify) {
       resultMeta,
       tags: normalizeTagList(tags),
       collection: ensureString(collection),
+      ...(profileId !== undefined ? { profileId: ensureString(profileId), profileName: ensureString(profileName) } : {}),
       ...(metadata && typeof metadata === 'object' ? { metadata } : {}),
       ...(ensureString(kind).trim() ? { kind: ensureString(kind).trim() } : {}),
       ...(ensureString(sourceNoteId).trim() ? { sourceNoteId: ensureString(sourceNoteId).trim() } : {}),
@@ -1120,11 +1124,12 @@ export default function usePromptLibrary(notify) {
 
   const exportLib = async () => {
     const scratch = loadJson('pl2-pads', null);
+    const projectProfiles = loadProjectProfiles();
     const runs = await listEvalRuns({ limit: null });
     // M-4: saved experiment test cases are part of the promised experiments
     // export and must leave with the workspace file.
     const testCases = await listTestCases({ limit: null });
-    if (library.length === 0 && trash.length === 0 && folders.length === 0 && !scratch && runs.length === 0 && testCases.length === 0) {
+    if (library.length === 0 && trash.length === 0 && folders.length === 0 && !scratch && runs.length === 0 && testCases.length === 0 && projectProfiles.length === 0) {
       notify('Prompt Lab has no saved workspace data to export.');
       return null;
     }
@@ -1145,6 +1150,7 @@ export default function usePromptLibrary(notify) {
       scratch,
       runs,
       testCases,
+      projectProfiles,
     };
     const url = URL.createObjectURL(new Blob([JSON.stringify(exportPayload, null, 2)], { type: 'application/json' }));
     const stamp = new Date().toISOString().slice(0, 10);
@@ -1283,6 +1289,10 @@ export default function usePromptLibrary(notify) {
       });
       if (plan.parsed.packs) await stage('Packs', () => {
         if (!saveJson(storageKeys.packs, plan.parsed.packs)) throw new Error('Pack storage write failed.');
+      });
+      if (Array.isArray(plan.parsed.projectProfiles)) await stage('Project profiles', () => {
+        const written = writeProjectProfiles(mergeProfileLists(loadProjectProfiles(), plan.parsed.projectProfiles));
+        if (!written.ok) throw new Error(written.error || 'Project profile storage write failed.');
       });
       for (const [label, records, save] of [['Test case', plan.testCases, saveTestCase], ['Run', plan.runs, saveEvalRun]]) {
         const writes = await Promise.allSettled(records.map(record => stage(`${label} ${record.id}`, () => save(record))));

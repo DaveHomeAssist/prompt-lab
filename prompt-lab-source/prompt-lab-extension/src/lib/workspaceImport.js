@@ -38,6 +38,9 @@ export function prepareWorkspaceImport(parsed, {
   if (parsed?.packs != null && (typeof parsed.packs !== 'object' || Array.isArray(parsed.packs))) {
     throw new Error('Packs must be a registry object.');
   }
+  if (parsed?.projectProfiles != null && !Array.isArray(parsed.projectProfiles)) {
+    throw new Error('Project profiles must be an array.');
+  }
   if (parsed?.scratch != null && (!Array.isArray(parsed.scratch.pads)
     || !parsed.scratch.pads.length || parsed.scratch.pads.some((pad) => !pad || typeof pad.content !== 'string'))) {
     throw new Error('Scratch must contain readable note records.');

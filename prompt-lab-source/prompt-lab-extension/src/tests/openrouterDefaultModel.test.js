@@ -154,7 +154,9 @@ describe('extension background worker', () => {
 
     expect(response.providers).toContainEqual({ provider: 'openrouter', model: NEW_DEFAULT });
     expect(response.active).toEqual({ provider: 'openrouter', model: NEW_DEFAULT });
+    expect(response.selected).toEqual({ provider: 'openrouter', model: NEW_DEFAULT });
     expect(JSON.stringify(response.active)).not.toContain('sk-or-test');
+    expect(JSON.stringify(response.selected)).not.toContain('sk-or-test');
   });
 
   it('reports the selected provider even when another provider also has a key', async () => {
@@ -167,6 +169,7 @@ describe('extension background worker', () => {
     };
     const response = await send({ type: 'GET_PROVIDER_SETTINGS' });
     expect(response.active).toEqual({ provider: 'openai', model: 'gpt-4o-mini' });
+    expect(response.selected).toEqual({ provider: 'openai', model: 'gpt-4o-mini' });
     expect(JSON.stringify(response)).not.toContain('sk-openai-present');
     expect(JSON.stringify(response)).not.toContain('sk-ant-present');
   });

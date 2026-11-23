@@ -445,6 +445,10 @@ export function normalizeEntry(entry, fallbackTs = new Date().toISOString()) {
     goldenThreshold: normalizeGoldenThreshold(entry.goldenThreshold),
     inputs: normalizePromptInputs(entry.inputs),
     metadata: normalizedMetadata,
+    ...(typeof entry.profileId === 'string' || typeof entry.profileName === 'string' ? {
+      profileId: ensureString(entry.profileId),
+      profileName: ensureString(entry.profileName).slice(0, 80),
+    } : {}),
   };
   return {
     ...normalized,

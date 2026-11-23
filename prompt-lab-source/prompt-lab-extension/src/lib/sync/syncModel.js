@@ -1,8 +1,13 @@
 // Maps the existing pl2-* Library storage to sync items and back.
 // Items: prompt:<id> = { state: 'active' | 'trash', entry }, and one
-// structure:main = { collections, folders, loadedPacks }. Folders are synced
-// as one record because their paths and parent links are validated together.
+// structure:main = { collections, folders, loadedPacks, projectProfiles }.
+// Folders are synced as one record because their paths and parent links are
+// validated together. Project profiles ride along when the sync flag is on;
+// the flag itself is unchanged. A pull that predates profiles leaves the
+// local list in place. The active profile stays on this device when it still
+// exists after the pull.
 import { filterDeletedLibraryRecords, markLibraryDeleted, readLibraryDeletionState } from '../libraryDeletion.js';
+import { loadProjectProfiles, mergeProfileLists, normalizeProfiles, selectProfile, writeProjectProfiles } from '../projectProfiles.js';
 import { storageKeys } from '../storage.js';
 import { hashValue } from './syncHash.js';
 
@@ -54,6 +59,7 @@ export function readLocalItems(storage) {
       collections: readArray(storage, storageKeys.collections),
       folders: readArray(storage, storageKeys.folders),
       loadedPacks: readArray(storage, storageKeys.loadedPacks),
+      projectProfiles: loadProjectProfiles(storage),
     }),
   });
   return items;
@@ -93,7 +99,19 @@ export function applyRemoteRows(storage, rows, { notifyWrite } = {}) {
       writeJson(storage, storageKeys.collections, collections, notifyWrite); written.add(storageKeys.collections);
       writeJson(storage, storageKeys.folders, folders, notifyWrite); written.add(storageKeys.folders);
       writeJson(storage, storageKeys.loadedPacks, loadedPacks, notifyWrite); written.add(storageKeys.loadedPacks);
-      applied.set(key, hashValue({ collections, folders, loadedPacks }));
+      let projectProfiles = loadProjectProfiles(storage);
+      if (Object.prototype.hasOwnProperty.call(row.payload, 'projectProfiles')) {
+        const incoming = normalizeProfiles(row.payload.projectProfiles);
+        const localActive = projectProfiles.find((profile) => profile.selected);
+        projectProfiles = localActive && incoming.some((profile) => profile.id === localActive.id)
+          ? selectProfile(incoming, localActive.id)
+          : incoming;
+        const saved = writeProjectProfiles(projectProfiles, storage);
+        projectProfiles = saved.profiles;
+        notifyWrite?.(storageKeys.projectProfiles);
+        written.add(storageKeys.projectProfiles);
+      }
+      applied.set(key, hashValue({ collections, folders, loadedPacks, projectProfiles }));
       continue;
     }
     if (row.kind !== 'prompt') continue;
@@ -163,5 +181,6 @@ export function mergeStructure(local = {}, remote = {}) {
     collections: union(remote.collections || [], local.collections || []),
     folders: kept,
     loadedPacks: union(remote.loadedPacks || [], local.loadedPacks || []),
+    projectProfiles: mergeProfileLists(local.projectProfiles, remote.projectProfiles),
   };
 }
