@@ -186,6 +186,19 @@ vi.mock('../lib/navigationRegistry.js', () => ({
   filterCommands: vi.fn(() => []),
   resolveRouteState: vi.fn(() => null),
   stateToRoute: vi.fn(() => '/'),
+  SUBVIEWS: {
+    create: [
+      { id: 'editor', label: 'Write' },
+      { id: 'library', label: 'Library' },
+      { id: 'composer', label: 'Compose' },
+      { id: 'split', label: 'Dual Pane', hideCompact: true },
+    ],
+    runs: [
+      { id: 'history', label: 'History' },
+      { id: 'compare', label: 'Compare' },
+    ],
+    notebook: [],
+  },
 }));
 
 vi.mock('../theme/ThemeProvider.jsx', () => ({

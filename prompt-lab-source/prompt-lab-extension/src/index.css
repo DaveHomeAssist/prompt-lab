@@ -602,9 +602,9 @@ textarea:disabled {
   .pl-result-header-actions > .pl-icon-button { position: absolute; top: 0.7rem; right: 0.7rem; }
 }
 
-.pl-mobile-nav { position: relative; z-index: 70; display: grid; flex: 0 0 auto; grid-template-columns: repeat(6, minmax(0, 1fr)); overflow: hidden; margin: 0.35rem 0.35rem calc(0.35rem + env(safe-area-inset-bottom)); border: 1px solid color-mix(in srgb, currentColor 16%, transparent); border-radius: 1rem; background: rgba(10, 8, 8, 0.94); padding: 0.22rem; box-shadow: 0 18px 55px rgba(0, 0, 0, 0.38); backdrop-filter: blur(22px); }
+.pl-mobile-nav { position: relative; z-index: 70; display: grid; flex: 0 0 auto; grid-template-columns: repeat(5, minmax(0, 1fr)); overflow: hidden; margin: 0.35rem 0.35rem calc(0.35rem + env(safe-area-inset-bottom)); border: 1px solid color-mix(in srgb, currentColor 16%, transparent); border-radius: 1rem; background: rgba(10, 8, 8, 0.94); padding: 0.22rem; box-shadow: 0 18px 55px rgba(0, 0, 0, 0.38); backdrop-filter: blur(22px); }
 [data-theme='light'] .pl-mobile-nav { background: rgba(255, 253, 250, 0.93); }
-.pl-mobile-nav button { display: flex; min-height: 3rem; min-width: 0; flex-direction: column; align-items: center; justify-content: center; gap: 0.15rem; padding-inline: 0.1rem; font-size: 0.52rem; font-weight: 780; opacity: 0.68; }
+.pl-mobile-nav button { display: flex; min-height: 44px; min-width: 44px; flex-direction: column; align-items: center; justify-content: center; gap: 0.15rem; padding-inline: 0.15rem; font-size: 11px; line-height: 1.15; font-weight: 700; opacity: 0.68; }
 .pl-mobile-nav button[aria-current='page'] { background: color-mix(in srgb, var(--pl-brand-ember) 14%, transparent); color: var(--pl-brand-ember-bright); opacity: 1; }
 [data-theme='light'] .pl-mobile-nav button[aria-current='page'] { color: var(--pl-brand-ember); }
 .pl-app-shell.is-compact { height: 100dvh; min-height: 0; overflow: hidden; padding-bottom: 0; }
@@ -1100,7 +1100,6 @@ textarea:disabled {
   .pl-library-card { padding: 0.6rem; }
   .pl-library-card-actions { width: 100%; }
   .pl-library-card-actions button { min-height: 2.75rem; flex: 1; }
-  .pl-mobile-nav button { font-size: 0.48rem; }
 }
 
 /* ── Two-pane Create workspace (docs/ENHANCE_WORKSPACE_REDESIGN_BRIEF.md, slice 1) ──
@@ -1461,7 +1460,7 @@ html[data-palette]:not([data-palette='ember']) .pl-app-shell[data-theme='light']
 }
 @media (max-width: 430px) {
   .pl-mobile-nav { margin: 0.2rem 0.25rem calc(0.2rem + env(safe-area-inset-bottom)); padding: 0.15rem; }
-  .pl-app-shell.is-compact .pl-mobile-nav button { min-height: 2.75rem; }
+  .pl-app-shell.is-compact .pl-mobile-nav button { min-height: 44px; font-size: 11px; }
 }
 
 /* Tap targets (V-11): at least 24 x 24 px of hit area, added with padding
@@ -1609,6 +1608,9 @@ html[data-palette]:not([data-palette='ember']) .pl-app-shell[data-theme='light']
 .pl-profile-example, .pl-profile-active-flag { border-radius: 999px; padding: 0 0.35rem; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; background: color-mix(in srgb, var(--pl-brand-paper) 16%, transparent); color: var(--pl-brand-paper); }
 .pl-profile-chip:focus-visible, .pl-profile-toggle:focus-visible, .pl-profile-menu button:focus-visible, .pl-profile-manager button:focus-visible, .pl-profile-manager input:focus-visible, .pl-profile-manager textarea:focus-visible, .pl-profile-manager select:focus-visible, .pl-profile-search input:focus-visible { outline: 2px solid var(--pl-focus-ring); outline-offset: 2px; }
 .pl-profile-menu { position: fixed; z-index: 80; display: grid; gap: 0.2rem; width: min(18rem, calc(100vw - 1.5rem)); padding: 0.45rem; border: 1px solid color-mix(in srgb, var(--pl-brand-paper) 28%, transparent); border-radius: 0.75rem; background: var(--pl-brand-ink); color: var(--pl-brand-paper); box-shadow: 0 0.75rem 2rem rgba(0, 0, 0, 0.28); }
+.pl-profile-empty-state { display: grid; gap: 0.45rem; padding: 0.35rem 0.2rem; }
+.pl-profile-empty-state p { margin: 0; color: var(--pl-muted-text); font-size: 0.78rem; line-height: 1.45; }
+.pl-profile-menu .pl-profile-create { justify-content: center; background: var(--pl-brand-ember); color: var(--pl-action-text); font-weight: 700; }
 .pl-profile-menu button, .pl-profile-search input { width: 100%; border-radius: 0.5rem; background: transparent; color: var(--pl-brand-paper); text-align: left; }
 .pl-profile-menu button { display: flex; align-items: center; gap: 0.4rem; min-height: 2rem; padding: 0.3rem 0.5rem; border: 0; }
 .pl-profile-menu button[aria-selected='true'] { background: color-mix(in srgb, var(--pl-brand-paper) 12%, transparent); }
@@ -1642,3 +1644,16 @@ html[data-palette]:not([data-palette='ember']) .pl-app-shell[data-theme='light']
 .pl-profile-dot.is-rose { background: #be123c; }
 .pl-profile-dot.is-slate { background: #475569; }
 @media (max-width: 720px) { .pl-profile-manager-body { grid-template-columns: 1fr; } }
+
+/* Evaluate sub-tabs sit in the page body. Underline, not a second pill row. */
+.pl-subtabs { display: flex; gap: 0.15rem; border-bottom: 1px solid color-mix(in srgb, currentColor 16%, transparent); }
+.pl-subtabs [role='tab'] { border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: transparent; box-shadow: none; margin-bottom: -1px; padding: 0.65rem 0.9rem; min-height: 44px; font-size: 0.8125rem; font-weight: 650; color: var(--pl-muted-text); }
+.pl-subtabs [role='tab'][aria-selected='true'] { border-bottom-color: var(--pl-brand-ember); background: transparent; box-shadow: none; color: var(--pl-brand-ember-bright); }
+.pl-subtabs [role='tab']:focus-visible { outline: 2px solid var(--pl-focus-ring); outline-offset: 2px; }
+
+/* Write column: cap wide screens, and on short windows scroll once with Refine pinned. */
+.pl-write-column { align-self: center; width: min(100%, 60rem); max-width: 100%; }
+.pl-write-column.is-pinned-actions { height: 100%; min-height: 0; overflow: hidden; }
+.pl-write-frame { display: flex; height: 100%; min-height: 0; flex-direction: column; gap: 0.5rem; padding: 1rem; }
+.pl-write-scroll { flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; }
+.pl-write-actions { position: sticky; bottom: 0; z-index: 6; flex: 0 0 auto; padding-top: 0.55rem; background: var(--pl-brand-ink); border-top: 1px solid color-mix(in srgb, currentColor 14%, transparent); }

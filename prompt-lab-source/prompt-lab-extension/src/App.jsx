@@ -55,6 +55,7 @@ import WriteSidePanel from './WriteSidePanel.jsx';
 import usePersistedState from './usePersistedState.js';
 import { insertAtCursor } from './lib/insertAtCursor.js';
 import CreateEditorPane from './CreateEditorPane';
+import EvaluateViewTabs from './EvaluateViewTabs.jsx';
 import { ThemeProvider } from './theme/ThemeProvider.jsx';
 import AppHeader from './AppHeader';
 import CreateContextBar from './CreateContextBar.jsx';
@@ -1605,9 +1606,13 @@ export default function App({
       {/* ══ EVALUATE SURFACE ══ */}
       {primaryView === 'runs' && (
         <div className={`pl-tab-panel flex h-full min-h-0 flex-col ${pageScroll ? '' : 'overflow-hidden'}`}>
-          <div className={`border-b px-4 py-2 ${m.border} shrink-0`}>
-            <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Evaluate</p>
-            <p className={`mt-1 text-xs ${m.textMuted}`}>
+          <div className={`shrink-0 border-b px-4 ${m.border}`}>
+            <EvaluateViewTabs
+              runsView={runsView}
+              openRunsView={openRunsViewWithBilling}
+              lockedRunsViews={{ compare: !canUseAbTesting }}
+            />
+            <p className={`pb-2 text-xs ${m.textMuted}`}>
               {runsView === 'compare'
                 ? 'Compare prompt variants, capture winners, and keep recent Compare runs in one place.'
                 : (currentEntry
@@ -1615,7 +1620,12 @@ export default function App({
                     : 'Review enhance, test-case, and Compare runs across your saved workbench.')}
             </p>
           </div>
-          <div className={`min-h-0 flex-1 ${pageScroll ? '' : 'overflow-hidden'}`}>
+          <div
+            role="tabpanel"
+            id={`evaluate-panel-${runsView}`}
+            aria-labelledby={`evaluate-tab-${runsView}`}
+            className={`min-h-0 flex-1 ${pageScroll ? '' : 'overflow-hidden'}`}
+          >
             {runsView === 'compare' && canUseAbTesting
               ? <ABTestTab m={m} copy={copy} compact={compact} pageScroll={pageScroll} pinGoldenResponse={lib.pinGoldenResponse} {...abTest} />
               : runsView === 'compare'

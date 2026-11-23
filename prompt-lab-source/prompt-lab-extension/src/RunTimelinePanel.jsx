@@ -509,11 +509,44 @@ export default function RunTimelinePanel({
   return (
     <div className={`flex-1 flex flex-col ${pageScroll ? '' : 'overflow-hidden'}`}>
       <div className={`p-4 flex flex-col gap-3 ${pageScroll ? '' : 'h-full min-h-0 overflow-y-auto'}`}>
-
+        {showEmptyState ? (
+          <section className={`${m.surface} border ${m.border} rounded-xl p-6 text-center`} data-testid="evaluate-empty">
+            <h2 className={`text-base font-semibold ${m.text}`}>
+              {prompt ? 'No runs for this prompt yet' : 'No runs yet'}
+            </h2>
+            <p className={`mx-auto mt-2 max-w-md text-sm leading-relaxed ${m.textMuted}`}>
+              {prompt
+                ? 'Enhance this prompt or run a test case. The result will show up here, and you can filter once there is a run to look through.'
+                : 'Refine a prompt in Write. Each saved run lands here, and the filters show up once you have something to look through.'}
+            </p>
+            <div className="mt-4 flex items-center justify-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={onQuickStart}
+                className={`ui-control inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${ACCENT_SOLID_BUTTON_CLASS}`}
+              >
+                <Ic n="Wand2" size={11} />
+                {prompt ? 'Open Create' : 'Quick Start'}
+              </button>
+              {!prompt && (
+                <button
+                  type="button"
+                  onClick={onOpenCompare}
+                  className={`ui-control inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${m.btn} ${m.textAlt}`}
+                >
+                  <Ic n="GitBranch" size={11} />
+                  Compare View
+                  {compareLocked && <ProBadge />}
+                </button>
+              )}
+            </div>
+          </section>
+        ) : (
+        <>
         {/* Header */}
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h2 className={`text-sm font-bold ${m.text}`}>{prompt ? 'Run History' : 'Evaluate Timeline'}</h2>
+            <h2 className={`text-sm font-bold ${m.text}`}>{prompt ? 'Run History' : 'All saved runs'}</h2>
             <p className={`text-xs ${m.textMuted} truncate`}>
               {prompt?.title || 'All prompts · select a library entry to narrow this timeline'}
             </p>
@@ -735,50 +768,14 @@ export default function RunTimelinePanel({
           </div>
         )}
 
-        {showEmptyState && (
-          <div className={`${m.surface} border ${m.border} rounded-lg p-4 text-center`}>
-            <p className={`text-sm font-semibold ${m.text}`}>
-              {prompt ? 'No runs for this prompt yet.' : 'No evaluate runs yet.'}
-            </p>
-            <p className={`mt-1 text-xs ${m.textMuted}`}>
-              {prompt
-                ? 'Enhance this prompt, run its test cases, or compare variants and the timeline will fill in here.'
-                : 'Enhance a prompt or run a Compare and every saved run will appear here.'}
-            </p>
-            <div className="mt-3 flex items-center justify-center gap-2 flex-wrap">
-              <button
-                type="button"
-                onClick={onQuickStart}
-                className={`ui-control inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${ACCENT_SOLID_BUTTON_CLASS}`}
-              >
-                <Ic n="Wand2" size={11} />
-                {prompt ? 'Open Create' : 'Quick Start'}
-              </button>
-              {!prompt && (
-                <button
-                  type="button"
-                  onClick={onOpenCompare}
-                  className={`ui-control inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${m.btn} ${m.textAlt}`}
-                >
-                  <Ic n="GitBranch" size={11} />
-                  Open Compare
-                </button>
-              )}
-            </div>
-            {!prompt && (
-              <p className={`mt-2 text-[11px] ${m.textMuted}`}>
-                Quick Start loads a starter prompt into Create so you can generate your first saved run.
-              </p>
-            )}
-          </div>
-        )}
-
         {/* Load More */}
         {hasMore && (
           <button type="button" onClick={loadMore}
             className={`w-full py-2 text-xs font-semibold rounded-lg border transition-colors ${m.border} ${m.textMuted} hover:border-orange-400/60 hover:text-orange-200`}>
             Load more
           </button>
+        )}
+        </>
         )}
       </div>
     </div>

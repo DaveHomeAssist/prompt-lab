@@ -177,14 +177,17 @@ describe('RunTimelinePanel', () => {
 
     renderPanel({ onQuickStart, onOpenCompare });
 
-    expect(screen.getByText('Evaluate deck')).toBeInTheDocument();
-    expect(screen.getByText('Compare saved runs and keep the winners.')).toBeInTheDocument();
-    expect(screen.getByText('No evaluate runs yet.')).toBeInTheDocument();
-    expect(screen.getByText('Quick Start loads a starter prompt into Create so you can generate your first saved run.')).toBeInTheDocument();
+    expect(screen.getByTestId('evaluate-empty')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'No runs yet' })).toBeInTheDocument();
+    expect(screen.queryByText('Evaluate deck')).not.toBeInTheDocument();
+    expect(screen.queryByText('Evaluate Timeline')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Filter by mode')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Filter by provider')).not.toBeInTheDocument();
+    expect(screen.queryByText('Runs available in the current timeline view')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Quick Start' })).toHaveClass('bg-orange-500/90', 'hover:bg-orange-400');
 
     fireEvent.click(screen.getByRole('button', { name: 'Quick Start' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Open Compare' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Compare View' }));
 
     expect(onQuickStart).toHaveBeenCalledTimes(1);
     expect(onOpenCompare).toHaveBeenCalledTimes(1);
@@ -209,9 +212,10 @@ describe('RunTimelinePanel', () => {
       onQuickStart,
     });
 
-    expect(screen.getByText('No runs for this prompt yet.')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'No runs for this prompt yet' })).toBeInTheDocument();
+    expect(screen.queryByLabelText('Filter by mode')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Open Create' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Open Compare' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Compare View' })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Open Create' }));
 

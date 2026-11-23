@@ -6,6 +6,16 @@ import { SCRATCH_KEY, SCRATCH_SCHEMA_VERSION_KEY } from '../lib/scratchSchema.js
 beforeEach(() => localStorage.clear());
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
+it('migrates older scratch notes without telling the reader about schema v4', () => {
+  localStorage.setItem('pl2-pad', 'legacy note');
+  const notify = vi.fn();
+  render(<ScratchWorkspace m={{}} notify={notify} />);
+  expect(screen.getByRole('textbox', { name: 'Scratchpad' })).toHaveValue('legacy note');
+  expect(notify).not.toHaveBeenCalledWith('Scratch notes upgraded to schema v4.');
+  expect(screen.queryByText(/schema v4/i)).not.toBeInTheDocument();
+  expect(localStorage.getItem(SCRATCH_SCHEMA_VERSION_KEY)).toBe('4');
+});
+
 it('keeps the readable note visible during failed migration and retries saving it', () => {
   localStorage.setItem(SCRATCH_KEY, JSON.stringify({
     pads: [{ id: 'note', name: 'Research', content: 'Recover this note', timestamp: 10 }],
