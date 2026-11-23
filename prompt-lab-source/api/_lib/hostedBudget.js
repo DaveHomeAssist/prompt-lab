@@ -9,6 +9,8 @@
 // Amounts are integer micro-dollars. A rate of $X per million tokens is
 // exactly X micro-dollars per token.
 
+import { estimatedOutputCharge } from '../../shared/outputLimits.js';
+
 const DAY_MS = 24 * 60 * 60_000;
 const CACHE_WRITE_5M = 1.25;
 const CACHE_WRITE_1H = 2;
@@ -95,7 +97,7 @@ export function budgetWindow(now, cycleDay) {
 export function reservationMicros(rates, { bodyBytes, maxTokens }) {
   const input = Math.max(rates.input, rates.longPrompt?.input ?? 0);
   const output = Math.max(rates.output, rates.longPrompt?.output ?? 0);
-  return Math.ceil(bodyBytes * input + maxTokens * output);
+  return Math.ceil(bodyBytes * input + estimatedOutputCharge(output, maxTokens));
 }
 
 const count = (value) => (Number.isFinite(value) && value > 0 ? value : 0);

@@ -2,7 +2,7 @@
 // This is the ONLY place API credentials are used.
 // panel.html sends messages here; this worker calls configured providers.
 
-import { DEFAULTS, PROVIDER_SETTINGS_KEYS, migrateLegacyDefaults } from './lib/providerRegistry.js';
+import { DEFAULTS, PROVIDER_SETTINGS_KEYS, activeProviderRoute, migrateLegacyDefaults } from './lib/providerRegistry.js';
 import { callProvider, listOllamaModels, normalizeProvider } from './lib/providers.js';
 
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
@@ -62,7 +62,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         if (store.geminiApiKey) providers.push({ provider: 'gemini', model: store.geminiModel || DEFAULTS.geminiModel });
         if (store.openrouterApiKey) providers.push({ provider: 'openrouter', model: store.openrouterModel || DEFAULTS.openrouterModel });
         if (store.ollamaBaseUrl) providers.push({ provider: 'ollama', model: store.ollamaModel || DEFAULTS.ollamaModel });
-        sendResponse({ providers });
+        sendResponse({ providers, selected: activeProviderRoute(store) });
       } catch (error) {
         sendResponse({ error: error?.message || String(error) });
       }

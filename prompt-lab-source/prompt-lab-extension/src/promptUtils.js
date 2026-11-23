@@ -274,10 +274,24 @@ function normalizeParsedPayload(payload, modern = false) {
   };
 }
 
-function extractCompleteJsonStringField(text, fieldName) {
+const PRIMARY_TEXT_FIELDS = ['enhanced', 'content', 'prompt', 'text', 'rewrite', 'output', 'result'];
+
+function decodeJsonStringBody(raw) {
+  try { return JSON.parse(`"${raw}"`); }
+  catch {
+    return raw
+      .replace(/\\n/g, '\n')
+      .replace(/\\r/g, '\r')
+      .replace(/\\t/g, '\t')
+      .replace(/\\"/g, '"')
+      .replace(/\\\\/g, '\\');
+  }
+}
+
+function readJsonStringField(text, fieldName) {
   const fieldPattern = new RegExp(`"${fieldName}"\\s*:\\s*"`, 'g');
   const match = fieldPattern.exec(text);
-  if (!match) return '';
+  if (!match) return null;
   const valueStart = match.index + match[0].length;
   let escaped = false;
   for (let index = valueStart; index < text.length; index += 1) {
@@ -285,10 +299,65 @@ function extractCompleteJsonStringField(text, fieldName) {
     if (escaped) { escaped = false; continue; }
     if (char === '\\') { escaped = true; continue; }
     if (char !== '"') continue;
-    try { return JSON.parse(`"${text.slice(valueStart, index)}"`); }
-    catch { return ''; }
+    try { return { value: JSON.parse(`"${text.slice(valueStart, index)}"`), closed: true }; }
+    catch { return null; }
   }
-  return '';
+  const raw = escaped ? text.slice(valueStart, -1) : text.slice(valueStart);
+  return { value: decodeJsonStringBody(raw), closed: false };
+}
+
+function readJsonNumberField(text, fieldName) {
+  const match = new RegExp(`"${fieldName}"\\s*:\\s*(-?\\d+)`).exec(text);
+  return match ? Number(match[1]) : undefined;
+}
+
+function extractCompleteJsonStringField(text, fieldName) {
+  const read = readJsonStringField(text, fieldName);
+  return read?.closed ? read.value : '';
+}
+
+// A one-character overlap is a repeated letter at the cutoff ("let" + "ter"),
+// not proof the model repeated earlier text. Only a longer shared run is
+// treated as a re-emission.
+const MIN_STITCH_OVERLAP = 16;
+
+/** Join a cut-off reply to the model's continuation. Exact tails stay intact. */
+export function stitchContinuation(prefix, continuation) {
+  const head = String(prefix || '');
+  let tail = String(continuation || '').replace(/^\uFEFF/, '');
+  if (/^\s*```/.test(tail)) {
+    tail = tail.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+  }
+  if (!head) return tail;
+  if (!tail) return head;
+  if (tail.startsWith('{')) {
+    try {
+      const restarted = JSON.parse(tail);
+      if (restarted && typeof restarted.enhanced === 'string' && restarted.enhanced.trim()) return tail;
+    } catch { /* The tail is a continuation, not a fresh object. */ }
+  }
+  if (head.length >= MIN_STITCH_OVERLAP && tail.startsWith(head)) return tail;
+  const max = Math.min(head.length, tail.length);
+  let overlap = 0;
+  for (let size = max; size >= MIN_STITCH_OVERLAP; size -= 1) {
+    if (head.slice(-size) === tail.slice(0, size)) { overlap = size; break; }
+  }
+  return head + tail.slice(overlap);
+}
+
+const EMPTY_TRAITS = Object.freeze({ passedTraits: [], failedTraits: [], excludedHits: [], verdict: null });
+
+/** A salvaged cutoff can be read and saved. It is not a finished test case. */
+export function testCaseOutcome(parsed) {
+  if (parsed?.partial === true) {
+    return {
+      complete: false,
+      output: typeof parsed.enhanced === 'string' ? parsed.enhanced : '',
+      notes: 'Partial result cut off at the output limit. Excluded from completed suite results.',
+      traitResults: { ...EMPTY_TRAITS },
+    };
+  }
+  return { complete: true, output: typeof parsed?.enhanced === 'string' ? parsed.enhanced : '', traitResults: null };
 }
 
 export function parseEnhancedPayload(rawText, options = {}) {
@@ -306,17 +375,27 @@ export function parseEnhancedPayload(rawText, options = {}) {
       catch {}
     }
   }
-  // Recover only a fully closed primary string, never a partially generated prompt.
+  // A closed primary string with a cut-off tail keeps the prompt. An unclosed
+  // string is kept only for a truncated contract (schema_version / primary_id,
+  // or an explicit truncation flag). A bare unterminated fragment stays unparseable.
   if (parsed === null) {
-    const recoveredEnhanced = extractCompleteJsonStringField(cleaned, 'enhanced');
-    if (recoveredEnhanced.trim()) {
+    const contractCut = options.truncated === true || options.allowPartial === true
+      || /"schema_version"\s*:/.test(cleaned) || /"primary_id"\s*:/.test(cleaned);
+    const recovered = PRIMARY_TEXT_FIELDS
+      .map((field) => ({ field, read: readJsonStringField(cleaned, field) }))
+      .find((item) => item.read && item.read.value.trim() && (item.read.closed || contractCut));
+    if (recovered) {
+      const partial = recovered.read.closed !== true;
       parsed = {
-        enhanced: recoveredEnhanced,
+        enhanced: recovered.read.value,
         primary_id: extractCompleteJsonStringField(cleaned, 'primary_id'),
-        schema_version: options.modern ? 2 : undefined,
+        schema_version: readJsonNumberField(cleaned, 'schema_version') ?? (options.modern ? 2 : undefined),
+        partial,
         metadataIncomplete: true,
         variants: [],
-        notes: 'The enhanced prompt completed, but optional variants and notes were cut off by the hosted output limit.',
+        notes: partial
+          ? 'Partial result. The response was cut off at the output limit.'
+          : 'The enhanced prompt completed, but optional variants and notes were cut off by the hosted output limit.',
         assumptions: [], assumptionDetails: [], changeSummary: '', changes: [], reasoning: '', tags: [],
       };
     }

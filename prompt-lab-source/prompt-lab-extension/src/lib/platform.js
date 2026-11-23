@@ -129,7 +129,7 @@ function extCaptureContext() {
 // Page capture only exists on the extension surface.
 const desktopCaptureContext = () => Promise.resolve(null);
 
-function extGetConfiguredProviders() {
+function extProviderSettings() {
   return new Promise((resolve, reject) => {
     chrome.runtime.sendMessage(
       { type: 'GET_PROVIDER_SETTINGS' },
@@ -141,9 +141,22 @@ function extGetConfiguredProviders() {
           return reject(new Error('No response while loading provider settings.'));
         }
         if (response.error) return reject(new Error(response.error));
-        resolve(Array.isArray(response.providers) ? response.providers : []);
+        resolve(response);
       }
     );
+  });
+}
+
+function extGetConfiguredProviders() {
+  return extProviderSettings().then((response) => (
+    Array.isArray(response.providers) ? response.providers : []
+  ));
+}
+
+function extGetActiveProviderRoute() {
+  return extProviderSettings().then((response) => {
+    const selected = response?.selected;
+    return selected?.provider && selected?.model ? selected : null;
   });
 }
 
@@ -189,6 +202,12 @@ async function desktopSaveProviderSettings(settings) {
 async function desktopGetConfiguredProviders() {
   const { getConfiguredProvidersDirect } = await getDesktopApi();
   return getConfiguredProvidersDirect();
+}
+
+async function desktopGetActiveProviderRoute() {
+  const { loadSettings } = await getDesktopApi();
+  const { activeProviderRoute } = await import('./providerRegistry.js');
+  return activeProviderRoute(loadSettings());
 }
 
 async function desktopTestProviderConnection(payload, settings) {
@@ -285,6 +304,7 @@ export const loadProviderSettings = IS_EXTENSION ? extLoadProviderSettings : des
 export const saveProviderSettings = IS_EXTENSION ? extSaveProviderSettings : desktopSaveProviderSettings;
 export const testProviderConnection = IS_EXTENSION ? extTestProviderConnection : desktopTestProviderConnection;
 export const getConfiguredProviders = IS_EXTENSION ? extGetConfiguredProviders : desktopGetConfiguredProviders;
+export const getActiveProviderRoute = IS_EXTENSION ? extGetActiveProviderRoute : desktopGetActiveProviderRoute;
 export const captureContext = IS_EXTENSION ? extCaptureContext : desktopCaptureContext;
 export const sessionGet = IS_EXTENSION ? extSessionGet : desktopSessionGet;
 export const sessionSet = IS_EXTENSION ? extSessionSet : desktopSessionSet;

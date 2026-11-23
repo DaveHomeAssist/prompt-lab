@@ -125,6 +125,7 @@ export function normalizeResultMeta(value = {}, content = {}, { preserveEmpty = 
     ...(modern ? { schemaVersion: 2, primaryId: resolvedPrimaryId } : {}), candidates, selectedCandidateId,
     ...(Number.isFinite(source.requestedOutputTokens) ? { requestedOutputTokens: source.requestedOutputTokens } : {}),
     ...(source.metadataIncomplete === true ? { metadataIncomplete: true } : {}),
+    ...(source.partial === true ? { partial: true } : {}),
     changeSummary: ensureString(source.changeSummary || source.change_summary).trim(),
     changes: normalizeSemanticChanges(source.changes).map(scopeToPrimary), assumptions,
     reversibleEdits: normalizeReversibleEdits(edits, assumptions), reasoning: ensureString(source.reasoning).trim(),
