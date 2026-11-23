@@ -53,7 +53,7 @@ export function ArtworkControls({ value, onChange, disabled = false, label = 'Ar
         {recent.entries.map((item, index) => {
           const name = item.image ? `image ${index + 1}` : item.emoji || item.icon;
           return <div className="pl-artwork-recent-choice" data-pinned={Boolean(item.pinned)} key={item.image || item.emoji || item.icon}>
-            <button type="button" className="ui-control" data-artwork-choice aria-label={`Use recent ${name}`} title={`Use ${name}`} onClick={() => { onChange(safeArtwork(item)); setError(''); }}><Artwork value={item} /></button>
+            <button type="button" className="ui-control" data-artwork-choice aria-label={`Use recent ${name}`} title={`Use ${name}`} onClick={() => { const chosen = safeArtwork(item); onChange(chosen, { emojiCommit: Boolean(chosen.emoji) }); setError(''); }}><Artwork value={item} /></button>
             <button type="button" className="ui-control" aria-label={`${item.pinned ? 'Unpin' : 'Pin'} recent ${name}`} aria-pressed={Boolean(item.pinned)} title={item.pinned ? 'Unpin artwork' : 'Pin artwork'} onClick={event => { const button = event.currentTarget; if (recent.togglePin(item)) requestAnimationFrame(() => { if (button.isConnected) { button.focus(); button.scrollIntoView?.({ block: 'nearest' }); } }); }}><Ic n="Pin" size={14} /></button>
             <button type="button" className="ui-control" aria-label={`Remove recent ${name}`} title="Remove from artwork history" onClick={() => { if (recent.remove(item)) focusRecentChoice(); }}><Ic n="X" size={14} /></button>
           </div>;
@@ -66,23 +66,24 @@ export function ArtworkControls({ value, onChange, disabled = false, label = 'Ar
       <div className="pl-artwork-recent-list" role="group" aria-label={`${label} suggestions`}>
         {suggestions.map(item => {
           const name = item.emoji || item.icon;
-          return <button key={name} type="button" className="ui-control pl-artwork-suggestion" data-artwork-suggestion aria-label={`Use suggested ${name}`} title={`Use ${name}`} onClick={() => { onChange(safeArtwork(item)); setError(''); }}><Artwork value={item} /></button>;
+          return <button key={name} type="button" className="ui-control pl-artwork-suggestion" data-artwork-suggestion aria-label={`Use suggested ${name}`} title={`Use ${name}`} onClick={() => { const chosen = safeArtwork(item); onChange(chosen, { emojiCommit: Boolean(chosen.emoji) }); setError(''); }}><Artwork value={item} /></button>;
         })}
       </div>
     </div>}
     <div className="pl-artwork-options">{ARTWORK_ICONS.map(icon => <button key={icon} type="button" aria-label={`${label}: ${icon}`} aria-pressed={!artwork.image && !artwork.emoji && artwork.icon === icon} title={icon} onClick={() => { onChange({ icon, image: '' }); setError(''); }}><Ic n={icon === 'Code' ? 'Braces' : icon} size={16} /></button>)}</div>
+    {/* Emoji pick and clear commit immediately. Icon and image choices stay a draft until Apply or Save details, so Escape can still discard them. */}
     <label className="pl-artwork-emoji-input">Emoji<input aria-label={`${label} emoji`} value={emojiInput} placeholder="Paste one emoji" onChange={event => {
       const input = event.target.value; setEmojiInput(input);
       const emoji = safeEmoji(input);
-      if (emoji) { onChange({ icon: '', image: '', emoji }); setError(''); }
-      else if (!input) { onChange({ ...artwork, emoji: '' }); setError(''); }
+      if (emoji) { onChange({ icon: '', image: '', emoji }, { emojiCommit: true }); setError(''); }
+      else if (!input) { onChange({ ...artwork, emoji: '' }, { emojiCommit: true }); setError(''); }
       else setError('Choose one emoji, including a flag or a combined emoji.');
     }} /></label>
     <Artwork value={artwork} />
     <label className="pl-artwork-upload">Choose image<input type="file" accept="image/png,image/jpeg,image/webp" aria-label={`${label} image`} onChange={readImage} /></label>
     {reading && <p role="status">Reading image…</p>}
     <small>PNG, JPEG or WebP · up to 64 KB · stored locally</small>
-    <button type="button" onClick={() => { onChange({ icon: '', image: '' }); setEmojiInput(''); setError(''); }}>Clear artwork</button>
+    <button type="button" onClick={() => { onChange({ icon: '', image: '' }, { emojiCommit: Boolean(artwork.emoji) }); setEmojiInput(''); setError(''); }}>Clear artwork</button>
     {error && <p role="alert">{error}</p>}
   </fieldset>;
 }
