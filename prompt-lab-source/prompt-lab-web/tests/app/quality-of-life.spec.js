@@ -47,6 +47,7 @@ for (const width of [375, 1440]) {
     await expect(page.getByRole('button', { name: 'Inspect Assembly block' })).toHaveCount(0);
     await showLibraryFilters(page);
     await expect(page.getByLabel('Filter by status', { exact: true })).toHaveValue('active');
+    await closeLibraryFilters(page);
     await expect(page.getByText('Tag: Writing', { exact: true })).toBeVisible();
   });
   test(`Composer new draft and Clear have safe undo at ${width}`, async ({ page }) => {

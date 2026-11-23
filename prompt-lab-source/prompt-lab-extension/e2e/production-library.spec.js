@@ -179,13 +179,16 @@ for (const viewport of [{ width: 375, height: 812 }, { width: 1440, height: 900 
       await expect(list).toContainText('QA Alpha');
       await showLibraryFilters(page);
       await page.getByRole('combobox', { name: 'Filter by status', exact: true }).selectOption('draft');
+      await closeLibraryFilters(page);
       await expect(list.getByRole('listitem')).toHaveCount(0);
+      await showLibraryFilters(page);
       await page.getByRole('combobox', { name: 'Filter by status', exact: true }).selectOption('active');
       await closeLibraryFilters(page);
       await openView(page, 'Write', viewport.width);
       await openView(page, 'Library', viewport.width);
       await showLibraryFilters(page);
       await expect(page.getByRole('combobox', { name: 'Filter by status', exact: true })).toHaveValue('active');
+      await closeLibraryFilters(page);
       await expect(list.getByRole('listitem')).toHaveCount(1);
       await expect(list).toContainText('QA Alpha');
       await page.getByRole('button', { name: 'Clear all', exact: true }).click();
@@ -219,6 +222,7 @@ for (const viewport of [{ width: 375, height: 812 }, { width: 1440, height: 900 
       }
       await showLibraryFilters(page);
       await page.getByRole('combobox', { name: 'Sort prompts', exact: true }).selectOption('manual');
+      await closeLibraryFilters(page);
       await expect(list.getByRole('listitem')).toHaveCount(2);
       const move = page.getByRole('button', { name: 'Move QA Beta up', exact: true });
       await move.focus();
