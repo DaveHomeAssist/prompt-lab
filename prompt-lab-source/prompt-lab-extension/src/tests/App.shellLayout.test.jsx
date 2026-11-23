@@ -193,6 +193,8 @@ vi.mock('../lib/platform.js', () => ({
   get isExtension() {
     return platform.isExtension;
   },
+  getActiveProvider: () => new Promise(() => {}),
+  watchActiveProvider: () => () => {},
 }));
 
 vi.mock('../lib/navigationRegistry.js', () => ({

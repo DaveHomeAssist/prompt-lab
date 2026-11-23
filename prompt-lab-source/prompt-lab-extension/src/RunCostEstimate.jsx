@@ -1,49 +1,35 @@
 import { useEffect, useState } from 'react';
 import { describeRunEstimate, estimateRunCost } from '../../shared/modelPriceEstimates.js';
-import { PROVIDER_SETTINGS_CHANGED } from './lib/providerSettingsEvents.js';
+import { getActiveProvider, watchActiveProvider } from './lib/platform.js';
 
 const FALLBACK = Object.freeze({ provider: 'anthropic', model: 'claude-sonnet-4-6' });
 
-async function loadSelection() {
+// Extension settings live in chrome.storage.local (extension/options.js) and are
+// read by the background worker. Desktop and web go through the same helper.
+export async function readActiveModel() {
   try {
-    const platform = await import('./lib/platform.js');
-    if (typeof platform.getActiveProvider === 'function') {
-      const next = await platform.getActiveProvider();
-      if (next?.provider && next?.model) return { provider: next.provider, model: next.model };
-    }
+    const next = await getActiveProvider();
+    if (next?.provider && next?.model) return { provider: next.provider, model: next.model };
   } catch {
-    // A test double or a closed worker falls through to the labelled default.
+    // A closed worker still leaves a labelled estimate.
   }
   return FALLBACK;
-}
-
-export function readActiveModel() {
-  return loadSelection();
 }
 
 export default function RunCostEstimate({ text }) {
   const [selection, setSelection] = useState(FALLBACK);
   useEffect(() => {
     let current = true;
-    let stopPlatform = () => {};
     const load = () => {
-      loadSelection().then((next) => {
+      readActiveModel().then((next) => {
         if (current) setSelection(next);
       });
     };
     load();
-    const onWindow = () => load();
-    window.addEventListener(PROVIDER_SETTINGS_CHANGED, onWindow);
-    window.addEventListener('storage', onWindow);
-    import('./lib/platform.js').then((platform) => {
-      if (!current || typeof platform.watchActiveProvider !== 'function') return;
-      stopPlatform = platform.watchActiveProvider(load);
-    }).catch(() => {});
+    const stop = watchActiveProvider(load);
     return () => {
       current = false;
-      stopPlatform();
-      window.removeEventListener(PROVIDER_SETTINGS_CHANGED, onWindow);
-      window.removeEventListener('storage', onWindow);
+      stop();
     };
   }, []);
   const estimate = estimateRunCost({ text, model: selection.model });

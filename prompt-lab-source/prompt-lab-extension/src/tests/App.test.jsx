@@ -202,6 +202,8 @@ vi.mock('../hooks/useNavigation.js', () => ({
 
 vi.mock('../lib/platform.js', () => ({
   isExtension: false,
+  getActiveProvider: () => new Promise(() => {}),
+  watchActiveProvider: () => () => {},
 }));
 
 vi.mock('../lib/navigationRegistry.js', () => ({
@@ -359,11 +361,11 @@ describe('App', () => {
     render(<MemoryRouter><App /></MemoryRouter>);
 
     fireEvent.click(screen.getByRole('button', { name: 'Shorten source' }));
-    expect(enhance).toHaveBeenLastCalledWith(undefined, { modeId: 'shorten' });
+    expect(enhance).toHaveBeenLastCalledWith(undefined, { modeId: 'shorten', evaluatedSource: 'Explain the design' });
     fireEvent.click(screen.getByRole('button', { name: 'Format source as JSON' }));
-    expect(enhance).toHaveBeenLastCalledWith(undefined, { modeId: 'json' });
+    expect(enhance).toHaveBeenLastCalledWith(undefined, { modeId: 'json', evaluatedSource: 'Explain the design' });
     fireEvent.click(screen.getByRole('button', { name: 'Request alternatives' }));
-    expect(enhance).toHaveBeenLastCalledWith(undefined, { options: { alternatives: true } });
+    expect(enhance).toHaveBeenLastCalledWith(undefined, { options: { alternatives: true }, evaluatedSource: 'Explain the design' });
     expect(editor.setEnhMode).not.toHaveBeenCalled();
   });
 

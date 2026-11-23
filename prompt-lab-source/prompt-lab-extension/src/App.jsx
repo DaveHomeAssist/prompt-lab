@@ -809,18 +809,19 @@ export default function App({
         editing: Boolean(editingId),
         plan: billing.plan,
       });
+      const nextMeta = { ...(meta || {}), evaluatedSource: preparedText };
       if (payloadOverride) {
         const messages = (payloadOverride.messages || []).map((message) => (
           message?.role === 'user' ? { ...message, content: preparedText } : message
         ));
-        enhance({ ...payloadOverride, messages }, meta);
+        enhance({ ...payloadOverride, messages }, nextMeta);
         return;
       }
       if (preparedText !== raw) {
-        enhance(buildEnhancePayloadFor(preparedText, meta?.modeId || enhMode, meta?.options), meta);
+        enhance(buildEnhancePayloadFor(preparedText, nextMeta.modeId || enhMode, nextMeta.options), nextMeta);
         return;
       }
-      enhance(overridePayload, meta);
+      enhance(overridePayload, nextMeta);
     };
     if (!needsFill && !hasGhost) {
       send(source);
