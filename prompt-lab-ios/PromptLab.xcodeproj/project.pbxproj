@@ -222,7 +222,7 @@
 		BF0000000000000000000002 = {isa = XCBuildConfiguration; buildSettings = {CLANG_ENABLE_MODULES = YES; SWIFT_COMPILATION_MODE = wholemodule;}; name = Release; };
 		BF0000000000000000000011 = {isa = XCBuildConfiguration; buildSettings = {
 			CODE_SIGN_STYLE = Automatic;
-			CURRENT_PROJECT_VERSION = 1;
+			CURRENT_PROJECT_VERSION = 1.9.0;
 			ENABLE_TESTABILITY = YES;
 			GENERATE_INFOPLIST_FILE = YES;
 			INFOPLIST_KEY_CFBundleDisplayName = "Prompt Lab";
@@ -232,8 +232,8 @@
 			INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 			INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 			IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-			MARKETING_VERSION = 0.1.0;
-			PRODUCT_BUNDLE_IDENTIFIER = com.davehomeassist.promptlab.prototype;
+			MARKETING_VERSION = 1.9.0;
+			PRODUCT_BUNDLE_IDENTIFIER = com.davehomeassist.promptlab;
 			PRODUCT_NAME = "$(TARGET_NAME)";
 			SDKROOT = iphoneos;
 			SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -245,7 +245,7 @@
 		}; name = Debug; };
 		BF0000000000000000000012 = {isa = XCBuildConfiguration; buildSettings = {
 			CODE_SIGN_STYLE = Automatic;
-			CURRENT_PROJECT_VERSION = 1;
+			CURRENT_PROJECT_VERSION = 1.9.0;
 			GENERATE_INFOPLIST_FILE = YES;
 			INFOPLIST_KEY_CFBundleDisplayName = "Prompt Lab";
 			INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
@@ -254,8 +254,8 @@
 			INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 			INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 			IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-			MARKETING_VERSION = 0.1.0;
-			PRODUCT_BUNDLE_IDENTIFIER = com.davehomeassist.promptlab.prototype;
+			MARKETING_VERSION = 1.9.0;
+			PRODUCT_BUNDLE_IDENTIFIER = com.davehomeassist.promptlab;
 			PRODUCT_NAME = "$(TARGET_NAME)";
 			SDKROOT = iphoneos;
 			SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -269,7 +269,7 @@
 			CODE_SIGN_STYLE = Automatic;
 			GENERATE_INFOPLIST_FILE = YES;
 			IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-			PRODUCT_BUNDLE_IDENTIFIER = com.davehomeassist.promptlab.prototype.tests;
+			PRODUCT_BUNDLE_IDENTIFIER = com.davehomeassist.promptlab.tests;
 			PRODUCT_NAME = "$(TARGET_NAME)";
 			SDKROOT = iphoneos;
 			SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -282,7 +282,7 @@
 			CODE_SIGN_STYLE = Automatic;
 			GENERATE_INFOPLIST_FILE = YES;
 			IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-			PRODUCT_BUNDLE_IDENTIFIER = com.davehomeassist.promptlab.prototype.tests;
+			PRODUCT_BUNDLE_IDENTIFIER = com.davehomeassist.promptlab.tests;
 			PRODUCT_NAME = "$(TARGET_NAME)";
 			SDKROOT = iphoneos;
 			SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -294,7 +294,7 @@
 			CODE_SIGN_STYLE = Automatic;
 			GENERATE_INFOPLIST_FILE = YES;
 			IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-			PRODUCT_BUNDLE_IDENTIFIER = com.davehomeassist.promptlab.prototype.uitests;
+			PRODUCT_BUNDLE_IDENTIFIER = com.davehomeassist.promptlab.uitests;
 			PRODUCT_NAME = "$(TARGET_NAME)";
 			SDKROOT = iphoneos;
 			SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -306,7 +306,7 @@
 			CODE_SIGN_STYLE = Automatic;
 			GENERATE_INFOPLIST_FILE = YES;
 			IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-			PRODUCT_BUNDLE_IDENTIFIER = com.davehomeassist.promptlab.prototype.uitests;
+			PRODUCT_BUNDLE_IDENTIFIER = com.davehomeassist.promptlab.uitests;
 			PRODUCT_NAME = "$(TARGET_NAME)";
 			SDKROOT = iphoneos;
 			SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
