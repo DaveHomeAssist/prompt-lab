@@ -236,7 +236,69 @@ describe('useAccountSync account binding (#277 review P1)', () => {
       const deleted = calls.find((call) => call.url.includes('sync_delete_my_data'));
       expect(deleted.body).toBe('{}');
       expect(deleted.body).not.toContain('user_A');
+      expect(window.localStorage.getItem('pl2-sync-uploads-suspended')).toBe('user_A');
       expect(JSON.parse(window.localStorage.getItem('pl2-library'))[0].title).toBe('Stay');
+      const pushesBefore = calls.filter((call) => call.url.includes('sync_push')).length;
+      act(() => { result.current.syncNow(); });
+      await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
+      expect(calls.filter((call) => call.url.includes('sync_push')).length).toBe(pushesBefore);
+    } finally { vi.unstubAllGlobals(); }
+  });
+
+  it('waits for an in-flight sync, then deletes without a later upload', async () => {
+    let releasePull = () => {};
+    const pullGate = new Promise((resolve) => { releasePull = resolve; });
+    const calls = [];
+    let chain = Promise.resolve();
+    Object.defineProperty(navigator, 'locks', {
+      configurable: true,
+      value: { request: (_name, callback) => { const run = chain.then(() => callback()); chain = run.then(() => {}, () => {}); return run; } },
+    });
+    vi.stubGlobal('fetch', vi.fn(async (url) => {
+      calls.push(String(url));
+      if (String(url).includes('sync_pull')) await pullGate;
+      const body = String(url).includes('sync_delete_my_data') ? '{"items":1,"conflicts":0}' : '[]';
+      return new Response(body, { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }));
+    window.localStorage.setItem('pl2-library', JSON.stringify([{ id: 'p1', title: 'Stay', updatedAt: '2026-11-23T00:00:00.000Z', original: 'keep' }]));
+    try {
+      const { result } = renderHook(() => useAccountSync({
+        clerkUser: { id: 'user_A' },
+        clerkGetToken: async () => 'token-A',
+        config: { enabled: true, url: 'https://abcd.supabase.co', publishableKey: 'sb_publishable_test' },
+      }));
+      await waitFor(() => expect(calls.some((url) => url.includes('sync_pull'))).toBe(true));
+      let deleted = false;
+      const pending = act(async () => {
+        await result.current.deleteSyncedData();
+        deleted = true;
+      });
+      await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
+      expect(deleted).toBe(false);
+      expect(calls.some((url) => url.includes('sync_delete_my_data'))).toBe(false);
+      expect(window.localStorage.getItem('pl2-sync-uploads-suspended')).toBe('user_A');
+      releasePull();
+      await pending;
+      expect(calls.some((url) => url.includes('sync_delete_my_data'))).toBe(true);
+      expect(calls.filter((url) => url.includes('sync_push'))).toEqual([]);
+      expect(JSON.parse(window.localStorage.getItem('pl2-library'))[0].title).toBe('Stay');
+    } finally { vi.unstubAllGlobals(); }
+  });
+
+  it('lifts the upload suspension when the erase fails', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url) => {
+      if (String(url).includes('sync_delete_my_data')) return new Response('{"message":"nope"}', { status: 500, headers: { 'Content-Type': 'application/json' } });
+      return new Response('[]', { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }));
+    try {
+      const { result } = renderHook(() => useAccountSync({
+        clerkUser: { id: 'user_A' },
+        clerkGetToken: async () => 'token-A',
+        config: { enabled: true, url: 'https://abcd.supabase.co', publishableKey: 'sb_publishable_test' },
+      }));
+      await waitFor(() => expect(result.current.status).not.toBe('syncing'));
+      await expect(act(async () => { await result.current.deleteSyncedData(); })).rejects.toThrow();
+      expect(window.localStorage.getItem('pl2-sync-uploads-suspended')).toBeNull();
     } finally { vi.unstubAllGlobals(); }
   });
 });

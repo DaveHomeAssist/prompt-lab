@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { notifyLocalWrite, onLocalWrite } from '../lib/storage.js';
 import { readSyncConfig } from '../lib/sync/syncConfig.js';
 import { readAccountAuth, subscribeAccountAuth } from '../lib/sync/accountAuthBridge.js';
-import { createSyncEngine, isKeptSeparate, rememberKeptSeparate, KEPT_SEPARATE_KEY } from '../lib/sync/syncEngine.js';
+import { areUploadsSuspended, createSyncEngine, forgetUploadsSuspended, isKeptSeparate, rememberKeptSeparate, rememberUploadsSuspended, KEPT_SEPARATE_KEY, UPLOADS_SUSPENDED_KEY } from '../lib/sync/syncEngine.js';
 import { createSupabaseTransport, downloadAccountExport, exportAccountData } from '../lib/sync/supabaseTransport.js';
 import { backoffDelay } from '../lib/sync/syncQueue.js';
 import { addUnseenConflicts, clearUnseenConflicts, readRestoredConflictIds, readUnseenConflicts, restoreConflictCopy } from '../lib/sync/syncConflicts.js';
@@ -31,9 +31,10 @@ export default function useAccountSync({ clerkUser, clerkGetToken, config = read
 
   const runRef = useRef(null);
   const transportRef = useRef(null);
+  const engineRef = useRef(null);
 
   useEffect(() => {
-    runRef.current = null; transportRef.current = null;
+    runRef.current = null; transportRef.current = null; engineRef.current = null;
     if (!config.enabled || typeof window === 'undefined') { setSyncState(IDLE); return undefined; }
     // Flag on but nobody signed in on this surface: the UI shows the sign-in prompt.
     if (!userId) { setSyncState({ ...IDLE, status: 'signed-out', needsReopen: Boolean(bridged.needsReopen) }); return undefined; }
@@ -73,12 +74,13 @@ export default function useAccountSync({ clerkUser, clerkGetToken, config = read
       for (const key of result.written || []) window.dispatchEvent(new StorageEvent('storage', { key }));
       const unseen = result.conflicts > 0 ? addUnseenConflicts(window.localStorage, runUserId, result.conflicts) : readUnseenConflicts(window.localStorage, runUserId);
       const keptSeparate = isKeptSeparate(window.localStorage, runUserId);
-      const status = result.status === 'owner-mismatch' && keptSeparate ? 'kept-separate' : result.status;
-      setSyncState({ status, keptSeparate: status === 'kept-separate', pending: result.pending, conflicts: result.conflicts, unseenConflicts: unseen, tooLarge: result.tooLarge || 0, error: result.error, at: Date.now(), needsReopen: Boolean(bridged.needsReopen) });
-      failures = result.status === 'synced' || result.status === 'owner-mismatch' ? 0 : failures + 1;
-      // Signed out, another account's data on this device, or over quota:
-      // wait for the next local change or sign-in instead of retrying.
-      if (!['auth', 'owner-mismatch', 'quota'].includes(result.status)) {
+      const uploadsSuspended = result.status === 'uploads-suspended' || areUploadsSuspended(window.localStorage, runUserId);
+      const status = uploadsSuspended ? 'uploads-suspended' : result.status === 'owner-mismatch' && keptSeparate ? 'kept-separate' : result.status;
+      setSyncState({ status, keptSeparate: status === 'kept-separate', uploadsSuspended: status === 'uploads-suspended', pending: status === 'uploads-suspended' ? 0 : result.pending, conflicts: result.conflicts, unseenConflicts: unseen, tooLarge: result.tooLarge || 0, error: result.error, at: Date.now(), needsReopen: Boolean(bridged.needsReopen) });
+      failures = result.status === 'synced' || result.status === 'owner-mismatch' || status === 'uploads-suspended' ? 0 : failures + 1;
+      // Signed out, another account's data on this device, over quota, or this
+      // device chose not to upload after deleting synced data: wait instead of retrying.
+      if (!['auth', 'owner-mismatch', 'quota', 'uploads-suspended'].includes(status)) {
         timer = window.setTimeout(() => { if (document.visibilityState !== 'hidden') run(); else timer = 0; }, failures ? backoffDelay(failures) : INTERVAL_MS);
       }
     };
@@ -95,10 +97,11 @@ export default function useAccountSync({ clerkUser, clerkGetToken, config = read
     setSyncState({ status: 'syncing', pending: engine.pendingCount(), unseenConflicts: readUnseenConflicts(window.localStorage, runUserId) });
     runRef.current = run;
     transportRef.current = transport;
+    engineRef.current = engine;
     run();
     return () => {
       stopped = true;
-      runRef.current = null; transportRef.current = null;
+      runRef.current = null; transportRef.current = null; engineRef.current = null;
       window.clearTimeout(timer); window.clearTimeout(debounce);
       stopWrites();
       window.removeEventListener('online', run);
@@ -118,13 +121,31 @@ export default function useAccountSync({ clerkUser, clerkGetToken, config = read
     return true;
   }, [userId]);
   // Server deletes only the rows for the token's user id. The body carries no id.
+  // Uploads are suspended, and the outbox dropped, before the erase and while
+  // the sync lock is held, so an in-flight or following sync cannot put the
+  // local Library back on the account. A failed erase lifts the suspension.
   const deleteSyncedData = useCallback(async () => {
     const transport = transportRef.current;
-    if (!transport?.deleteMyData) throw new Error('Sync is not connected.');
-    const result = await transport.deleteMyData();
-    if (result?.error) throw new Error(String(result.error).slice(0, 200));
-    return result;
-  }, []);
+    if (!transport?.deleteMyData || !userId || typeof window === 'undefined') throw new Error('Sync is not connected.');
+    const storage = window.localStorage;
+    rememberUploadsSuspended(storage, userId);
+    notifyLocalWrite(UPLOADS_SUSPENDED_KEY);
+    const erase = async () => {
+      engineRef.current?.suspendUploads?.();
+      const result = await transport.deleteMyData();
+      if (result?.error) throw new Error(String(result.error).slice(0, 200));
+      return result;
+    };
+    try {
+      const result = navigator.locks?.request ? await navigator.locks.request('pl-sync', erase) : await erase();
+      setSyncState((prev) => ({ ...prev, status: 'uploads-suspended', uploadsSuspended: true, pending: 0 }));
+      return result;
+    } catch (error) {
+      forgetUploadsSuspended(storage, userId);
+      notifyLocalWrite(UPLOADS_SUSPENDED_KEY);
+      throw error;
+    }
+  }, [userId]);
   const exportSyncedLibrary = useCallback(async () => {
     const transport = transportRef.current;
     if (!transport) throw new Error('Sync is not connected.');

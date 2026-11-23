@@ -4,7 +4,7 @@ import { hashValue, stableStringify } from '../lib/sync/syncHash.js';
 import { backoffDelay, createSyncQueue, MAX_DELAY_MS } from '../lib/sync/syncQueue.js';
 import { applyRemoteRows, duplicateKey, mergeStructure, readLocalItems } from '../lib/sync/syncModel.js';
 import { createSupabaseTransport, downloadAccountExport, exportAccountData } from '../lib/sync/supabaseTransport.js';
-import { createSyncEngine, isKeptSeparate, KEPT_SEPARATE_KEY, OWNER_KEY, rememberKeptSeparate } from '../lib/sync/syncEngine.js';
+import { areUploadsSuspended, createSyncEngine, isKeptSeparate, KEPT_SEPARATE_KEY, OWNER_KEY, rememberKeptSeparate, rememberUploadsSuspended, UPLOADS_SUSPENDED_KEY } from '../lib/sync/syncEngine.js';
 
 const memory = () => {
   const map = new Map();
@@ -157,6 +157,53 @@ describe('keep separate', () => {
     expect(storage.getItem(KEPT_SEPARATE_KEY)).toBe('user_B');
     expect(storage.getItem(OWNER_KEY)).toBe('user_A');
     expect(JSON.parse(storage.getItem('pl2-library'))).toEqual([{ id: 'p1', title: 'Stay' }]);
+  });
+});
+
+describe('uploads suspended after deleting synced data', () => {
+  const prompt = { id: 'p1', title: 'Stay', updatedAt: '2026-11-23T00:00:00.000Z', original: 'keep me' };
+
+  it('does not read or upload, and drops the outbox, while uploads are suspended', async () => {
+    const storage = memory();
+    storage.setItem('pl2-library', JSON.stringify([prompt]));
+    storage.setItem('pl2-sync-queue:user_A', JSON.stringify({
+      'prompt:p1': { key: 'prompt:p1', kind: 'prompt', item_id: 'p1', lamport: 1, base_version: 0, payload: { state: 'active', entry: prompt }, nextAttemptAt: 0 },
+    }));
+    rememberUploadsSuspended(storage, 'user_A');
+    const transport = {
+      manifest: async () => { throw new Error('manifest'); },
+      pull: async () => { throw new Error('pull'); },
+      push: async () => { throw new Error('push'); },
+      fetchItems: async () => { throw new Error('fetch'); },
+    };
+    const engine = createSyncEngine({ storage, transport, userId: 'user_A' });
+    await expect(engine.syncOnce()).resolves.toMatchObject({ status: 'uploads-suspended', pushed: 0, pending: 0 });
+    expect(engine.pendingCount()).toBe(0);
+    expect(JSON.parse(storage.getItem('pl2-library'))).toEqual([prompt]);
+    expect(areUploadsSuspended(storage, 'user_A')).toBe(true);
+  });
+
+  it('does not send a push when the suspension lands while the first pull is in flight', async () => {
+    const storage = memory();
+    storage.setItem('pl2-library', JSON.stringify([prompt]));
+    let release = () => {};
+    const gate = new Promise((resolve) => { release = resolve; });
+    const calls = [];
+    const transport = {
+      pull: async () => { calls.push('pull'); await gate; return []; },
+      push: async () => { calls.push('push'); return []; },
+      manifest: async () => [],
+      fetchItems: async () => [],
+    };
+    const engine = createSyncEngine({ storage, transport, userId: 'user_A' });
+    const run = engine.syncOnce();
+    await vi.waitFor(() => expect(calls).toEqual(['pull']));
+    rememberUploadsSuspended(storage, 'user_A');
+    release();
+    await expect(run).resolves.toMatchObject({ status: 'uploads-suspended', pushed: 0 });
+    expect(calls).toEqual(['pull']);
+    expect(JSON.parse(storage.getItem('pl2-library'))).toEqual([prompt]);
+    expect(storage.getItem(UPLOADS_SUSPENDED_KEY)).toBe('user_A');
   });
 });
 

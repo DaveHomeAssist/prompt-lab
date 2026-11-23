@@ -15,6 +15,9 @@ export const OWNER_KEY = 'pl2-sync-owner';
 // The signed-in account declined merging this device's Library with that account.
 // Local prompts and the previous owner stay as they are; nothing is uploaded.
 export const KEPT_SEPARATE_KEY = 'pl2-sync-kept-separate';
+// This device deleted the signed-in account's rows and must not upload the
+// local Library back. Checked before capture and again before push.
+export const UPLOADS_SUSPENDED_KEY = 'pl2-sync-uploads-suspended';
 
 export function rememberKeptSeparate(storage, userId) {
   if (!storage || !userId) return false;
@@ -24,6 +27,23 @@ export function rememberKeptSeparate(storage, userId) {
 
 export function isKeptSeparate(storage, userId) {
   try { return Boolean(userId) && storage.getItem(KEPT_SEPARATE_KEY) === String(userId); }
+  catch { return false; }
+}
+
+export function rememberUploadsSuspended(storage, userId) {
+  if (!storage || !userId) return false;
+  storage.setItem(UPLOADS_SUSPENDED_KEY, String(userId));
+  return true;
+}
+
+export function forgetUploadsSuspended(storage, userId) {
+  try {
+    if (storage.getItem(UPLOADS_SUSPENDED_KEY) === String(userId)) storage.removeItem(UPLOADS_SUSPENDED_KEY);
+  } catch { /* the next sync stays suspended if this remove fails */ }
+}
+
+export function areUploadsSuspended(storage, userId) {
+  try { return Boolean(userId) && storage.getItem(UPLOADS_SUSPENDED_KEY) === String(userId); }
   catch { return false; }
 }
 export const stateKey = (userId) => `pl2-sync-state:${userId}`;
@@ -417,11 +437,29 @@ export function createSyncEngine({ storage, transport, userId, deviceId = getDev
     notifyWrite?.(queueKey(userId));
   }
 
+  function dropOutbox() {
+    const keys = queue.entries().map((entry) => entry.key);
+    if (keys.length) queue.remove(keys);
+  }
+
+  function suspendedResult() {
+    dropOutbox();
+    return { status: 'uploads-suspended', pending: 0, pulled: 0, pushed: 0, conflicts: 0, dropped: 0, written: [] };
+  }
+
+  function suspendUploads() {
+    rememberUploadsSuspended(storage, userId);
+    return suspendedResult();
+  }
+
   async function runSync({ allowOwnerChange = false } = {}) {
     const owner = storage.getItem(OWNER_KEY);
     if (owner && owner !== userId && !allowOwnerChange) {
       return { status: 'owner-mismatch', pending: queue.size() };
     }
+    // Checked before any read or capture. A delete that landed while this
+    // device was between syncs must not rebuild the account from local rows.
+    if (areUploadsSuspended(storage, userId)) return suspendedResult();
     state = loadState();
     const written = new Set();
     const add = (keys) => keys.forEach((key) => written.add(key));
@@ -457,6 +495,10 @@ export function createSyncEngine({ storage, transport, userId, deviceId = getDev
         summary.pulled += pulled.pulled;
         for (const [key, row] of pulled.deferred) deferred.set(key, row);
       }
+      // The suspension may have been recorded while this run was already past
+      // the opening check (no lock, or the delete is waiting on this run).
+      // Drop what capture just queued and do not send it.
+      if (areUploadsSuspended(storage, userId)) return { ...summary, ...suspendedResult() };
       const pushed = await pushQueue(deferred);
       // R-33: the push is applied on the account; journal the settled state
       // and outbox now, not only at the end, so a crash during the follow-up
@@ -478,5 +520,5 @@ export function createSyncEngine({ storage, transport, userId, deviceId = getDev
     return summary;
   }
 
-  return { syncOnce, pendingCount: () => queue.size(), deviceId, readState: () => loadState() };
+  return { syncOnce, suspendUploads, pendingCount: () => queue.size(), deviceId, readState: () => loadState() };
 }

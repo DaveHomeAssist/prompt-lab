@@ -34,6 +34,7 @@ export function describeSyncStatus(sync, now = Date.now()) {
     case 'auth': return { tone: 'blocked', label: 'Sign in again to sync', detail: `Your session ended. Nothing on this device was removed.${queued}` };
     case 'owner-mismatch': return { tone: 'blocked', label: 'Different account on this device', detail: 'This Library is linked to another Prompt Lab account, so sync is off here.' };
     case 'kept-separate': return { tone: 'idle', label: 'Libraries kept separate', detail: 'This device\'s Library is not merged with this account.' };
+    case 'uploads-suspended': return { tone: 'idle', label: 'Uploads are off', detail: 'Synced data for this account was deleted. This device\'s Library stays here and is not uploaded.' };
     case 'error': return { tone: 'warn', label: 'Sync hit a problem', detail: `It will try again.${queued}` };
     default: return { tone: 'idle', label: 'Sync is off', detail: '' };
   }
@@ -198,7 +199,7 @@ export function AccountSyncPanel({ sync, m, open, focus, onClose, onSignOut, onS
         {sync.signedIn && (
           <section aria-labelledby="sync-account-data-title" className="flex flex-col gap-2">
             <h3 id="sync-account-data-title" className="text-sm font-semibold">This account</h3>
-            <p className={`text-xs ${m.textSub}`}>Export downloads the Library synced to the account you are signed in as. Delete removes only that account's synced rows. Prompts on this device stay.</p>
+            <p className={`text-xs ${m.textSub}`}>Export downloads the Library synced to the account you are signed in as. Delete removes only that account's synced rows. Prompts on this device stay, and this device stops uploading them.</p>
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
@@ -219,7 +220,7 @@ export function AccountSyncPanel({ sync, m, open, focus, onClose, onSignOut, onS
               >Delete my synced data</button>
             </div>
             {exportError && <p role="alert" className="text-sm text-red-500">{exportError}</p>}
-            {deleted && <p className={`text-sm ${m.textSub}`}>Synced data for this account was deleted. This device's Library was not changed.</p>}
+            {deleted && <p className={`text-sm ${m.textSub}`}>Synced data for this account was deleted. This device's Library was not changed, and it will not be uploaded again from this device.</p>}
             {deleteError && <p role="alert" className="text-sm text-red-500">{deleteError}</p>}
           </section>
         )}
@@ -227,7 +228,7 @@ export function AccountSyncPanel({ sync, m, open, focus, onClose, onSignOut, onS
         {confirmDelete && (
           <div role="alertdialog" aria-modal="true" aria-labelledby="sync-delete-title" data-testid="sync-delete-confirm" className={`rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm`}>
             <p id="sync-delete-title" className="font-medium">Delete synced data?</p>
-            <p className="mt-1">This deletes only the prompts, folders and conflict copies synced to the account you are signed in as. Prompts on this device stay. This cannot be undone.</p>
+            <p className="mt-1">This deletes only the prompts, folders and conflict copies synced to the account you are signed in as. Prompts on this device stay, and this device will not upload them again. This cannot be undone.</p>
             <div className="mt-3 flex gap-2">
               <button type="button" className={`ui-control rounded-md border px-2.5 py-1 ${m.border} ${m.btn}`} onClick={() => setConfirmDelete(false)}>Cancel</button>
               <button
@@ -254,7 +255,7 @@ export function AccountSyncPanel({ sync, m, open, focus, onClose, onSignOut, onS
           <footer className={`flex flex-wrap items-center justify-between gap-3 border-t pt-3 ${m.border}`}>
             <p className={`text-xs ${m.textSub}`}>Signing out stops sync. Everything stays on this device.</p>
             <div className="flex gap-2">
-              {!mismatch && <button type="button" className={`ui-control rounded-md border px-2.5 py-1 text-sm ${m.border} ${m.btn}`} onClick={() => sync.syncNow?.()}>Sync now</button>}
+              {!mismatch && sync.status !== 'uploads-suspended' && !sync.uploadsSuspended && <button type="button" className={`ui-control rounded-md border px-2.5 py-1 text-sm ${m.border} ${m.btn}`} onClick={() => sync.syncNow?.()}>Sync now</button>}
               {onSignOut && <button type="button" className={`ui-control rounded-md border px-2.5 py-1 text-sm ${m.border} ${m.btn}`} onClick={onSignOut}>Sign out, keep local data</button>}
             </div>
           </footer>
