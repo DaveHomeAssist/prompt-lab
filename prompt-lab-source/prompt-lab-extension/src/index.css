@@ -1291,9 +1291,10 @@ textarea:disabled {
 .pl-library-results.is-gallery .pl-library-card-actions { grid-column: 2; justify-content: flex-end; flex-wrap: wrap; }
 .pl-library-card-copy > .pl-artwork { margin-bottom: 0.3rem; }
 .pl-library-card-title { min-width: 0; overflow-wrap: anywhere; }
-/* The More menu drops over the workspace. The header has to sit above that
-   content or the open menu cannot be clicked. */
-.pl-app-header { position: relative; z-index: 60; }
+/* While More is open, lift the header above the workspace so the menu can be
+   clicked. Leaving it raised all the time covers controls that sit under the
+   header on short windows. */
+.pl-app-header:has(#pl-header-more-panel) { position: relative; z-index: 80; }
 .pl-header-bar { display: flex; align-items: center; gap: 0.45rem 0.65rem; min-width: 0; flex-wrap: wrap; }
 .pl-header-identity { flex: 0 1 auto; }
 .pl-header-actions { flex: 0 0 auto; }

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { libraryViewButton } from './library-toolbar.js';
+import { closeLibraryFilters, libraryViewButton } from './library-toolbar.js';
 import { paletteControl, selectPalette, switchTheme } from './theme-toggle.js';
 
 for (const [width, height] of [[375, 812], [812, 375], [1440, 900], [3440, 1440]]) {
@@ -26,6 +26,7 @@ for (const [width, height] of [[375, 812], [812, 375], [1440, 900], [3440, 1440]
     await (await libraryViewButton(page, 'Gallery view')).click();
     await page.reload();
     await expect(await libraryViewButton(page, 'Gallery view')).toHaveAttribute('aria-pressed', 'true');
+    await closeLibraryFilters(page);
     await expect(await paletteControl(page)).toHaveValue('plum');
     const dimensions = await page.evaluate(() => ({ x: document.documentElement.scrollWidth - document.documentElement.clientWidth, y: document.documentElement.scrollHeight - document.documentElement.clientHeight }));
     expect(dimensions).toEqual({ x: 0, y: 0 });

@@ -36,7 +36,8 @@ for (const [width, height] of [[375, 812], [844, 390], [1440, 900], [3840, 1080]
         await (await libraryViewButton(page, view)).click();
         await closeLibraryFilters(page);
         const trigger = page.getByRole('button', { name: `Change artwork for ${entry.title}` });
-        await trigger.focus(); await page.keyboard.press('Enter');
+        await trigger.focus();
+        await trigger.press('Enter');
         const picker = page.getByRole('dialog', { name: `Artwork for ${entry.title}` });
         await expect(picker).toBeVisible();
         await picker.getByLabel('Prompt artwork emoji').fill('👩🏽‍💻');

@@ -57,7 +57,9 @@ export async function checkLibraryPersisted({ readLibrary, execute, click, fill,
   assert.equal(await execute('return getComputedStyle(document.querySelector(`button[aria-label="Settings"]`)).getPropertyValue("-webkit-appearance");'), 'none');
   const lightSettingsAppearance = await settingsAppearance('light');
   await screenshot('library-light-controls');
+  if (await execute('return Boolean(document.querySelector("#library-filters-sheet"));')) await click('button[aria-label="Close filters"]');
   await switchTheme({ execute, click }, 'dark');
+  await ensureLibrarySelects({ execute, click });
   assert.equal(await execute('return getComputedStyle(document.querySelector(`[aria-label="Sort prompts"]`)).colorScheme;'), 'dark');
   assert.equal(await execute('return getComputedStyle(document.querySelector(`button[aria-label="Settings"]`)).appearance;'), 'none');
   assert.equal(await execute('return getComputedStyle(document.querySelector(`button[aria-label="Settings"]`)).getPropertyValue("-webkit-appearance");'), 'none');
