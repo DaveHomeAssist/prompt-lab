@@ -10,10 +10,10 @@ import {
   shouldAttemptLegacyWebMigration,
   APEX_WEB_APP_ORIGIN,
   WWW_WEB_APP_ORIGIN,
-  LEGACY_WEB_APP_ORIGIN,
   LEGACY_LIBRARY_CHECK_KEY,
   LEGACY_LIBRARY_SOURCES,
   getLegacyLibrarySource,
+  DEFAULT_LEGACY_SOURCE,
 } from '../lib/legacyLibraryMigration.js';
 
 describe('legacyLibraryMigration', () => {
@@ -77,19 +77,18 @@ describe('legacyLibraryMigration', () => {
   it('skips automatic legacy migration attempts on localhost preview origins', () => {
     expect(shouldAttemptLegacyWebMigration('http://localhost:4176', 'http:')).toBe(false);
     expect(shouldAttemptLegacyWebMigration('http://127.0.0.1:4176', 'http:')).toBe(false);
-    expect(shouldAttemptLegacyWebMigration('https://promptlab-preview.example.com', 'https:')).toBe(true);
+    // Only the https apex reads www; preview hosts no longer ask any source.
+    expect(shouldAttemptLegacyWebMigration('https://promptlab-preview.example.com', 'https:')).toBe(false);
   });
 });
 
 describe('legacy library sources (S-06 www -> apex)', () => {
-  it('lists www first, then tawny, each with its own checked key', () => {
-    expect(LEGACY_LIBRARY_SOURCES.map((source) => source.id)).toEqual(['www', 'tawny']);
+  it('lists only www (the cross-site tawny source was removed, S-24) with its own checked key', () => {
+    expect(LEGACY_LIBRARY_SOURCES.map((source) => source.id)).toEqual(['www']);
+    expect(LEGACY_LIBRARY_SOURCES.some((source) => /tawny|vercel\.app/.test(source.origin))).toBe(false);
+    expect(getLegacyLibrarySource('tawny').id).toBe('www');
     expect(getLegacyLibrarySource('www')).toMatchObject({
       origin: WWW_WEB_APP_ORIGIN, checkKey: `${LEGACY_LIBRARY_CHECK_KEY}:www`, mergeIntoExisting: true,
-    });
-    // tawny keeps the original key so already-checked users are not re-asked.
-    expect(getLegacyLibrarySource('tawny')).toMatchObject({
-      origin: LEGACY_WEB_APP_ORIGIN, checkKey: LEGACY_LIBRARY_CHECK_KEY, mergeIntoExisting: false,
     });
     expect(new Set(LEGACY_LIBRARY_SOURCES.map((source) => source.checkKey)).size).toBe(LEGACY_LIBRARY_SOURCES.length);
   });
@@ -103,10 +102,11 @@ describe('legacy library sources (S-06 www -> apex)', () => {
     expect(shouldAttemptLegacyWebMigration('chrome-extension://abc', 'chrome-extension:', 'www')).toBe(false);
   });
 
-  it('keeps the tawny rule unchanged and the default source is tawny', () => {
-    expect(shouldAttemptLegacyWebMigration(APEX_WEB_APP_ORIGIN, 'https:', 'tawny')).toBe(true);
-    expect(shouldAttemptLegacyWebMigration(WWW_WEB_APP_ORIGIN, 'https:')).toBe(true);
-    expect(shouldAttemptLegacyWebMigration(LEGACY_WEB_APP_ORIGIN, 'https:')).toBe(false);
+  it('the default source is www and no other origin is ever asked', () => {
+    expect(DEFAULT_LEGACY_SOURCE.id).toBe('www');
+    expect(shouldAttemptLegacyWebMigration(APEX_WEB_APP_ORIGIN, 'https:')).toBe(true);
+    expect(shouldAttemptLegacyWebMigration(WWW_WEB_APP_ORIGIN, 'https:')).toBe(false);
+    expect(shouldAttemptLegacyWebMigration('https://prompt-lab-tawny.vercel.app', 'https:')).toBe(false);
   });
 
   it('merges a www library into a non-empty apex library without duplicates', () => {

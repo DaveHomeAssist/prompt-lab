@@ -76,21 +76,21 @@ test('app CSP keeps its restrictive baseline', async () => {
 });
 
 // V-10: the legacy-library migration frames
-// https://prompt-lab-tawny.vercel.app/legacy-library-bridge.html (the old demo
-// origin) to read a library saved there. frame-src blocked it on every load,
-// so migration failed silently. Allow exactly that origin, nothing broader.
-test('app CSP lets the legacy-library bridge frame load from the www and old demo origins only', async () => {
+// https://www.promptlab.tools/legacy-library-bridge.html to read a library saved
+// there. The old prompt-lab-tawny.vercel.app source was removed (S-24: its
+// frame recovers nothing in Chrome), so frame-src allows www only, nothing broader.
+test('app CSP lets the legacy-library bridge frame load from the www origin only (no tawny)', async () => {
   const csp = await readAppCsp();
   const frameSrc = directive(csp, 'frame-src');
-  const { LEGACY_WEB_APP_ORIGIN, WWW_WEB_APP_ORIGIN, LEGACY_LIBRARY_SOURCES } = await import('../../../prompt-lab-extension/src/lib/legacyLibraryMigration.js');
+  const { WWW_WEB_APP_ORIGIN, LEGACY_LIBRARY_SOURCES } = await import('../../../prompt-lab-extension/src/lib/legacyLibraryMigration.js');
 
-  assert.equal(LEGACY_WEB_APP_ORIGIN, 'https://prompt-lab-tawny.vercel.app');
+  assert.doesNotMatch(csp, /tawny/);
   assert.equal(WWW_WEB_APP_ORIGIN, 'https://www.promptlab.tools');
   // S-06: every migration source must be frameable, and nothing else.
   for (const source of LEGACY_LIBRARY_SOURCES) {
     assert.ok(frameSrc.split(/\s+/).includes(source.origin), `frame-src must list ${source.origin}`);
   }
   assert.doesNotMatch(frameSrc, /\*\.vercel\.app|https:\/\/\*|\bhttps:(?:\s|$)/);
-  assert.deepEqual(frameSrc.split(/\s+/).sort(), ["'self'", 'https://challenges.cloudflare.com', WWW_WEB_APP_ORIGIN, LEGACY_WEB_APP_ORIGIN].sort());
+  assert.deepEqual(frameSrc.split(/\s+/).sort(), ["'self'", 'https://challenges.cloudflare.com', WWW_WEB_APP_ORIGIN].sort());
   assert.equal(directive(csp, 'child-src'), null, 'no separate child-src is needed; frame-src governs frames');
 });
