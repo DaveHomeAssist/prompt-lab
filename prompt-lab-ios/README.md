@@ -2,6 +2,8 @@
 
 Native SwiftUI Prompt Lab workbench for iOS and iPadOS 17 and later.
 
+Bundle identifier: `com.davehomeassist.promptlab`. Marketing version and build number are both `1.9.0`, the shared `major.minor.patch` product version in `prompt-lab-source/package.json`.
+
 This remains a focused native v1 rather than a replacement for every React feature. It implements the universal native direction recorded in `prompt-lab-source/docs/DECISIONS.md` [D-011], with shared JSON contracts for enhancement and Library transfer as the compatibility boundary.
 
 ## Build and test
@@ -38,7 +40,7 @@ The app targets both iPhone and iPad. Regular-width iPads keep a rebalanced thre
 3. Paste an Anthropic API key and tap **Save**.
 4. Enter a prompt and tap **Enhance** or press Command-Return.
 
-The key is stored as a generic-password item using `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`. It is not written to UserDefaults, synced through iCloud Keychain, or logged.
+The key is stored as a generic-password Keychain item with service `com.davehomeassist.promptlab` and account `anthropic-api-key`, using `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`. The app looks the key up by that service and account. The key is not written to UserDefaults, synced through iCloud Keychain, or logged.
 
 ## What works
 
@@ -63,7 +65,7 @@ The key is stored as a generic-password item using `kSecAttrAccessibleAfterFirst
 The checked-in QA suite contains credential-free unit tests, one optional live Anthropic smoke test, and five credential-free UI tests. The UI suite runs on both iPhone and iPad in CI and covers compact launch/navigation (including a forced compact-width route on iPad), recorded completion, Results actions, Library reopen, run detail/reuse, and an XCTest accessibility audit. The recorded Anthropic provider is available only in Debug builds for credential-free network-boundary proof:
 
 ```sh
-xcrun simctl launch booted com.davehomeassist.promptlab.prototype \
+xcrun simctl launch booted com.davehomeassist.promptlab \
   -recordedAnthropic -runRecordedDemo
 ```
 

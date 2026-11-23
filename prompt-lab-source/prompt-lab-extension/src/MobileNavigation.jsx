@@ -1,14 +1,58 @@
 import Ic from './icons.jsx';
+import { SUBVIEWS } from './lib/navigationRegistry.js';
 
+const ICONS = {
+  editor: 'Wand2',
+  library: 'FolderOpen',
+  composer: 'Layers',
+  evaluate: 'FlaskConical',
+  scratch: 'FileText',
+};
+
+// The phone bar only renders below the dual-pane breakpoint (compact < 720).
+// Dual Pane is marked hideCompact in the navigation registry, so it stays off
+// this bar: six labels at ~8px were unreadable, and the split workspace is
+// not usable at phone width.
 export default function MobileNavigation({ primaryView, workspaceView, openCreateView, openSection, setPrimaryView }) {
+  const items = [
+    ...SUBVIEWS.create.filter((item) => !item.hideCompact).map((item) => ({
+      id: item.id,
+      label: item.label,
+      icon: ICONS[item.id],
+      current: primaryView === 'create' && workspaceView === item.id,
+      onClick: () => openCreateView(item.id),
+      testId: item.id === 'library' ? 'nav-library' : undefined,
+    })),
+    {
+      id: 'evaluate',
+      label: 'Evaluate',
+      icon: ICONS.evaluate,
+      current: primaryView === 'runs',
+      onClick: () => openSection('evaluate'),
+    },
+    {
+      id: 'scratch',
+      label: 'Scratch',
+      icon: ICONS.scratch,
+      current: primaryView === 'notebook',
+      onClick: () => setPrimaryView('notebook'),
+    },
+  ];
+
   return (
     <nav className="pl-mobile-nav" aria-label="Primary mobile navigation">
-      <button type="button" aria-current={primaryView === 'create' && workspaceView === 'editor' ? 'page' : undefined} onClick={() => openCreateView('editor')}><Ic n="Wand2" size={16} /><span>Write</span></button>
-      <button type="button" data-testid="nav-library" aria-current={primaryView === 'create' && workspaceView === 'library' ? 'page' : undefined} onClick={() => openCreateView('library')}><Ic n="FolderOpen" size={16} /><span>Library</span></button>
-      <button type="button" aria-current={primaryView === 'create' && workspaceView === 'composer' ? 'page' : undefined} onClick={() => openCreateView('composer')}><Ic n="Layers" size={16} /><span>Compose</span></button>
-      <button type="button" aria-current={primaryView === 'create' && workspaceView === 'split' ? 'page' : undefined} onClick={() => openCreateView('split')}><Ic n="PanelRight" size={16} /><span>Dual Pane</span></button>
-      <button type="button" aria-current={primaryView === 'runs' ? 'page' : undefined} onClick={() => openSection('evaluate')}><Ic n="FlaskConical" size={16} /><span>Evaluate</span></button>
-      <button type="button" aria-current={primaryView === 'notebook' ? 'page' : undefined} onClick={() => setPrimaryView('notebook')}><Ic n="FileText" size={16} /><span>Scratch</span></button>
+      {items.map((item) => (
+        <button
+          key={item.id}
+          type="button"
+          data-testid={item.testId}
+          aria-current={item.current ? 'page' : undefined}
+          onClick={item.onClick}
+        >
+          <Ic n={item.icon} size={16} />
+          <span>{item.label}</span>
+        </button>
+      ))}
     </nav>
   );
 }

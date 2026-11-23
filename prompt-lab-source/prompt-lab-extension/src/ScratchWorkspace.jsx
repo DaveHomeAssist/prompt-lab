@@ -340,7 +340,7 @@ export default function ScratchWorkspace({
       reportSaveFailure();
       notify?.('Scratch upgrade could not be saved. Your readable notes are still here for retry.');
     }
-    else if (migrated) notify?.('Scratch notes upgraded to schema v4.');
+    // Schema upgrades stay silent. A failed write still tells the user their notes are safe.
   };
 
   useEffect(() => {
