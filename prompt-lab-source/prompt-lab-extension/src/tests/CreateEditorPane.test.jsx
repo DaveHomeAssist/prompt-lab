@@ -1,6 +1,11 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
-import CreateEditorPane from '../CreateEditorPane.jsx';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import CreateEditorPane, { WRITE_SHORT_QUERY } from '../CreateEditorPane.jsx';
+
+const css = fs.readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../index.css'), 'utf8');
 
 vi.mock('../icons.jsx', () => ({ default: () => null }));
 vi.mock('../MarkdownPreview.jsx', () => ({ default: ({ text }) => <div>{text}</div> }));
@@ -37,6 +42,8 @@ function renderPane(overrides = {}) {
 }
 
 describe('CreateEditorPane', () => {
+  beforeEach(() => localStorage.clear());
+
   it('uses the shared ember and gold accents across the workbench body', () => {
     renderPane();
     expect(screen.queryByText('Editing')).not.toBeInTheDocument();
@@ -45,13 +52,28 @@ describe('CreateEditorPane', () => {
     expect(screen.getByRole('button', { name: 'Try Again' })).toHaveClass('bg-orange-500/90', 'hover:bg-orange-400');
     expect(screen.getByRole('tab', { name: 'Side-by-side' })).toBeInTheDocument();
   });
-  it('shows an intentional workbench empty state before any output exists', () => {
+  it('shows onboarding only while the library is empty, and remembers a dismissal', () => {
     renderPane({ currentEntry: null, suggestedSaveTitle: 'Untitled prompt', raw: '', wc: 0,
-      error: null, enhanced: '', editingId: null, goldenResponse: null });
+      error: null, enhanced: '', editingId: null, goldenResponse: null, libraryCount: 0 });
+    expect(screen.getByTestId('write-onboarding')).toBeInTheDocument();
     expect(screen.getByText('Workbench flow')).toBeInTheDocument();
     expect(screen.getByText('Start with a draft or load a starter.')).toBeInTheDocument();
-    expect(screen.getByText('Ctrl+Enter to refine')).toBeInTheDocument();
-    expect(screen.getByText(/Save strong versions to Library/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+    expect(screen.queryByTestId('write-onboarding')).not.toBeInTheDocument();
+    expect(localStorage.getItem('pl2-write-onboarding-dismissed')).toBe('true');
+  });
+
+  it('hides onboarding once the library has a prompt', () => {
+    renderPane({ currentEntry: null, suggestedSaveTitle: 'Untitled prompt', raw: '', wc: 0,
+      error: null, enhanced: '', editingId: null, goldenResponse: null, libraryCount: 1 });
+    expect(screen.queryByTestId('write-onboarding')).not.toBeInTheDocument();
+    expect(screen.queryByText('Workbench flow')).not.toBeInTheDocument();
+  });
+
+  it('keeps a dismissed onboarding card hidden on the next visit', () => {
+    localStorage.setItem('pl2-write-onboarding-dismissed', 'true');
+    renderPane({ currentEntry: null, raw: '', wc: 0, error: null, enhanced: '', editingId: null, libraryCount: 0 });
+    expect(screen.queryByTestId('write-onboarding')).not.toBeInTheDocument();
   });
   it('shows an activation runway with a starter-draft action for first-run users', () => {
     const onLoadQuickStartPrompt = vi.fn();
@@ -99,18 +121,42 @@ describe('CreateEditorPane', () => {
     expect(openSavePanel).toHaveBeenCalledWith();
   });
 
-  it('guides saved-but-unreviewed users toward Evaluate', () => {
-    const onOpenEvaluate = vi.fn();
-    renderPane({ currentEntry: null, suggestedSaveTitle: 'Untitled prompt', raw: 'Draft prompt body',
-      error: null, enhanced: '', editingId: null, goldenResponse: null, libraryCount: 1,
-      evalRunCount: 0, onOpenEvaluate });
-    expect(screen.getByText('2/3 milestones')).toBeInTheDocument();
-    expect(screen.getByText('Run available')).toBeInTheDocument();
-    expect(screen.getByText('Open Evaluate to learn how to generate your first run.')).toBeInTheDocument();
-    expect(screen.queryByText('Run reviewed')).not.toBeInTheDocument();
+  it('guides an empty library toward the first save, then hides that card once a prompt exists', () => {
+    const openSavePanel = vi.fn();
+    const first = renderPane({ currentEntry: null, suggestedSaveTitle: 'Untitled prompt', raw: 'Draft prompt body',
+      error: null, enhanced: '', editingId: null, goldenResponse: null, libraryCount: 0,
+      evalRunCount: 0, openSavePanel });
+    expect(screen.getByText('1/3 milestones')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Save First Prompt' }));
+    expect(openSavePanel).toHaveBeenCalledTimes(1);
+    first.unmount();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Open Evaluate' }));
-    expect(onOpenEvaluate).toHaveBeenCalledTimes(1);
+    renderPane({ currentEntry: null, suggestedSaveTitle: 'Untitled prompt', raw: 'Draft prompt body',
+      error: null, enhanced: '', editingId: null, goldenResponse: null, libraryCount: 1, evalRunCount: 0 });
+    expect(screen.queryByText('Activation runway')).not.toBeInTheDocument();
+  });
+
+  it('caps the write column and pins Refine in one scroll column on short windows', () => {
+    expect(css).toContain('.pl-write-column { align-self: center; width: min(100%, 60rem);');
+    expect(css).toContain('.pl-write-actions { position: sticky; bottom: 0;');
+    window.matchMedia = vi.fn().mockImplementation((query) => ({
+      matches: query === WRITE_SHORT_QUERY,
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+    const { container } = renderPane({
+      libraryCount: 0, error: null, enhanced: '', currentEntry: null, editingId: null,
+    });
+    const column = container.querySelector('.pl-write-column.is-pinned-actions');
+    const scroll = container.querySelector('.pl-write-scroll');
+    const actions = container.querySelector('.pl-write-actions');
+    expect(column).not.toBeNull();
+    expect(scroll).toContainElement(screen.getByTestId('prompt-input'));
+    expect(scroll).toContainElement(screen.getByTestId('write-onboarding'));
+    expect(actions).toContainElement(screen.getByTestId('refine-action'));
+    expect(scroll.contains(screen.getByTestId('refine-action'))).toBe(false);
+    delete window.matchMedia;
   });
   describe('two-pane workspace (splitLayout)', () => {
     it('keeps the stacked layout unless splitLayout is set', () => {

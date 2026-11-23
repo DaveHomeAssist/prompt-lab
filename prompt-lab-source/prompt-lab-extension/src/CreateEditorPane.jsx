@@ -12,7 +12,29 @@ import PostEnhanceResults from './PostEnhanceResults.jsx';
 import HostedQuotaBadge from './HostedQuotaBadge.jsx';
 import { getPrimarySaveLabel } from './lib/promptLifecycle.js';
 import PromptShortcuts from './PromptShortcuts.jsx';
+import usePersistedState from './usePersistedState.js';
 import './CreateGraphite.css';
+
+// Short desktop windows (1366x768, 1024x768) clip Refine inside a nested
+// scroller. At this height the Write column scrolls once and pins the actions.
+export const WRITE_SHORT_QUERY = '(max-height: 800px)';
+const ONBOARDING_DISMISS_KEY = 'pl2-write-onboarding-dismissed';
+
+function useMediaQuery(query) {
+  const [matches, setMatches] = useState(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
+    return window.matchMedia(query).matches;
+  });
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return undefined;
+    const media = window.matchMedia(query);
+    const update = () => setMatches(media.matches);
+    update();
+    media.addEventListener?.('change', update);
+    return () => media.removeEventListener?.('change', update);
+  }, [query]);
+  return matches;
+}
 
 function incompleteResponseHeading(error) {
   if (error?.code === 'output_truncated') return 'Response was cut off at the output limit';
@@ -188,6 +210,10 @@ export default function CreateEditorPane({
   const scoreCnt = score?.points ?? scoreChecks.filter(c => c[1]).length;
   const qualityHint = 'Heuristic quality score: five equal-weight checks for role, task, format, constraints, and context.';
   const scrollWithWorkspace = pageScroll || compact;
+  const shortWrite = useMediaQuery(WRITE_SHORT_QUERY);
+  // Wide, short windows keep one scrolling column with Refine pinned. Compact
+  // and extension page-scroll already flow as one column.
+  const pinActions = !splitLayout && shortWrite && !scrollWithWorkspace;
   const shellClass = scrollWithWorkspace
     ? 'pl-tab-panel min-h-0 flex flex-col'
     : 'pl-tab-panel h-full min-h-0 flex flex-col overflow-hidden';
@@ -210,6 +236,11 @@ export default function CreateEditorPane({
   // An existing candidate can be temporarily empty while the user edits it.
   const hasResultEditor = Boolean(enhanced || resultMeta?.candidates?.length);
   const showWorkbenchEmptyState = !loading && !hasResultEditor && !error;
+  const [onboardingDismissed, setOnboardingDismissed] = usePersistedState(ONBOARDING_DISMISS_KEY, false, {
+    validate: (value) => value === true,
+  });
+  // Onboarding stays up for an empty Library until the reader dismisses it.
+  const showOnboardingCards = showWorkbenchEmptyState && libraryCount === 0 && !onboardingDismissed;
   const activationMilestones = [
     {
       label: 'Draft ready',
@@ -386,8 +417,10 @@ export default function CreateEditorPane({
         </div>
       )}
 
-      {/* ── Actions row (with merged status + test case indicators) ── */}
-      <div className="flex flex-col gap-1.5">
+    </>
+  );
+  const actionRow = (
+      <div className="pl-write-actions-inner flex flex-col gap-1.5" data-testid="write-action-row">
         <EditorActions
           m={m}
           compact={compact}
@@ -479,7 +512,6 @@ export default function CreateEditorPane({
           </div>
         )}
       </div>
-    </>
   );
   const resultSections = (
     <>
@@ -550,8 +582,8 @@ export default function CreateEditorPane({
         </div>
       )}
 
-      {showWorkbenchEmptyState && (
-        <div className={`${m.surface} border ${m.border} rounded-xl p-4`}>
+      {showOnboardingCards && (
+        <div className={`${m.surface} border ${m.border} rounded-xl p-4`} data-testid="write-onboarding">
           <div className={`flex items-start justify-between gap-3 ${compact ? 'flex-col' : ''}`}>
             <div className="min-w-0">
               <p className={`text-[11px] font-semibold uppercase tracking-[0.24em] ${accentTextClass}`}>Workbench flow</p>
@@ -564,8 +596,17 @@ export default function CreateEditorPane({
                   : 'Use a Quick starter above or paste your own draft. Prompt Lab keeps the write-refine-save loop in one place.'}
               </p>
             </div>
-            <span className={`inline-flex items-center rounded-full border border-amber-400/30 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${accentBadgeClass}`}>
-              {primaryModKey}+Enter to refine
+            <span className="flex items-center gap-2">
+              <span className={`inline-flex items-center rounded-full border border-amber-400/30 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${accentBadgeClass}`}>
+                {primaryModKey}+Enter to refine
+              </span>
+              <button
+                type="button"
+                onClick={() => setOnboardingDismissed(true)}
+                className={`ui-control inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-semibold ${m.btn} ${m.textAlt}`}
+              >
+                Dismiss
+              </button>
             </span>
           </div>
           <div className={`mt-4 grid gap-2 ${compact ? 'grid-cols-1' : 'grid-cols-3'}`}>
@@ -848,6 +889,7 @@ export default function CreateEditorPane({
             <section id="create-source-pane" data-pane="source" aria-label="Source prompt" className="pl-create-split-pane">
               <div className="pl-create-split-source">
                 {sourceSections}
+                {actionRow}
               </div>
             </section>
             <section id="create-result-pane" data-pane="result" aria-label="Enhanced result" className="pl-create-split-pane">
@@ -882,11 +924,28 @@ export default function CreateEditorPane({
     );
   }
 
+  if (pinActions) {
+    return (
+      <div className={`${shellClass} pl-write-column is-pinned-actions`}>
+        <div className="pl-write-frame">
+          <div className="pl-write-scroll">
+            {sourceSections}
+            <div className="space-y-3" role="region" aria-label="Enhancement results">
+              {resultSections}
+            </div>
+          </div>
+          <div className="pl-write-actions">{actionRow}</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className={shellClass}>
+    <div className={`${shellClass} pl-write-column`}>
       <div className={contentClass}>
         <div className={scrollWithWorkspace ? undefined : 'min-h-0 shrink overflow-y-auto'}>
           {sourceSections}
+          {actionRow}
         </div>
 
         {/* ── Scrollable results container ── */}
