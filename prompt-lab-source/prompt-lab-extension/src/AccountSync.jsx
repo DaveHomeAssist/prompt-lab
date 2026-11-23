@@ -33,6 +33,8 @@ export function describeSyncStatus(sync, now = Date.now()) {
     case 'quota': return { tone: 'blocked', label: 'Synced Library is full', detail: 'New changes stay on this device. Delete prompts or conflict copies to free space.' };
     case 'auth': return { tone: 'blocked', label: 'Sign in again to sync', detail: `Your session ended. Nothing on this device was removed.${queued}` };
     case 'owner-mismatch': return { tone: 'blocked', label: 'Different account on this device', detail: 'This Library is linked to another Prompt Lab account, so sync is off here.' };
+    case 'kept-separate': return { tone: 'idle', label: 'Libraries kept separate', detail: 'This device\'s Library is not merged with this account.' };
+    case 'uploads-suspended': return { tone: 'idle', label: 'Uploads are off', detail: 'Synced data for this account was deleted. This device\'s Library stays here and is not uploaded.' };
     case 'error': return { tone: 'warn', label: 'Sync hit a problem', detail: `It will try again.${queued}` };
     default: return { tone: 'idle', label: 'Sync is off', detail: '' };
   }
@@ -119,6 +121,13 @@ function ConflictCopies({ sync, m }) {
 export function AccountSyncPanel({ sync, m, open, focus, onClose, onSignOut, onSignIn }) {
   const closeRef = useRef(null);
   const conflictsRef = useRef(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleted, setDeleted] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
+  const keptSeparate = sync?.status === 'kept-separate' || sync?.keptSeparate;
   useEffect(() => {
     if (!open) return undefined;
     // Opened from the "N conflict copies" link: go straight to the list.
@@ -126,10 +135,14 @@ export function AccountSyncPanel({ sync, m, open, focus, onClose, onSignOut, onS
       conflictsRef.current.scrollIntoView?.({ block: 'start' });
       conflictsRef.current.focus();
     } else closeRef.current?.focus();
-    const onKey = (event) => { if (event.key === 'Escape') onClose?.(); };
+    const onKey = (event) => {
+      if (event.key !== 'Escape') return;
+      if (confirmDelete) { setConfirmDelete(false); return; }
+      onClose?.();
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, focus, onClose]);
+  }, [open, focus, onClose, confirmDelete]);
   if (!open || !sync?.enabled) return null;
   const view = describeSyncStatus(sync);
   const mismatch = sync.status === 'owner-mismatch';
@@ -144,11 +157,23 @@ export function AccountSyncPanel({ sync, m, open, focus, onClose, onSignOut, onS
           <button ref={closeRef} type="button" className={`ui-control rounded-md border px-2.5 py-1 text-sm ${m.border} ${m.btn}`} onClick={onClose}>Close</button>
         </header>
 
-        {mismatch && (
+        {mismatch && !keptSeparate && (
           <div role="alert" data-testid="sync-owner-mismatch" className="rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm">
             <p className="font-medium">This device's Library belongs to a different account</p>
             <p className="mt-1">It was first synced with another Prompt Lab account. To keep the two accounts' prompts apart, nothing is uploaded or merged while you are signed in as this account. Your prompts on this device are untouched.</p>
             <p className="mt-1">To sync this Library, sign out and sign back in with the account that first synced it.</p>
+            <button
+              type="button"
+              className={`ui-control mt-3 rounded-md border px-2.5 py-1 text-sm ${m.border} ${m.btn}`}
+              onClick={() => sync.keepSeparate?.()}
+            >Keep separate</button>
+          </div>
+        )}
+
+        {keptSeparate && (
+          <div data-testid="sync-kept-separate" className={`rounded-lg border p-3 text-sm ${m.border}`}>
+            <p className="font-medium">Libraries kept separate</p>
+            <p className="mt-1">This device's Library stays here. The signed-in account's synced Library is not merged in, and nothing on this device is uploaded.</p>
           </div>
         )}
 
@@ -172,10 +197,65 @@ export function AccountSyncPanel({ sync, m, open, focus, onClose, onSignOut, onS
         <p className={`text-xs ${m.textMuted}`}>Synced: prompts, trash, collections, folders and loaded packs. Not synced: runs, evaluations, Scratch, provider keys and settings.</p>
 
         {sync.signedIn && (
+          <section aria-labelledby="sync-account-data-title" className="flex flex-col gap-2">
+            <h3 id="sync-account-data-title" className="text-sm font-semibold">This account</h3>
+            <p className={`text-xs ${m.textSub}`}>Export downloads the Library synced to the account you are signed in as. Delete removes only that account's synced rows. Prompts on this device stay, and this device stops uploading them.</p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={exporting}
+                className={`ui-control rounded-md border px-2.5 py-1 text-sm ${m.border} ${m.btn} disabled:opacity-60`}
+                onClick={async () => {
+                  setExportError('');
+                  setExporting(true);
+                  try { await sync.exportSyncedLibrary?.(); }
+                  catch (error) { setExportError(String(error?.message || 'Could not export the synced Library.').slice(0, 200)); }
+                  finally { setExporting(false); }
+                }}
+              >{exporting ? 'Exporting…' : 'Export synced Library'}</button>
+              <button
+                type="button"
+                className={`ui-control rounded-md border px-2.5 py-1 text-sm ${m.border} ${m.btn}`}
+                onClick={() => { setDeleted(false); setDeleteError(''); setConfirmDelete(true); }}
+              >Delete my synced data</button>
+            </div>
+            {exportError && <p role="alert" className="text-sm text-red-500">{exportError}</p>}
+            {deleted && <p className={`text-sm ${m.textSub}`}>Synced data for this account was deleted. This device's Library was not changed, and it will not be uploaded again from this device.</p>}
+            {deleteError && <p role="alert" className="text-sm text-red-500">{deleteError}</p>}
+          </section>
+        )}
+
+        {confirmDelete && (
+          <div role="alertdialog" aria-modal="true" aria-labelledby="sync-delete-title" data-testid="sync-delete-confirm" className={`rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm`}>
+            <p id="sync-delete-title" className="font-medium">Delete synced data?</p>
+            <p className="mt-1">This deletes only the prompts, folders and conflict copies synced to the account you are signed in as. Prompts on this device stay, and this device will not upload them again. This cannot be undone.</p>
+            <div className="mt-3 flex gap-2">
+              <button type="button" className={`ui-control rounded-md border px-2.5 py-1 ${m.border} ${m.btn}`} onClick={() => setConfirmDelete(false)}>Cancel</button>
+              <button
+                type="button"
+                disabled={deleting}
+                className="ui-control rounded-md bg-red-600 px-2.5 py-1 font-medium text-white hover:bg-red-500 disabled:opacity-60"
+                onClick={async () => {
+                  setDeleting(true);
+                  setDeleteError('');
+                  try {
+                    await sync.deleteSyncedData?.();
+                    setConfirmDelete(false);
+                    setDeleted(true);
+                  } catch (error) {
+                    setDeleteError(String(error?.message || 'Could not delete synced data.').slice(0, 200));
+                  } finally { setDeleting(false); }
+                }}
+              >{deleting ? 'Deleting…' : 'Delete synced data'}</button>
+            </div>
+          </div>
+        )}
+
+        {sync.signedIn && (
           <footer className={`flex flex-wrap items-center justify-between gap-3 border-t pt-3 ${m.border}`}>
             <p className={`text-xs ${m.textSub}`}>Signing out stops sync. Everything stays on this device.</p>
             <div className="flex gap-2">
-              {!mismatch && <button type="button" className={`ui-control rounded-md border px-2.5 py-1 text-sm ${m.border} ${m.btn}`} onClick={() => sync.syncNow?.()}>Sync now</button>}
+              {!mismatch && sync.status !== 'uploads-suspended' && !sync.uploadsSuspended && <button type="button" className={`ui-control rounded-md border px-2.5 py-1 text-sm ${m.border} ${m.btn}`} onClick={() => sync.syncNow?.()}>Sync now</button>}
               {onSignOut && <button type="button" className={`ui-control rounded-md border px-2.5 py-1 text-sm ${m.border} ${m.btn}`} onClick={onSignOut}>Sign out, keep local data</button>}
             </div>
           </footer>

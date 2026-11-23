@@ -33,7 +33,8 @@
     "version:check": "npm run check:node && node scripts/check-version-consistency.mjs",
     "version:bump": "npm run check:node && node scripts/bump-version.mjs",
     "test:version": "npm run check:node && node --test scripts/versioning.test.mjs",
-    "test:sync": "npm run check:node && npm test --prefix supabase && node --test tests/clerk-sync-webhook.test.mjs tests/account-sync-build.test.mjs tests/desktop-token-bridge.test.mjs"
+    "sync:preflight": "npm run check:node && node scripts/sync-preflight.mjs",
+    "test:sync": "npm run check:node && npm test --prefix supabase && node --test tests/clerk-sync-webhook.test.mjs tests/account-sync-build.test.mjs tests/desktop-token-bridge.test.mjs scripts/sync-preflight.test.mjs tests/app-bundle-no-supabase.test.mjs"
   },
   "devDependencies": {
     "markdownlint-cli2": "^0.23.2"

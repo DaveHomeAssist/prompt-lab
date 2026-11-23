@@ -152,6 +152,9 @@ jobs:
       - name: Build hosted web surface
         run: npm run build --prefix prompt-lab-web
 
+      - name: Confirm the hosted /app bundle has no Supabase reference
+        run: node scripts/check-app-bundle-no-supabase.mjs prompt-lab-web/dist
+
       - name: Retain diagnostic source maps
         uses: actions/upload-artifact@v4
         with:
