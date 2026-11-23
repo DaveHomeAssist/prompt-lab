@@ -41,7 +41,7 @@ export async function checkLibraryPersisted({ readLibrary, execute, click, fill,
       colorScheme: style.colorScheme,
       classes: [...button.classList],
     };`, [theme]);
-  if (await execute('return Boolean(document.querySelector(`[aria-label="Switch to light mode"]`));')) await switchTheme({ execute, click }, 'light');
+  await switchTheme({ execute, click }, 'light');
   assert.equal(await execute('return getComputedStyle(document.querySelector(`[aria-label="Sort prompts"]`)).colorScheme;'), 'light');
   assert.equal(await execute('return getComputedStyle(document.querySelector(`button[aria-label="Settings"]`)).appearance;'), 'none');
   assert.equal(await execute('return getComputedStyle(document.querySelector(`button[aria-label="Settings"]`)).getPropertyValue("-webkit-appearance");'), 'none');

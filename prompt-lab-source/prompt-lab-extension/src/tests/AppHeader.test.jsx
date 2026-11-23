@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import AppHeader from '../AppHeader.jsx';
 
@@ -51,12 +51,31 @@ describe('AppHeader', () => {
     renderHeader();
     for (const [name, title] of [
       ['Command palette ⌘K', 'Command palette (⌘K)'],
-      ['Switch to light mode', 'Switch to light mode'],
-      ['Keyboard shortcuts', 'Keyboard shortcuts'],
       ['Settings', 'Settings'],
+      ['More actions', 'More actions'],
     ]) {
       expect(screen.getByRole('button', { name })).toHaveAttribute('title', title);
     }
+  });
+
+  it('keeps the workspace tabs on the logo row and moves theme, palette, shortcuts, and report into More', () => {
+    renderHeader();
+    const header = screen.getByRole('banner');
+    expect(header).toContainElement(screen.getByText('Prompt Lab'));
+    expect(header).toContainElement(screen.getByRole('tab', { name: 'Write' }));
+    expect(header).toContainElement(screen.getByRole('button', { name: 'Upgrade' }));
+    expect(header).toContainElement(screen.getByRole('button', { name: 'New Prompt', exact: true }));
+    expect(header).toContainElement(screen.getByRole('button', { name: 'Command palette ⌘K' }));
+    expect(screen.queryByText(/1\.7\.0-test/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Switch to light mode' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Report a problem' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+    const panel = screen.getByRole('group', { name: 'More actions' });
+    expect(within(panel).getByRole('button', { name: 'Light mode' })).toBeInTheDocument();
+    expect(within(panel).getByLabelText('Color palette')).toBeInTheDocument();
+    expect(within(panel).getByRole('button', { name: 'Keyboard shortcuts' })).toBeInTheDocument();
+    expect(within(panel).getByRole('button', { name: 'Report a problem' })).toBeInTheDocument();
   });
 
   it('shows one unified set of workspace destinations', () => {

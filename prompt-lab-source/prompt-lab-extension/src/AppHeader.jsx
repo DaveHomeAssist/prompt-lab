@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import Ic from './icons';
-import { APP_VERSION } from './constants';
-import { BUILD_IDENTITY } from './buildIdentity.js';
 import { PALETTES, useThemeTokens } from './theme/ThemeProvider.jsx';
 import { DESKTOP_PLAN_LINK_TEXT, DESKTOP_PLAN_URL, isPrelaunchOpenAccess } from './lib/billing.js';
 import { SUBVIEWS } from './lib/navigationRegistry.js';
@@ -28,8 +26,8 @@ export default function AppHeader({
   profileSuggestion = null,
 }) {
   const { palette, setPalette } = useThemeTokens();
-  // Phones (<=520 px) cannot fit the full control row, and the compact shell
-  // clips horizontal overflow, so the secondary controls fold into "More".
+  // Theme, palette, shortcuts and Report live in More so the logo, workspace
+  // tabs and primary actions can share one row at 1024 and 1440.
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef(null);
   const moreButtonRef = useRef(null);
@@ -63,7 +61,13 @@ export default function AppHeader({
     observer.observe(node);
     return () => observer.disconnect();
   }, []);
-  const runMore = (action) => () => { setMoreOpen(false); action(); };
+  const runMore = (action) => () => {
+    // Return focus to More before the action opens another dialog, so Escape
+    // restores this button after the menu item has unmounted.
+    moreButtonRef.current?.focus();
+    setMoreOpen(false);
+    action();
+  };
   const moreItemClass = `pl-header-more-item ui-control flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm ${m.textAlt} hover:text-orange-300`;
   const prelaunchOpenAccess = isPrelaunchOpenAccess({
     plan: billingPlan,
@@ -91,20 +95,17 @@ export default function AppHeader({
   return (
     <>
       <header ref={headerRef} className={`pl-app-header px-4 py-2 ${m.header} border-b shrink-0`}>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="pl-header-identity flex min-w-0 items-center gap-2.5">
-          <div className="flex items-center gap-2">
+      <div className="pl-header-bar">
+        <div className="pl-header-identity flex min-w-0 items-center gap-2">
             <div className="flex items-center gap-1.5 shrink-0">
               <Ic n="Wand2" size={15} className="text-orange-400" />
               <span className="pl-brand-title font-bold text-sm">Prompt Lab</span>
-              <span className={`pl-header-build text-[10px] font-mono ${m.textMuted}`}>v{APP_VERSION}{BUILD_IDENTITY}</span>
             </div>
-            <span className={`text-[10px] font-semibold uppercase tracking-[0.22em] ${m.textMuted}`}>
+            <span className={`pl-header-utility text-[10px] font-semibold uppercase tracking-[0.22em] ${m.textMuted}`}>
               {utilityCopy}
             </span>
-          </div>
-          <span data-testid="library-count" className={`text-[11px] ${m.textMuted}`}>{libraryCount} saved</span>
-          {billingUiEnabled && <span data-testid="billing-plan-chip" className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${billingPlan === 'pro' ? 'pl-brand-chip' : `${m.btn} ${m.textAlt}`}`}>
+          <span data-testid="library-count" className={`pl-header-count text-[11px] whitespace-nowrap ${m.textMuted}`}>{libraryCount} saved</span>
+          {billingUiEnabled && <span data-testid="billing-plan-chip" className={`pl-header-plan rounded-full px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap ${billingPlan === 'pro' ? 'pl-brand-chip' : `${m.btn} ${m.textAlt}`}`}>
             {billingLabel}
           </span>}
           {billingUiEnabled && desktopPlanLink && (
@@ -129,6 +130,11 @@ export default function AppHeader({
             </button>
           )}
         </div>
+        {!compact && <nav className="pl-unified-navigation" aria-label="Primary navigation">
+          <div role="tablist" aria-label="Workspaces" className="pl-workspace-tabs" onKeyDown={event => handleTabArrowKeys(event, primaryView === 'create' ? workspaceView : primaryView, id => id === 'runs' ? openSection('evaluate') : id === 'notebook' ? setPrimaryView('notebook') : openCreateView(id))}>
+            {[...createModeButtons, { id: 'runs', label: 'Evaluate', action: () => openSection('evaluate'), active: primaryView === 'runs' }, { id: 'notebook', label: 'Scratch', action: () => setPrimaryView('notebook'), active: primaryView === 'notebook' }].map(({ id, label, action, active }) => <button key={id} type="button" data-tab-id={id} data-testid={`nav-${id === 'editor' ? 'create' : id === 'runs' ? 'evaluate' : id === 'notebook' ? 'scratch' : id}`} tabIndex={active ? 0 : -1} role="tab" aria-selected={active} aria-current={active ? 'page' : undefined} onClick={action} className={`pl-tab-btn ui-control px-3 py-1.5 text-xs font-semibold rounded-lg whitespace-nowrap ${active ? activeTabClass : inactiveTabClass}`}>{label}</button>)}
+          </div>
+        </nav>}
         <div className="pl-header-actions ml-auto flex items-center gap-1" data-header-actions>
           {projectProfiles && (
             <ProjectProfileBar
@@ -142,16 +148,8 @@ export default function AppHeader({
             className="pl-secondary-button pl-header-new-prompt ui-control px-2.5 py-1.5 text-xs whitespace-nowrap disabled:opacity-40">
             <Ic n="Plus" size={13} /> New Prompt
           </button>
-          <div className="pl-header-secondary flex items-center gap-1">
-            <button type="button" aria-label="Command palette ⌘K" title="Command palette (⌘K)" onClick={() => { setShowCmdPalette(true); setCmdQuery(''); }} className={`ui-control px-2 py-1 rounded-lg ${m.btn} ${m.textAlt} text-[11px] font-mono hover:text-orange-300 transition-colors`}>⌘K</button>
-            <button type="button" aria-label={colorMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} title={colorMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} onClick={() => setColorMode(p => p === 'dark' ? 'light' : 'dark')} className={`ui-control p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-orange-300 transition-colors`}>
-              {colorMode === 'dark' ? <Ic n="Sun" size={13} /> : <Ic n="Moon" size={13} />}
-            </button>
-            <label className="pl-palette-control"><span className="sr-only">Color palette</span><select aria-label="Color palette" value={palette} onChange={event => setPalette(event.target.value)}>{PALETTES.map(name => <option key={name} value={name}>{name[0].toUpperCase() + name.slice(1)}</option>)}</select></label>
-            <button type="button" aria-label="Keyboard shortcuts" title="Keyboard shortcuts" onClick={() => setShowShortcuts(true)} className={`ui-control p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-orange-300 transition-colors`}><Ic n="Keyboard" size={13} /></button>
-          </div>
+          <button type="button" aria-label="Command palette ⌘K" title="Command palette (⌘K)" onClick={() => { setShowCmdPalette(true); setCmdQuery(''); }} className={`pl-header-command ui-control px-2 py-1 rounded-lg ${m.btn} ${m.textAlt} text-[11px] font-mono hover:text-orange-300 transition-colors`}>⌘K</button>
           <button ref={settingsButtonRef} type="button" aria-label="Settings" title="Settings" onClick={() => setShowSettings(true)} className={`ui-control p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-orange-300 transition-colors`}><Ic n="Settings" size={13} /></button>
-          <button type="button" onClick={openProblemReport} aria-label="Report a problem" title="Report a problem" className={`pl-header-secondary ui-control px-2 py-1.5 rounded-lg ${m.btn} ${m.textAlt} text-xs`}>Report</button>
           <div ref={moreRef} className="pl-header-more relative">
             <button ref={moreButtonRef} type="button" aria-label="More actions" title="More actions" aria-expanded={moreOpen} aria-controls="pl-header-more-panel" onClick={() => setMoreOpen(open => !open)} className={`ui-control p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-orange-300 transition-colors`}><Ic n="MoreHorizontal" size={15} /></button>
             {moreOpen && (
@@ -159,8 +157,8 @@ export default function AppHeader({
                 <button type="button" className={moreItemClass} onClick={runMore(() => { setShowCmdPalette(true); setCmdQuery(''); })}><span className="font-mono text-[11px]">⌘K</span> Command palette</button>
                 <button type="button" className={moreItemClass} onClick={runMore(() => setColorMode(p => p === 'dark' ? 'light' : 'dark'))}>{colorMode === 'dark' ? <Ic n="Sun" size={13} /> : <Ic n="Moon" size={13} />} {colorMode === 'dark' ? 'Light mode' : 'Dark mode'}</button>
                 <label className={`pl-palette-control flex items-center justify-between gap-2 px-3 py-1 text-sm ${m.textAlt}`}><span>Color palette</span><select aria-label="Color palette" value={palette} onChange={event => setPalette(event.target.value)}>{PALETTES.map(name => <option key={name} value={name}>{name[0].toUpperCase() + name.slice(1)}</option>)}</select></label>
-                <button type="button" className={moreItemClass} onClick={runMore(() => setShowShortcuts(true))}><Ic n="Keyboard" size={13} /> Keyboard shortcuts</button>
-                <button type="button" className={moreItemClass} onClick={runMore(openProblemReport)}><Ic n="AlertTriangle" size={13} /> Report a problem</button>
+                <button type="button" aria-label="Keyboard shortcuts" className={moreItemClass} onClick={runMore(() => setShowShortcuts(true))}><Ic n="Keyboard" size={13} /> Keyboard shortcuts</button>
+                <button type="button" aria-label="Report a problem" className={moreItemClass} onClick={runMore(openProblemReport)}><Ic n="AlertTriangle" size={13} /> Report a problem</button>
                 {accountActions?.manageAccount && <button type="button" className={moreItemClass} onClick={runMore(accountActions.manageAccount)}><Ic n="User" size={13} /> Manage account</button>}
                 {accountActions?.signOut && <button type="button" className={moreItemClass} onClick={runMore(accountActions.signOut)}><Ic n="LogOut" size={13} /> Sign out</button>}
               </div>
@@ -169,11 +167,6 @@ export default function AppHeader({
           {clerkUserButton && <div className="ml-1 shrink-0" data-account-slot>{clerkUserButton}</div>}
         </div>
       </div>
-      {!compact && <nav className="pl-unified-navigation" aria-label="Primary navigation">
-        <div role="tablist" aria-label="Workspaces" className="pl-workspace-tabs" onKeyDown={event => handleTabArrowKeys(event, primaryView === 'create' ? workspaceView : primaryView, id => id === 'runs' ? openSection('evaluate') : id === 'notebook' ? setPrimaryView('notebook') : openCreateView(id))}>
-          {[...createModeButtons, { id: 'runs', label: 'Evaluate', action: () => openSection('evaluate'), active: primaryView === 'runs' }, { id: 'notebook', label: 'Scratch', action: () => setPrimaryView('notebook'), active: primaryView === 'notebook' }].map(({ id, label, action, active }) => <button key={id} type="button" data-tab-id={id} data-testid={`nav-${id === 'editor' ? 'create' : id === 'runs' ? 'evaluate' : id === 'notebook' ? 'scratch' : id}`} tabIndex={active ? 0 : -1} role="tab" aria-selected={active} aria-current={active ? 'page' : undefined} onClick={action} className={`pl-tab-btn ui-control px-3 py-1.5 text-xs font-semibold rounded-lg ${active ? activeTabClass : inactiveTabClass}`}>{label}</button>)}
-        </div>
-      </nav>}
       </header>
       {compact && renderMobileNavigation && (
         <MobileNavigation

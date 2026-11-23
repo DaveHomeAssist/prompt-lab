@@ -38,6 +38,24 @@ const SMART_VIEWS = Object.freeze([
 // Filter value for prompts with no lifecycle status (tracked by Incomplete).
 const STATUS_NOT_SET = '__not_set__';
 const PROFILE_NONE = '__none__';
+const PHONE_LIBRARY_QUERY = '(max-width: 640px)';
+
+function usePhoneLibraryToolbar() {
+  const [phone, setPhone] = useState(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
+    return window.matchMedia(PHONE_LIBRARY_QUERY).matches === true;
+  });
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return undefined;
+    const media = window.matchMedia(PHONE_LIBRARY_QUERY);
+    const apply = () => setPhone(media.matches === true);
+    apply();
+    if (typeof media.addEventListener !== 'function') return undefined;
+    media.addEventListener('change', apply);
+    return () => media.removeEventListener('change', apply);
+  }, []);
+  return phone;
+}
 
 const INSPECTOR_TABS = Object.freeze([
   ['details', 'Details'],
@@ -266,6 +284,34 @@ export default function LibraryWorkspace({
   const [layout, setLayout] = usePersistedState('pl2-library-layout', 'list', {
     validate: (value) => (LIBRARY_LAYOUTS.includes(value) ? value : 'list'),
   });
+  const phoneToolbar = usePhoneLibraryToolbar();
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const libraryActionsRef = useRef(null);
+  const filtersDialogRef = useDialogA11y({ open: phoneToolbar && filtersOpen, onClose: () => setFiltersOpen(false) });
+  useEffect(() => {
+    if (!phoneToolbar) {
+      setFiltersOpen(false);
+      setActionsOpen(false);
+    }
+  }, [phoneToolbar]);
+  useEffect(() => {
+    if (!actionsOpen) return undefined;
+    const onPointer = (event) => {
+      if (libraryActionsRef.current && !libraryActionsRef.current.contains(event.target)) setActionsOpen(false);
+    };
+    const onKey = (event) => { if (event.key === 'Escape') setActionsOpen(false); };
+    document.addEventListener('mousedown', onPointer);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onPointer);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [actionsOpen]);
+  const chooseLayout = (next) => {
+    setLayout(next);
+    setFiltersOpen(false);
+  };
   const [desktopDrawerOpen, setDesktopDrawerOpen] = usePersistedState('pl2-library-drawer', true, { validate: value => typeof value === 'boolean' ? value : true });
   const [mobileDrawerOpen, setMobileDrawerOpen] = usePersistedState('pl2-library-mobile-drawer', false, { validate: value => typeof value === 'boolean' ? value : false });
   const drawerOpen = compact ? mobileDrawerOpen : desktopDrawerOpen;
@@ -666,21 +712,48 @@ export default function LibraryWorkspace({
     />}
 
     <section className="pl-library-index" aria-label="Prompt index">
-      <header className="pl-library-toolbar">
-        <button type="button" className="pl-secondary-button" aria-label={drawerOpen ? 'Hide Library drawer' : 'Show Library drawer'} aria-expanded={drawerOpen} aria-controls="library-drawer" onClick={() => setDrawerOpen(value => !value)}><Ic n="FolderOpen" size={14} /> Views</button>
+      <header className={`pl-library-toolbar${phoneToolbar ? ' is-phone' : ''}`}>
+        <button type="button" className="pl-secondary-button" aria-label={drawerOpen ? 'Hide Library drawer' : 'Show Library drawer'} aria-expanded={drawerOpen} aria-controls="library-drawer" onClick={() => setDrawerOpen(value => !value)}><Ic n="FolderOpen" size={14} /> <span className="pl-library-views-label">Views</span></button>
         <label className="pl-library-search"><span className="sr-only">Search prompts</span><Ic n="Search" size={14} /><input data-testid="library-search" value={searchDraft} onChange={(event) => { setSearchDraft(event.target.value); lib.setSearch(event.target.value); }} placeholder="Search title, text, tags, metadata…" /></label>
-        <select aria-label="Filter by status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="">All statuses</option><option value="draft">Draft</option><option value="active">Active</option><option value="deprecated">Deprecated</option><option value={STATUS_NOT_SET}>Not set</option></select>
-        <select aria-label="Filter by project profile" value={profileFilter} onChange={(event) => setProfileFilter(event.target.value)}>
-          <option value="">All profiles</option>
-          <option value={PROFILE_NONE}>No profile</option>
-          {projectProfiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.example ? `${profile.name} (example)` : profile.name}</option>)}
-        </select>
-        <select aria-label="Sort prompts" value={lib.sortBy} onChange={(event) => lib.setSortBy(event.target.value)}><option value="newest">Newest</option><option value="oldest">Oldest</option><option value="most-used">Most used</option><option value="a-z">A–Z</option><option value="z-a">Z–A</option><option value="group">Collection</option><option value="manual">Manual</option></select>
-        <div className="pl-layout-toggle" aria-label="Library layout"><button type="button" aria-pressed={layout === 'list'} onClick={() => setLayout('list')} aria-label="List view"><Ic n="List" size={14} /> List</button><button type="button" aria-pressed={layout === 'tiles'} onClick={() => setLayout('tiles')} aria-label="Tile view"><Ic n="LayoutGrid" size={14} /> Cards</button><button type="button" aria-pressed={layout === 'compact'} onClick={() => setLayout('compact')} aria-label="Compact view"><Ic n="List" size={12} /> Compact</button><button type="button" aria-pressed={layout === 'gallery'} onClick={() => setLayout('gallery')} aria-label="Gallery view"><Ic n="Eye" size={14} /> Gallery</button></div>
-        <button type="button" className="pl-secondary-button" onClick={canExportLibrary ? lib.exportLib : () => openBilling?.('export')}><Ic n="Download" size={13} /> {canExportLibrary ? 'Export' : 'Export Pro'}</button>
-        <button type="button" aria-label={canUsePacks ? 'Open pack studio' : 'Unlock pack studio'} className="pl-secondary-button" onClick={() => canUsePacks ? setShowPackStudio((value) => !value) : openBilling?.('packs')} aria-expanded={canUsePacks ? showPackStudio : undefined}><Ic n="Layers" size={13} /> {canUsePacks ? 'Packs' : 'Packs Pro'}</button>
-        {canImportLibrary ? <><button type="button" className="pl-secondary-button" onClick={() => importInputRef.current?.click()}><Ic n="Upload" size={13} /> Import</button><input ref={importInputRef} className="sr-only" type="file" accept="application/json" aria-label="Import Prompt Lab workspace" aria-hidden="true" tabIndex={-1} onChange={lib.importLib} /></> : <button type="button" className="pl-secondary-button" onClick={() => openBilling?.('import')}><Ic n="Upload" size={13} /> Import Pro</button>}
+        {phoneToolbar ? <>
+          <button type="button" className="pl-secondary-button" aria-expanded={filtersOpen} aria-controls="library-filters-sheet" onClick={() => { setActionsOpen(false); setFiltersOpen(value => !value); }}>Filters</button>
+          <div className="pl-library-actions" ref={libraryActionsRef}>
+            <button type="button" className="pl-secondary-button" aria-label="Library actions" aria-haspopup="true" aria-expanded={actionsOpen} aria-controls="library-actions-menu" onClick={() => { setFiltersOpen(false); setActionsOpen(value => !value); }}>…</button>
+            {actionsOpen && <div id="library-actions-menu" role="group" aria-label="Library actions" className="pl-library-actions-menu">
+              <button type="button" className="pl-secondary-button" onClick={canExportLibrary ? lib.exportLib : () => openBilling?.('export')}><Ic n="Download" size={13} /> {canExportLibrary ? 'Export' : 'Export Pro'}</button>
+              <button type="button" aria-label={canUsePacks ? 'Open pack studio' : 'Unlock pack studio'} className="pl-secondary-button" onClick={() => canUsePacks ? setShowPackStudio((value) => !value) : openBilling?.('packs')} aria-expanded={canUsePacks ? showPackStudio : undefined}><Ic n="Layers" size={13} /> {canUsePacks ? 'Packs' : 'Packs Pro'}</button>
+              {canImportLibrary ? <button type="button" className="pl-secondary-button" onClick={() => importInputRef.current?.click()}><Ic n="Upload" size={13} /> Import</button> : <button type="button" className="pl-secondary-button" onClick={() => openBilling?.('import')}><Ic n="Upload" size={13} /> Import Pro</button>}
+            </div>}
+          </div>
+        </> : <>
+          <select aria-label="Filter by status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="">All statuses</option><option value="draft">Draft</option><option value="active">Active</option><option value="deprecated">Deprecated</option><option value={STATUS_NOT_SET}>Not set</option></select>
+          <select aria-label="Filter by project profile" value={profileFilter} onChange={(event) => setProfileFilter(event.target.value)}>
+            <option value="">All profiles</option>
+            <option value={PROFILE_NONE}>No profile</option>
+            {projectProfiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.example ? `${profile.name} (example)` : profile.name}</option>)}
+          </select>
+          <select aria-label="Sort prompts" value={lib.sortBy} onChange={(event) => lib.setSortBy(event.target.value)}><option value="newest">Newest</option><option value="oldest">Oldest</option><option value="most-used">Most used</option><option value="a-z">A–Z</option><option value="z-a">Z–A</option><option value="group">Collection</option><option value="manual">Manual</option></select>
+          <div className="pl-layout-toggle" aria-label="Library layout"><button type="button" aria-pressed={layout === 'list'} onClick={() => chooseLayout('list')} aria-label="List view"><Ic n="List" size={14} /> List</button><button type="button" aria-pressed={layout === 'tiles'} onClick={() => chooseLayout('tiles')} aria-label="Tile view"><Ic n="LayoutGrid" size={14} /> Cards</button><button type="button" aria-pressed={layout === 'compact'} onClick={() => chooseLayout('compact')} aria-label="Compact view"><Ic n="List" size={12} /> Compact</button><button type="button" aria-pressed={layout === 'gallery'} onClick={() => chooseLayout('gallery')} aria-label="Gallery view"><Ic n="Eye" size={14} /> Gallery</button></div>
+          <button type="button" className="pl-secondary-button" onClick={canExportLibrary ? lib.exportLib : () => openBilling?.('export')}><Ic n="Download" size={13} /> {canExportLibrary ? 'Export' : 'Export Pro'}</button>
+          <button type="button" aria-label={canUsePacks ? 'Open pack studio' : 'Unlock pack studio'} className="pl-secondary-button" onClick={() => canUsePacks ? setShowPackStudio((value) => !value) : openBilling?.('packs')} aria-expanded={canUsePacks ? showPackStudio : undefined}><Ic n="Layers" size={13} /> {canUsePacks ? 'Packs' : 'Packs Pro'}</button>
+          {canImportLibrary ? <button type="button" className="pl-secondary-button" onClick={() => importInputRef.current?.click()}><Ic n="Upload" size={13} /> Import</button> : <button type="button" className="pl-secondary-button" onClick={() => openBilling?.('import')}><Ic n="Upload" size={13} /> Import Pro</button>}
+        </>}
+        {canImportLibrary && <input ref={importInputRef} className="sr-only" type="file" accept="application/json" aria-label="Import Prompt Lab workspace" aria-hidden="true" tabIndex={-1} onChange={lib.importLib} />}
       </header>
+      {phoneToolbar && filtersOpen && <>
+        <button type="button" className="pl-library-sheet-scrim" data-dialog-scrim aria-label="Close filters" onClick={() => setFiltersOpen(false)} />
+        <div ref={filtersDialogRef} id="library-filters-sheet" role="dialog" aria-modal="true" aria-label="Library filters" tabIndex={-1} className="pl-library-filters-sheet">
+          <select aria-label="Filter by status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="">All statuses</option><option value="draft">Draft</option><option value="active">Active</option><option value="deprecated">Deprecated</option><option value={STATUS_NOT_SET}>Not set</option></select>
+          <select aria-label="Filter by project profile" value={profileFilter} onChange={(event) => setProfileFilter(event.target.value)}>
+            <option value="">All profiles</option>
+            <option value={PROFILE_NONE}>No profile</option>
+            {projectProfiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.example ? `${profile.name} (example)` : profile.name}</option>)}
+          </select>
+          <select aria-label="Sort prompts" value={lib.sortBy} onChange={(event) => lib.setSortBy(event.target.value)}><option value="newest">Newest</option><option value="oldest">Oldest</option><option value="most-used">Most used</option><option value="a-z">A–Z</option><option value="z-a">Z–A</option><option value="group">Collection</option><option value="manual">Manual</option></select>
+          <div className="pl-layout-toggle" aria-label="Library layout"><button type="button" aria-pressed={layout === 'list'} onClick={() => chooseLayout('list')} aria-label="List view"><Ic n="List" size={14} /> List</button><button type="button" aria-pressed={layout === 'tiles'} onClick={() => chooseLayout('tiles')} aria-label="Tile view"><Ic n="LayoutGrid" size={14} /> Cards</button><button type="button" aria-pressed={layout === 'compact'} onClick={() => chooseLayout('compact')} aria-label="Compact view"><Ic n="List" size={12} /> Compact</button><button type="button" aria-pressed={layout === 'gallery'} onClick={() => chooseLayout('gallery')} aria-label="Gallery view"><Ic n="Eye" size={14} /> Gallery</button></div>
+          <button type="button" className="pl-secondary-button" onClick={() => setFiltersOpen(false)}>Done</button>
+        </div>
+      </>}
 
       {showPackStudio && canUsePacks && <PackStudioPanel m={m} lib={lib} compact onClose={() => setShowPackStudio(false)} />}
       {lib.starterLibraries?.length > 0 && <details className="mt-3 rounded-lg border p-3">

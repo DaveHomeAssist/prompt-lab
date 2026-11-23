@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium, expect, test } from '@playwright/test';
+import { showLibraryFilters } from '../../prompt-lab-web/tests/app/library-toolbar.js';
 
 const directory = path.dirname(fileURLToPath(import.meta.url));
 const extensionPath = path.resolve(directory, '../dist');
@@ -113,6 +114,7 @@ for (const artifact of artifacts) for (const surface of surfaces) for (const wid
       await expect.poll(async () => (await readLibrary(page)).filter(row => row.metadata?.packId === 'lib_project_prompt_instruments').length).toBe(14);
       const loaded = (await readLibrary(page)).filter(row => row.metadata?.packId === 'lib_project_prompt_instruments');
       expect(loaded.every(row => row.metadata.packLoadedAt && row.title && (row.original || row.enhanced))).toBe(true);
+      await showLibraryFilters(page);
       await page.getByRole('combobox', { name: 'Sort prompts', exact: true }).selectOption('newest');
       const first = await page.getByRole('list', { name: 'Saved prompts' }).getByRole('listitem').first().innerText();
       expect(loaded.some(row => first.includes(row.title))).toBe(true);
@@ -132,6 +134,7 @@ for (const artifact of artifacts) for (const surface of surfaces) for (const wid
       expect((await readLibrary(page)).find(row => row.id === saved.id)).toEqual(saved);
       expect((await readLibrary(page)).filter(row => row.metadata?.packId === 'lib_project_prompt_instruments')).toEqual(loaded);
       checkRecords(await page.evaluate(() => JSON.parse(localStorage.getItem('pl2-library'))), artifact);
+      await showLibraryFilters(page);
       await page.getByRole('combobox', { name: 'Sort prompts', exact: true }).selectOption('manual');
       await page.getByTestId('library-search').fill('');
       await expect(page.getByRole('list', { name: 'Saved prompts' }).getByRole('listitem').first()).toContainText(artifact.library[0].title);

@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
-import { selectPalette, switchTheme } from './theme-toggle.js';
+import { libraryViewButton } from './library-toolbar.js';
+import { paletteControl, selectPalette, switchTheme } from './theme-toggle.js';
 
 for (const [width, height] of [[375, 812], [812, 375], [1440, 900], [3440, 1440]]) {
   test(`hosted Library controls at ${width}x${height}`, async ({ page }) => {
@@ -22,10 +23,10 @@ for (const [width, height] of [[375, 812], [812, 375], [1440, 900], [3440, 1440]
         await expect(page.locator('html')).toHaveAttribute('data-palette', palette);
       }
     }
-    await page.getByRole('button', { name: 'Gallery view' }).click();
+    await (await libraryViewButton(page, 'Gallery view')).click();
     await page.reload();
-    await expect(page.getByRole('button', { name: 'Gallery view' })).toHaveAttribute('aria-pressed', 'true');
-    await expect(page.getByLabel('Color palette')).toHaveValue('plum');
+    await expect(await libraryViewButton(page, 'Gallery view')).toHaveAttribute('aria-pressed', 'true');
+    await expect(await paletteControl(page)).toHaveValue('plum');
     const dimensions = await page.evaluate(() => ({ x: document.documentElement.scrollWidth - document.documentElement.clientWidth, y: document.documentElement.scrollHeight - document.documentElement.clientHeight }));
     expect(dimensions).toEqual({ x: 0, y: 0 });
     await page.screenshot({ path: `/tmp/codex-library-01a14cf8/hosted-library-${width}.png` });

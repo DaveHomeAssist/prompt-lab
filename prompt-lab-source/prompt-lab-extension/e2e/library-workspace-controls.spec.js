@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium, expect, test } from '@playwright/test';
+import { libraryViewButton } from '../../prompt-lab-web/tests/app/library-toolbar.js';
 
 const extensionPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'dist');
 const entry = { id: 'library-controls', title: 'Production handoff', original: 'Write a production handoff.', enhanced: 'Write a production handoff.', collection: 'Ops', tags: ['Writing'], metadata: { status: 'active' }, variants: [], notes: '', versions: [] };
@@ -31,7 +32,7 @@ for (const [width, height] of [[375, 812], [812, 375], [1440, 900], [1920, 1080]
     await page.getByRole('button', { name: 'Show Library drawer' }).click();
     if (width < 720) { await expect(page.getByRole('dialog', { name: 'Library views' })).toBeVisible(); await page.keyboard.press('Escape'); }
     else await page.getByRole('button', { name: 'Hide Library drawer', exact: true }).click();
-    for (const view of ['Compact view', 'Gallery view', 'Tile view', 'List view']) { await page.getByRole('button', { name: view }).click(); await expect(page.getByRole('button', { name: view })).toHaveAttribute('aria-pressed', 'true'); }
+    for (const view of ['Compact view', 'Gallery view', 'Tile view', 'List view']) { const button = await libraryViewButton(page, view); await button.click(); await expect(await libraryViewButton(page, view)).toHaveAttribute('aria-pressed', 'true'); }
     // Phones (<=520 px) fold the palette picker into the header's More menu.
     const more = page.getByRole('button', { name: 'More actions', exact: true });
     const paletteScope = await more.isVisible() ? (await more.click(), page.locator('#pl-header-more-panel')) : page.locator('[data-header-actions]');

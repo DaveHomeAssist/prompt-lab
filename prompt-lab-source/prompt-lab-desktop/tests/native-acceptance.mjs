@@ -1088,6 +1088,7 @@ try {
     // Disposable CI profile only: prove the native thread keeps observing while
     // JavaScript is blocked, then verify privacy and the exact reviewed export.
     await waitFor(() => execute('return Boolean(window.PromptLabDiagnosticsNative);'), 'native diagnostics bridge');
+    await click('button[aria-label="More actions"]');
     await click('[aria-label="Report a problem"]');
     await waitFor(() => execute('return document.activeElement?.id === "pl-report-description";'), 'report initial keyboard focus');
     await fill('#pl-report-description', 'Synthetic report UI acceptance');
