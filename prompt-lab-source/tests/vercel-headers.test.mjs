@@ -161,8 +161,37 @@ test('/privacy serves the full policy; /privacy/ stays the refresh stub (R-41)',
   assert.deepEqual(served('/privatepolicy'), { via: 'rewrite', file: '/privacy.html' });
 });
 
+const isWwwHostRedirect = (rule) => (rule.has || []).some((cond) => cond.type === 'host' && cond.value === 'www.promptlab.tools');
+
+// www -> apex (2026-11-22): one permanent, path-preserving redirect, scoped to
+// the www host, that leaves the legacy library bridge page on www so the apex
+// can still read www's localStorage. Redirect responses carry Vercel's default
+// headers (R-39), but they are on the www host only, so the apex policy
+// (includeSubDomains) is unaffected.
+test('www.promptlab.tools redirects permanently to the apex, keeping the path, except the bridge page', () => {
+  const rules = (config.redirects || []).filter(isWwwHostRedirect);
+  assert.equal(rules.length, 1);
+  const [rule] = rules;
+  assert.equal(rule.permanent, true);
+  assert.equal(rule.destination, 'https://promptlab.tools/$1');
+  assert.deepEqual(rule.has, [{ type: 'host', value: 'www.promptlab.tools' }]);
+  const match = sourceToRegExp(rule.source);
+  const target = (path) => { const m = match.exec(path); return m && `https://promptlab.tools/${m[1]}`; };
+  assert.equal(target('/'), 'https://promptlab.tools/');
+  assert.equal(target('/app/'), 'https://promptlab.tools/app/');
+  assert.equal(target('/pricing'), 'https://promptlab.tools/pricing');
+  assert.equal(target('/guide.html'), 'https://promptlab.tools/guide.html');
+  assert.equal(target('/legacy-library-bridge.html'), null, 'the www bridge page is not redirected');
+  assert.equal(target('/legacy-library-bridge.html.bak'), 'https://promptlab.tools/legacy-library-bridge.html.bak');
+  // Nothing else redirects, and the bridge stays frameable by the apex and www.
+  assert.equal((config.redirects || []).length, 1);
+  assert.match(headersFor('/legacy-library-bridge.html')['content-security-policy'], /frame-ancestors https:\/\/promptlab\.tools https:\/\/www\.promptlab\.tools/);
+  assert.doesNotMatch(JSON.stringify(config), /tawny/);
+});
+
 test('former redirect paths get the security headers: no redirects, rewrites only (R-39)', () => {
-  assert.deepEqual(config.redirects || [], [], 'Vercel sends redirects without the headers rules');
+  // The only redirect is the www host one below; apex paths stay rewrites.
+  assert.deepEqual((config.redirects || []).filter((rule) => !isWwwHostRedirect(rule)), [], 'Vercel sends redirects without the headers rules');
   for (const [path, target] of Object.entries(FORMER_REDIRECTS)) {
     const rule = rewriteFor(path);
     assert.ok(rule, `${path} is a rewrite`);

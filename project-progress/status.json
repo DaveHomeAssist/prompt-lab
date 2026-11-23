@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-11-17T03:16:07.000Z",
+  "snapshotAt": "2026-11-23T11:03:47.626Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "abc89d4d0c204392aaa52390a5df5c547f48bb73",
+  "mainSha": "6f0947143314eadb34e261c4a331774deb2eec62",
   "overall": "Acceptance incomplete",
   "nextAction": "Continue N03 bulk icon/tag/metadata editing from the prepared allowlist, preview and acknowledged-write contract. N01 Copy code and N02 contextual Chat are accepted. Other November and independent storage/billing/native/human gates remain with their owning records.",
   "evidence": [
+    {
+      "label": "Signed-in rename and Cut acceptance",
+      "state": "Open",
+      "detail": "November 23, Dave Mac, Vivaldi Chromium, production 6f09471 and Vercel dpl_DvJQUD7r5kbJRN7bVdu4rp5JM3sq READY. Rename from card and heading, F2, Enter, blur, Escape, blank rejection, trimming, synchronized Details and preserved unsaved Purpose passed. Cut keeps empty result focused; Paste, version 2 save and reload passed. Mac Cmd+Z did not restore through automation; screenshot failed. Original 1027-character source and 1934-character result restored and verified after reconnect. QA Verified November 23 cleanup, test-tab closure and clipboard restoration unverified. Full scope receipt: 28 items, 26 completed, 1 partial and 1 unverified. All 108 issue rows and 14 plan items preserved. Both issue statuses unchanged; Close rename and Keep Cut are proposals only.",
+      "url": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
+    },
     {
       "label": "Workspace import same-file title default",
       "state": "Verified",
@@ -1962,8 +1968,8 @@
       "type": "Feature",
       "url": "https://app.notion.com/41a255fc8f44814e909ccd9df60ca800",
       "inPlan": false,
-      "nextAction": "Verify the interaction in a signed-in production browser.",
-      "verification": "PR318 merged 8ea12dd. Dominic browser regression, exact-candidate CI, production deployment and live app bundle verified. Signed-in production interaction pending."
+      "nextAction": "Obtain approval for the proposed Close disposition; keep recorded status until approved.",
+      "verification": "November 23 signed-in production 6f09471: both entry points, Enter, blur, Escape, blank rejection, trimming, F2, synchronized title, unrelated unsaved Purpose and reload passed. Prior PR318 failure and no-op regressions remain the evidence for fault injection. Close recommendation is pending approval; status unchanged."
     },
     {
       "id": "41a255fc8f44819b8feed35029d0694b",
@@ -1974,8 +1980,8 @@
       "type": "Bug",
       "url": "https://app.notion.com/41a255fc8f44819b8feed35029d0694b",
       "inPlan": false,
-      "nextAction": "Verify the interaction in a signed-in production browser.",
-      "verification": "PR318 merged 8ea12dd. Dominic browser regression, exact-candidate CI, production deployment and live app bundle verified. Signed-in production interaction pending."
+      "nextAction": "Resolve Mac Undo automation observation and verify recoverable cleanup of QA Verified November 23.",
+      "verification": "November 23 signed-in production 6f09471: Cut copied exact text, empty editor retained focus, Save disabled while empty, Paste and version 2 save survived reload. Mac Cmd+Z automation did not restore text. Original draft and result restored after browser reconnect. QA cleanup and clipboard restoration unverified. Keep recommendation; no status change."
     }
   ]
 }
