@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { storageKeys } from '../lib/storage.js';
+import { onLocalWrite, storageKeys } from '../lib/storage.js';
 import {
   EXAMPLE_PROJECT_PROFILE,
   activeProfile,
@@ -39,14 +39,26 @@ export default function useProjectProfiles() {
   }, [activeId]);
 
   useEffect(() => {
-    const onStorage = (event) => {
-      if (event.key !== storageKeys.projectProfiles && event.key !== storageKeys.projectProfilesSchemaVersion) return;
+    const refresh = () => {
       const next = migrateProjectProfiles();
       setProfiles(next.profiles);
       if (next.error) setError(next.error);
     };
+    const onStorage = (event) => {
+      if (event.key !== storageKeys.projectProfiles && event.key !== storageKeys.projectProfilesSchemaVersion) return;
+      refresh();
+    };
+    // A same-window workspace import writes through notifyLocalWrite. The
+    // storage event only fires for other windows, so this subscription is
+    // what keeps the picker and send state from overwriting that import.
+    const stopLocal = onLocalWrite((key) => {
+      if (key === storageKeys.projectProfiles) refresh();
+    });
     window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
+    return () => {
+      stopLocal();
+      window.removeEventListener('storage', onStorage);
+    };
   }, []);
 
   const commit = (next) => {

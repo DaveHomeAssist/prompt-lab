@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { chainStepRequest, sensitiveChainBlock } from '../ChainRunnerPanel.jsx';
 import { runChain } from '../lib/chainRunner.js';
 import { validateChain, isChainEntry } from '../lib/chainSchema.js';
 import { removeAllListeners, on } from '../lib/runEmitter.js';
@@ -176,6 +177,48 @@ describe('runChain', () => {
     });
     expect(result.status).toBe('error');
     expect(execute).not.toHaveBeenCalled();
+  });
+
+  it('blocks before send when the profile preamble contains sensitive data', async () => {
+    const execute = vi.fn();
+    const profile = {
+      id: 'notes', name: 'Notes', instructions: 'Reply to person@example.com about the note.', outputFormat: '',
+    };
+    const request = chainStepRequest({ prompt: 'Write the note.', profile });
+    expect(request.payload.system).toContain('person@example.com');
+    expect(request.payload.messages[0].content).toBe('Write the note.');
+    expect(request.matches.length).toBeGreaterThan(0);
+    expect(chainStepRequest({ prompt: 'Write the note.' }).matches).toEqual([]);
+    expect(chainStepRequest({ prompt: 'Write the note.', profile, disabled: true }).matches).toEqual([]);
+
+    const result = await runChain({
+      chainEntry: chainEntry([
+        { label: 'One', template: 'Write the note.' },
+        { label: 'Two', template: 'Continue.' },
+      ]),
+      resolveEntry: () => null,
+      execute,
+      scan: ({ prompt }) => ({ matches: chainStepRequest({ prompt, profile }).matches }),
+    });
+    expect(result.status).toBe('blocked');
+    expect(execute).not.toHaveBeenCalled();
+  });
+
+  it('keeps a profile block blocked when it is found on the payload that would be sent', async () => {
+    const execute = vi.fn()
+      .mockRejectedValueOnce(sensitiveChainBlock())
+      .mockResolvedValueOnce('should not run');
+    const result = await runChain({
+      chainEntry: chainEntry([
+        { label: 'One', template: 'Write the note.' },
+        { label: 'Two', template: 'Continue.' },
+      ]),
+      resolveEntry: () => null,
+      execute,
+    });
+    expect(result.status).toBe('blocked');
+    expect(result.results[0].status).toBe('blocked');
+    expect(execute).toHaveBeenCalledTimes(1);
   });
 
   it('blocks the chain when the PII scan flags a step', async () => {

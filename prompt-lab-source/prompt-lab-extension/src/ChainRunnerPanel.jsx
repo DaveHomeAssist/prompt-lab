@@ -10,6 +10,23 @@ import { listRunsByTrace } from './experimentStore.js';
 import { buildGraphDataset } from './runs/buildGraphDataset.js';
 import { applyProfilePreamble } from './lib/projectProfiles.js';
 
+/** The request Chain Lab actually sends, including the active profile preamble. */
+export function chainStepRequest({ prompt, provider, model, profile, disabled = false } = {}) {
+  const payload = applyProfilePreamble({
+    model: model || 'claude-sonnet-4-6',
+    max_tokens: 1000,
+    messages: [{ role: 'user', content: prompt }],
+    ...(provider ? { provider } : {}),
+  }, profile, { disabled: Boolean(disabled) }).payload;
+  return { payload, matches: scanSensitiveData({ payload }).matches || [] };
+}
+
+export function sensitiveChainBlock() {
+  const error = new Error('Chain step blocked: sensitive data detected.');
+  error.name = 'SensitiveChainBlock';
+  return error;
+}
+
 const STEP_BADGE = {
   running: 'bg-orange-500/20 text-orange-300',
   success: 'bg-emerald-500/20 text-emerald-300',
@@ -40,13 +57,15 @@ export default function ChainRunnerPanel({ m, library, notify, copy, onSendToEdi
 
   const selected = chains.find((entry) => entry.id === chainId) || null;
 
+  const profileForSend = () => ({
+    profile: profileSendRef?.current?.profile,
+    disabled: Boolean(profileSendRef?.current?.disabled),
+  });
+
   const execute = async ({ prompt, provider, model, signal }) => {
-    const data = await callModel(applyProfilePreamble({
-      model: model || 'claude-sonnet-4-6',
-      max_tokens: 1000,
-      messages: [{ role: 'user', content: prompt }],
-      ...(provider ? { provider } : {}),
-    }, profileSendRef?.current?.profile, { disabled: Boolean(profileSendRef?.current?.disabled) }).payload, { signal });
+    const request = chainStepRequest({ prompt, provider, model, ...profileForSend() });
+    if (request.matches.length) throw sensitiveChainBlock();
+    const data = await callModel(request.payload, { signal });
     return extractTextFromAnthropic(data);
   };
 
@@ -69,7 +88,7 @@ export default function ChainRunnerPanel({ m, library, notify, copy, onSendToEdi
       resolveEntry: (id) => library.find((entry) => entry.id === id) || null,
       input: chainInput,
       execute,
-      scan: scanSensitiveData,
+      scan: ({ prompt }) => ({ matches: chainStepRequest({ prompt, ...profileForSend() }).matches }),
       signal: controller?.signal,
       onStepUpdate: (index, update) => {
         setSteps((prev) => prev.map((row) => (row.index === index ? { ...row, ...update } : row)));
