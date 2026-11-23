@@ -31,6 +31,7 @@ const els = {
   saveBtn: document.getElementById('saveBtn'),
   testBtn: document.getElementById('testBtn'),
   status: document.getElementById('status'),
+  highlightMenu: document.getElementById('highlightMenu'),
 };
 
 let currentProvider = DEFAULTS.provider;
@@ -161,8 +162,9 @@ function renderSections() {
 
 function loadSettings() {
   chrome.storage.local.get(
-    PROVIDER_SETTINGS_KEYS,
+    [...PROVIDER_SETTINGS_KEYS, 'pl2-highlight-context-menu'],
     (stored) => {
+      if (els.highlightMenu) els.highlightMenu.checked = stored['pl2-highlight-context-menu'] !== false;
       const store = migrateLegacyDefaults(stored);
       currentProvider = normalizeProvider(store.provider);
 
@@ -370,6 +372,12 @@ els.chips.forEach(chip => {
     if (currentProvider === 'ollama') {
       fetchOllamaModels(ollamaModelsLoaded ? getOllamaModelValue() : savedOllamaModelPref);
     }
+  });
+});
+
+els.highlightMenu?.addEventListener('change', () => {
+  chrome.storage.local.set({ 'pl2-highlight-context-menu': Boolean(els.highlightMenu.checked) }, () => {
+    void chrome.runtime.lastError;
   });
 });
 

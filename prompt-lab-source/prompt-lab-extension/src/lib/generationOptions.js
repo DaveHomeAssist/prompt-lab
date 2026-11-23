@@ -39,12 +39,21 @@ export function readGenerationOptions(storage) {
     return normalizeGenerationOptions(JSON.parse(store?.getItem(GENERATION_STORAGE_KEY) || 'null'));
   } catch { return { ...DEFAULT_GENERATION_OPTIONS }; }
 }
+export function mirrorGenerationOptions(value) {
+  try {
+    const set = globalThis.chrome?.storage?.local?.set;
+    if (typeof set !== 'function') return;
+    set({ [GENERATION_STORAGE_KEY]: normalizeGenerationOptions(value) });
+  } catch { /* Desktop and tests have no chrome.storage. */ }
+}
+
 export function writeGenerationOptions(value, storage) {
   const next = normalizeGenerationOptions(value);
   try {
     const store = storage || globalThis.localStorage;
     if (!store) throw new Error('Storage unavailable');
     store.setItem(GENERATION_STORAGE_KEY, JSON.stringify(next));
+    mirrorGenerationOptions(next);
     return { ok: true, value: next };
   } catch {
     return { ok: false, value: next, error: 'Generation preferences could not be saved. This choice applies to this session only.' };

@@ -6,7 +6,7 @@
   "scripts": {
     "check:node": "node ../scripts/require-node.mjs",
     "dev": "npm run check:node && vite",
-    "build": "npm run check:node && vite build && node scripts/assemble.js",
+    "build": "npm run check:node && vite build && node scripts/assemble.js && node scripts/bundle-highlight.mjs",
     "preview": "npm run check:node && vite preview",
     "test": "npm run check:node && vitest run && node --test tests/*.test.mjs",
     "test:phase1": "npm run check:node && vitest run src/tests/usePersistenceFlow.test.jsx src/tests/usePersistenceFlow.share.test.jsx src/tests/useExecutionFlow.test.jsx src/tests/providerSettings.test.jsx",
@@ -17,7 +17,7 @@
     "test:e2e:production": "npm run check:node && playwright test --grep @production",
     "test:e2e:production-free": "npm run check:node && playwright test --config=playwright.production.config.js",
     "test:legacy": "npm run check:node && node --test tests/*.test.mjs",
-    "build:cws": "npm run check:node && vite build --outDir dist-cws --minify false && node scripts/assemble.js dist-cws && node scripts/check-cws-personal-data.mjs dist-cws"
+    "build:cws": "npm run check:node && vite build --outDir dist-cws --minify false && node scripts/assemble.js dist-cws && node scripts/bundle-highlight.mjs dist-cws && node scripts/check-cws-personal-data.mjs dist-cws"
   },
   "engines": {
     "node": "22.x"

@@ -1,5 +1,18 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { readHighlightSettings } from '../../prompt-lab-extension/src/lib/highlight/shortcutSettings.js';
+
+globalThis.PromptLabHighlightNative = {
+  configure: ({ enabled, accelerator }) => invoke('highlight_configure', { enabled, accelerator }),
+};
+const highlightSettings = readHighlightSettings();
+invoke('highlight_configure', {
+  enabled: highlightSettings.enabled,
+  accelerator: highlightSettings.accelerator,
+}).catch(() => {});
+listen('promptlab:highlight-notice', (event) => {
+  window.dispatchEvent(new CustomEvent('promptlab:highlight-notice', { detail: event.payload }));
+}).catch(() => {});
 
 // This entry point runs only in the desktop distribution. Browser builds never
 // resolve Tauri dependencies or gain native filesystem commands.

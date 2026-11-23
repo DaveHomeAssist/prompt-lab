@@ -4,8 +4,10 @@
 
 import { DEFAULTS, PROVIDER_SETTINGS_KEYS, activeProviderRoute, activeProviderSelection, migrateLegacyDefaults } from './lib/providerRegistry.js';
 import { callProvider, listOllamaModels, normalizeProvider } from './lib/providers.js';
+import { installHighlightMenus } from './highlight-menus.js';
 
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
+installHighlightMenus();
 
 // In-flight MODEL_REQUEST controllers keyed by requestId so a MODEL_ABORT can
 // terminate the underlying provider fetch, not just the UI's promise.

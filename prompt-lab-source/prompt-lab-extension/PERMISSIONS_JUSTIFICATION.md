@@ -3,7 +3,7 @@
 Reviewer text for the Chrome Web Store Privacy practices tab. Every entry
 matches `extension/manifest.json` (the packaged manifest; `public/manifest.json`
 is identical). The extension declares no `optional_permissions`,
-`optional_host_permissions`, or `content_scripts`, and does not request
+`optional_host_permissions`, or manifest `content_scripts`, and does not request
 `<all_urls>` or `tabs`.
 
 ## Single purpose
@@ -17,8 +17,9 @@ and saving AI prompts with the AI provider the user chooses.
 |---|---|---|
 | `storage` | Saves the user's provider choice, API keys, model settings, and session state locally with `chrome.storage.local` / `chrome.storage.session` so the workspace persists. Nothing is synced to a server. | `extension/background.js` (`chrome.storage.local.get`), `extension/options.js` (`get`/`set`), `src/lib/platform.js` (`chrome.storage.session`) |
 | `sidePanel` | Prompt Lab's UI is the side panel (`side_panel.default_path: panel.html`); the service worker sets it to open when the toolbar icon is clicked. | `extension/background.js` (`chrome.sidePanel.setPanelBehavior`), manifest `side_panel` |
-| `activeTab` | When the user clicks Capture Page, Prompt Lab reads the selected text, title, and URL of the tab the user is viewing and inserts them into the draft. `activeTab` limits this to the tab the user invoked the extension on, with no install warning and no background access. | `extension/background.js` (`CAPTURE_CONTEXT`: `chrome.tabs.query` + `chrome.scripting.executeScript`), triggered by the Capture Page button (`src/EditorActions.jsx`) through `src/lib/platform.js` (`extCaptureContext`) |
-| `scripting` | Required for `chrome.scripting.executeScript` in the Capture Page action above. The injected function only returns `window.getSelection()`, `document.title`, and `location.href`; it does not modify the page. Runs only on user click, only on `http(s)` pages. | `extension/background.js` (`CAPTURE_CONTEXT`) |
+| `activeTab` | When the user clicks Capture Page, or a Prompt Lab context-menu item, Prompt Lab reads the selected text on that tab. `activeTab` limits this to the tab the user just invoked the extension on. | `extension/background.js` (`CAPTURE_CONTEXT`), `extension/highlight-menus.js` (context-menu click) |
+| `scripting` | Runs the one-shot Capture Page read, and injects `highlight-content.js` into the isolated world after the user chooses Enhance or Send. The injected script edits the selection only after Accept, or copies the result if the edit cannot be verified. It has no API keys. | `extension/background.js`, `extension/highlight-menus.js` |
+| `contextMenus` | Adds "Enhance with Prompt Lab" and "Send to Prompt Lab" to the menu that appears when text is selected. The items are removed when the user turns the right-click menu off in Settings. | `extension/highlight-menus.js`, `extension/options.js` |
 
 ## Host Permissions
 
@@ -35,6 +36,6 @@ and saving AI prompts with the AI provider the user chooses.
 ## Notes for reviewers
 
 - No remote code: all JavaScript ships in the package; the extension uses the default MV3 content security policy.
-- The extension does not inject content scripts into pages. The only page access is the user-initiated Capture Page action above.
+- The manifest declares no `content_scripts` and no `web_accessible_resources`. Page access is the user-initiated Capture Page read, plus `highlight-content.js` injected into the isolated world only after a context-menu click. Page scripts cannot read the extension's storage or keys. The card is a closed shadow tree and assigns selection text with `textContent` only.
 - Network access is limited to the hosts listed above.
 - Test path without paid keys: install Ollama, run `ollama pull llama3.2:3b`, choose Ollama in Settings, keep `http://localhost:11434`, then type a prompt in the side panel and click Refine Prompt.

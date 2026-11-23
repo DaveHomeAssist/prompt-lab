@@ -15,6 +15,8 @@ export const EXTENSION_SOURCE_ROOTS = [join(root, 'extension'), join(root, 'publ
 export const PACKAGED_FILES = [
   'manifest.json',
   'background.js',
+  'highlight-menus.js',
+  'highlight-worker.js',
   'options.html',
   'options.js',
 ];
