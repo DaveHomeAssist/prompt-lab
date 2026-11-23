@@ -155,7 +155,7 @@ function VersionComparison({ entry, onRestore }) {
 
 const GOLDEN_RESPONSE_HINT = 'Pin a golden response from a Create run, or promote one from Evaluate → Compare.';
 
-function InspectorContent({ m, selected, smartView, inspectorTab, detailsDraft, setDetailsDraft, detailsDirty, saveDetails, discardDetails, lib, canUseCollections, openBilling, copy, testCasesByPrompt, testCaseControls, profileSuggestion, onUseProfile }) {
+function InspectorContent({ m, selected, smartView, inspectorTab, detailsDraft, setDetailsDraft, detailsDirty, saveDetails, discardDetails, lib, canUseCollections, openBilling, copy, testCasesByPrompt, testCaseControls, profileSuggestion, onUseProfile, onArtworkChange }) {
   const content = entryText(selected);
   const variableNames = uniqueStrings([
     ...extractVars(selected.original || ''), ...extractVars(selected.enhanced || ''),
@@ -167,7 +167,7 @@ function InspectorContent({ m, selected, smartView, inspectorTab, detailsDraft, 
     return <div className="pl-inspector-details-form">
       <label className="pl-inspector-primary-field pl-inspector-title-field">Title<input value={detailsDraft.title} onChange={(event) => setDetailsDraft((current) => ({ ...current, title: event.target.value }))} disabled={smartView === 'trash'} /></label>
       <label className="pl-inspector-primary-field">Purpose<textarea value={detailsDraft.purpose} placeholder="What this prompt is for and when to use it" onChange={(event) => setDetailsDraft((current) => ({ ...current, purpose: event.target.value }))} disabled={smartView === 'trash'} /></label>
-      <ArtworkPicker label="Prompt artwork" value={detailsDraft.artwork} onChange={artwork => setDetailsDraft(current => ({ ...current, artwork }))} disabled={smartView === 'trash'} suggestions={smartView === 'trash' ? [] : suggestArtwork({ title: detailsDraft.title, text: content, tags: selected.tags, collection: selected.collection }, { current: detailsDraft.artwork })} />
+      <ArtworkPicker label="Prompt artwork" value={detailsDraft.artwork} onChange={(artwork, meta) => onArtworkChange(artwork, meta)} disabled={smartView === 'trash'} suggestions={smartView === 'trash' ? [] : suggestArtwork({ title: detailsDraft.title, text: content, tags: selected.tags, collection: selected.collection }, { current: detailsDraft.artwork })} />
       <label>Owner<input value={detailsDraft.owner} onChange={(event) => setDetailsDraft((current) => ({ ...current, owner: event.target.value }))} disabled={smartView === 'trash'} /></label>
       <div className="pl-inspector-form-row">
         <label>Status<select value={detailsDraft.status} onChange={(event) => setDetailsDraft((current) => ({ ...current, status: event.target.value }))} disabled={smartView === 'trash'}><option value="">Not set</option><option value="draft">Draft</option><option value="active">Active</option><option value="deprecated">Deprecated</option></select></label>
@@ -379,6 +379,8 @@ export default function LibraryWorkspace({
   // The draft is derived during render (never copied in an effect), so the
   // inspector can't show one prompt's fields under another prompt's title.
   const pendingDetailsRef = useRef(new Map());
+  const artworkSaveChain = useRef(Promise.resolve());
+  const artworkRevision = useRef(0);
   const expectedDetails = useMemo(() => detailsForEntry(selected), [selected]);
   const detailsDraft = (selected && pendingDetailsRef.current.get(selected.id)) || expectedDetails;
   const detailsDirty = selected ? JSON.stringify(detailsDraft) !== JSON.stringify(expectedDetails) : false;
@@ -441,20 +443,38 @@ export default function LibraryWorkspace({
       finishRename(event.key === 'Enter', true);
     }}
   />;
-  const saveCardArtwork = async (id, artwork) => {
+  const commitCardArtwork = async (id, artwork) => {
+    const revisionAtStart = artworkRevision.current;
     if (smartView === 'trash' || !lib.library.some(entry => entry.id === id)) return false;
     const nextArtwork = safeArtwork(artwork);
     const saved = await lib.saveEntryDetails(id, entry => ({
       ...entry, metadata: { ...entry.metadata, artwork: nextArtwork }, updatedAt: new Date().toISOString(),
     }));
     if (saved !== true) return false;
-    // Keep all other inspector edits, but rebase its artwork after this explicit save.
+    // Keep every other inspector edit. Rebase artwork only when the inspector
+    // has not picked a newer icon or image while this write was in flight.
     const pending = pendingDetailsRef.current.get(id);
-    if (pending) pendingDetailsRef.current.set(id, { ...pending, artwork: nextArtwork });
+    if (pending && artworkRevision.current === revisionAtStart) {
+      pendingDetailsRef.current.set(id, { ...pending, artwork: nextArtwork });
+    }
     setDetailsRevision(revision => revision + 1);
     recordArtwork(nextArtwork);
     setAnnouncement('Prompt artwork saved.');
     return true;
+  };
+  const saveCardArtwork = (id, artwork) => {
+    const run = artworkSaveChain.current.then(() => commitCardArtwork(id, artwork));
+    artworkSaveChain.current = run.then(() => {}, () => {});
+    return run;
+  };
+  const changeInspectorArtwork = (artwork, meta) => {
+    artworkRevision.current += 1;
+    const currentDetails = (selected && pendingDetailsRef.current.get(selected.id)) || detailsDraft;
+    const previousEmoji = safeArtwork(currentDetails.artwork).emoji || '';
+    editDetails(current => ({ ...current, artwork }));
+    const next = safeArtwork(artwork);
+    if (!meta?.emojiCommit || !selected || smartView === 'trash' || (next.emoji || '') === previousEmoji) return;
+    void saveCardArtwork(selected.id, next);
   };
   const discardDetails = () => {
     if (!selected) return;
@@ -807,7 +827,7 @@ export default function LibraryWorkspace({
             <h3>Follow-up prompts</h3>
             {lib.library.filter(child => child.metadata?.followUpOrigin?.sourcePromptId === selected.id).map(child => <button key={child.id} type="button" className="pl-secondary-button" onClick={() => selectEntry(child)}>{child.title}</button>)}
           </section>}
-          <InspectorContent m={m} selected={selected} smartView={smartView} inspectorTab={inspectorTab} detailsDraft={detailsDraft} setDetailsDraft={editDetails} detailsDirty={detailsDirty} saveDetails={saveDetails} discardDetails={discardDetails} lib={lib} canUseCollections={canUseCollections} openBilling={openBilling} copy={copy} testCasesByPrompt={testCasesByPrompt} testCaseControls={testCaseControls} profileSuggestion={libraryProfileSuggestion} onUseProfile={onUseProfile} />
+          <InspectorContent m={m} selected={selected} smartView={smartView} inspectorTab={inspectorTab} detailsDraft={detailsDraft} setDetailsDraft={editDetails} detailsDirty={detailsDirty} saveDetails={saveDetails} discardDetails={discardDetails} lib={lib} canUseCollections={canUseCollections} openBilling={openBilling} copy={copy} testCasesByPrompt={testCasesByPrompt} testCaseControls={testCaseControls} profileSuggestion={libraryProfileSuggestion} onUseProfile={onUseProfile} onArtworkChange={changeInspectorArtwork} />
         </div>
         <footer>
           {smartView === 'trash' ? <><button type="button" className="pl-primary-button" onClick={() => { lib.restoreDeleted(selected.id); setSelectedId(null); }}>Restore prompt</button><button type="button" className="pl-secondary-button" onClick={() => { lib.permanentlyDelete(selected.id); setSelectedId(null); }}>Delete forever</button></> : <>

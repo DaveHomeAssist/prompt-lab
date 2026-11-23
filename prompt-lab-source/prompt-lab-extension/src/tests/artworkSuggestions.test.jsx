@@ -76,17 +76,15 @@ describe('suggestions in the Library card popover', () => {
     globalThis.ResizeObserver = class { observe() {} disconnect() {} };
   });
 
-  it('offers prompt-based artwork and saves the picked suggestion through Apply only', async () => {
+  it('persists a suggested emoji without a separate Apply', async () => {
     render(<Harness />);
     fireEvent.click(screen.getByRole('button', { name: 'Change artwork for Handoff' }));
     const dialog = screen.getByRole('dialog', { name: 'Artwork for Handoff' });
     const group = within(dialog).getByRole('group', { name: 'Prompt artwork suggestions' });
     fireEvent.click(within(group).getByRole('button', { name: 'Use suggested ✍️' }));
-    expect(save).not.toHaveBeenCalled();
     expect(within(dialog).queryByRole('button', { name: 'Use suggested ✍️' })).not.toBeInTheDocument();
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Apply' }));
-    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Artwork for Handoff' })).not.toBeInTheDocument());
-    expect(save).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole('dialog', { name: 'Artwork for Handoff' })).toBeInTheDocument();
     expect(JSON.parse(screen.getByTestId('library').textContent)[0].metadata.artwork).toMatchObject({ emoji: '✍️' });
   });
 });

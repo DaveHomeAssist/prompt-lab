@@ -50,15 +50,16 @@ describe('card artwork persistence', () => {
     render(<Harness />); const dialog = open();
     fireEvent.change(within(dialog).getByLabelText('Prompt artwork emoji'), { target: { value: 'two words' } });
     expect(within(dialog).getByRole('button', { name: 'Apply' })).toBeDisabled();
-    fireEvent.change(within(dialog).getByLabelText('Prompt artwork emoji'), { target: { value: '🧪' } });
+    expect(save).not.toHaveBeenCalled();
     let resolve; save.mockImplementationOnce(() => new Promise(done => { resolve = done; }));
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Apply' }));
+    fireEvent.change(within(dialog).getByLabelText('Prompt artwork emoji'), { target: { value: '🧪' } });
     expect(within(dialog).getByRole('button', { name: 'Saving…' })).toBeDisabled();
     expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeDisabled();
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
     expect(screen.getByTestId('library')).not.toHaveTextContent('🧪');
     resolve(true);
-    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Artwork for Handoff' })).not.toBeInTheDocument());
-    expect(screen.getByTestId('library')).toHaveTextContent('🧪');
+    await waitFor(() => expect(screen.getByTestId('library')).toHaveTextContent('🧪'));
+    expect(screen.getByRole('dialog', { name: 'Artwork for Handoff' })).toBeInTheDocument();
     expect(JSON.parse(localStorage.getItem('pl2-recent-artwork'))[0].emoji).toBe('🧪');
   });
   it.each(['List view', 'Tile view', 'Compact view', 'Gallery view'])('opens independently in %s and Cancel discards the draft', view => {
@@ -78,7 +79,6 @@ describe('card artwork persistence', () => {
     save.mockResolvedValueOnce(false).mockResolvedValue(true);
     const dialog = open();
     fireEvent.change(within(dialog).getByLabelText('Prompt artwork emoji'), { target: { value: '👩🏽‍💻' } });
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Apply' }));
     await waitFor(() => expect(within(dialog).getByRole('alert')).toHaveTextContent('not saved'));
     expect(screen.getByTestId('library')).toHaveTextContent('Original owner');
     expect(localStorage.getItem('pl2-recent-artwork')).toBeNull();
@@ -90,6 +90,25 @@ describe('card artwork persistence', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save details', exact: true }));
     await waitFor(() => expect(screen.getByTestId('library')).toHaveTextContent('Pending owner'));
     expect(screen.getByTestId('library')).toHaveTextContent('👩🏽‍💻');
+    expect(screen.getByTestId('library')).toHaveTextContent('Preserve me');
+  });
+  it('keeps a newer inspector icon when an emoji save finishes later', async () => {
+    render(<Harness />);
+    fireEvent.click(screen.getByRole('button', { name: 'Inspect Handoff' }));
+    fireEvent.click(screen.getByText('Prompt artwork', { selector: 'summary' }));
+    let resolve;
+    save.mockImplementationOnce(() => new Promise(done => { resolve = done; }));
+    fireEvent.change(screen.getByLabelText('Prompt artwork emoji'), { target: { value: '🧪' } });
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole('button', { name: 'Prompt artwork: Clock', exact: true }));
+    resolve(true);
+    await waitFor(() => expect(screen.getByTestId('library')).toHaveTextContent('🧪'));
+    const clock = screen.getByRole('button', { name: 'Prompt artwork: Clock', exact: true });
+    expect(clock).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByLabelText('Prompt artwork emoji')).toHaveValue('');
+    fireEvent.click(screen.getByRole('button', { name: 'Save details', exact: true }));
+    await waitFor(() => expect(screen.getByTestId('library')).toHaveTextContent('Clock'));
+    expect(screen.getByTestId('library')).not.toHaveTextContent('🧪');
     expect(screen.getByTestId('library')).toHaveTextContent('Preserve me');
   });
 });
