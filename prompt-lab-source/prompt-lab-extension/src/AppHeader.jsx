@@ -9,6 +9,7 @@ import { handleTabArrowKeys } from './hooks/useDialogA11y.js';
 import MobileNavigation from './MobileNavigation.jsx';
 import { openProblemReport } from './lib/diagnostics.js';
 import ProBadge from './ProBadge.jsx';
+import ProjectProfileBar from './ProjectProfileBar.jsx';
 
 export default function AppHeader({
   m, compact, libraryCount, colorMode, setColorMode,
@@ -26,6 +27,8 @@ export default function AppHeader({
   onNewPrompt, newPromptDisabled = false,
   // Evaluate subviews locked for this user, e.g. { compare: true }.
   lockedRunsViews = {},
+  projectProfiles = null,
+  profileSuggestion = null,
 }) {
   const { palette, setPalette } = useThemeTokens();
   // Phones (<=520 px) cannot fit the full control row, and the compact shell
@@ -130,6 +133,13 @@ export default function AppHeader({
           )}
         </div>
         <div className="pl-header-actions ml-auto flex items-center gap-1" data-header-actions>
+          {projectProfiles && (
+            <ProjectProfileBar
+              state={projectProfiles}
+              suggestion={profileSuggestion}
+              onUseSuggestion={(id) => projectProfiles.select(id)}
+            />
+          )}
           <button type="button" data-testid="global-new-prompt" onClick={onNewPrompt}
             disabled={newPromptDisabled} title="Start a separate prompt. Current work can be restored with Undo."
             className="pl-secondary-button pl-header-new-prompt ui-control px-2.5 py-1.5 text-xs whitespace-nowrap disabled:opacity-40">

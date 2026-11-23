@@ -38,6 +38,7 @@ export function commitLibrarySave() {
 // filtered by the newest clear marker, and packs track which starters loaded.
 const RECORD_KEYS = [
   storageKeys.library, storageKeys.trash, storageKeys.collections, storageKeys.folders, storageKeys.packs, storageKeys.loadedPacks,
+  storageKeys.projectProfiles,
 ];
 
 // R-21: account-sync state (shadow, cursor) and the outbox describe the

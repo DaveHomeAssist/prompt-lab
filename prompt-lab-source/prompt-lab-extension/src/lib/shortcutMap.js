@@ -28,6 +28,7 @@ export const SHORTCUT_MAP = Object.freeze([
   { id: 'save', group: 'Global', scope: 'global', key: 's', mod: true, label: 'Save prompt' },
   { id: 'cmdPalette', group: 'Global', scope: 'global', key: 'k', mod: true, label: 'Command palette' },
   { id: 'toggleScratchPanel', group: 'Global', scope: 'global', key: '\\', mod: true, label: 'Toggle the panel beside Write' },
+  { id: 'projectProfiles', group: 'Global', scope: 'global', key: 'p', alt: true, excludeInputs: true, label: 'Open project profiles' },
   { id: 'shortcuts', group: 'Global', scope: 'global', key: '?', excludeInputs: true, label: 'Show keyboard shortcuts' },
   { id: 'escape', group: 'Global', scope: 'global', key: 'Escape', label: 'Close dialog or panel' },
   { id: 'navWrite', group: 'Navigation', scope: 'global', key: '1', code: 'Digit1', alt: true, label: 'Open Write' },

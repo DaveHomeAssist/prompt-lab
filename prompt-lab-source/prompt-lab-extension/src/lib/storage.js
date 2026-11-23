@@ -15,6 +15,8 @@ export const storageKeys = Object.freeze({
   telemetry: 'pl2-telemetry',
   packs: 'pl2-packs',
   loadedPacks: 'pl2-loaded-packs',
+  projectProfiles: 'pl2-project-profiles',
+  projectProfilesSchemaVersion: 'pl2-project-profiles-schema-version',
 });
 
 const writeListeners = new Set();

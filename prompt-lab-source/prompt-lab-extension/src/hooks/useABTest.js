@@ -7,11 +7,12 @@ import { hashText } from '../lib/utils.js';
 import useSensitivePreflight from './useSensitivePreflight.js';
 import { RECORDS_CHANGED_EVENT } from '../lib/writeRecovery.js';
 import { OUTPUT_BUDGETS, COMPARE_BUDGET_KEY, DEFAULT_COMPARE_BUDGET } from '../lib/generationOptions.js';
+import { applyProfilePreamble } from '../lib/projectProfiles.js';
 
 const EMPTY_VARIANT = { prompt: '', response: '', loading: false, error: false };
 const EXTRA_LABELS = ['C', 'D', 'E'];
 
-export default function useABTest({ notify }) {
+export default function useABTest({ notify, profileSendRef }) {
   const [outputBudget, setOutputBudgetState] = useState(() => {
     try {
       const stored = Number(globalThis.localStorage?.getItem(COMPARE_BUDGET_KEY));
@@ -138,11 +139,11 @@ export default function useABTest({ notify }) {
     attempts.current[id] = attempt;
     const selection = abProviders[id] ? { ...abProviders[id] } : null;
     const source = abSource[id] ? { ...abSource[id] } : null;
-    const payload = {
+    const payload = applyProfilePreamble({
       model: selection?.model || 'claude-sonnet-4-6', max_tokens: outputBudget,
       messages: [{ role: 'user', content: state.prompt }],
       ...(selection?.provider ? { provider: selection.provider } : {}),
-    };
+    }, profileSendRef?.current?.profile, { disabled: Boolean(profileSendRef?.current?.disabled) }).payload;
     const isCurrent = () => attempts.current[id] === attempt && !attempt.controller.signal.aborted;
     const execute = async approvedPayload => {
       if (!isCurrent() || attempt.running) return;
