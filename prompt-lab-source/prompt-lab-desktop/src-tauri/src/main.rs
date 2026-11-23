@@ -4,16 +4,20 @@
 mod account_auth;
 mod diagnostics;
 mod diagnostics_store;
+mod highlight;
 use tauri::{Emitter, Manager};
 use tauri::menu::{Menu, MenuItem, MenuItemKind};
 
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .manage(account_auth::SignInState::default())
-        .invoke_handler(tauri::generate_handler![diagnostics::diagnostics_record, diagnostics::diagnostics_heartbeat, diagnostics::diagnostics_read, diagnostics::diagnostics_prepare, diagnostics::diagnostics_export, diagnostics::diagnostics_open_issue, account_auth::account_oauth_begin, account_auth::account_oauth_finish, account_auth::account_access_token, account_auth::account_sign_out])
+        .manage(highlight::HighlightState::new())
+        .invoke_handler(tauri::generate_handler![diagnostics::diagnostics_record, diagnostics::diagnostics_heartbeat, diagnostics::diagnostics_read, diagnostics::diagnostics_prepare, diagnostics::diagnostics_export, diagnostics::diagnostics_open_issue, account_auth::account_oauth_begin, account_auth::account_oauth_finish, account_auth::account_access_token, account_auth::account_sign_out, highlight::highlight_configure, highlight::highlight_accept, highlight::highlight_cancel, highlight::highlight_take_payload])
         .setup(|app| {
             app.manage(diagnostics::initialize(app.handle()));
+            highlight::install(app.handle())?;
             let menu = Menu::default(app.handle())?;
             for item in menu.items()? {
                 if let MenuItemKind::Submenu(help) = item {

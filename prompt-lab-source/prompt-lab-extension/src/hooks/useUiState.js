@@ -35,6 +35,10 @@ export default function useUiState() {
   };
 
   useEffect(() => {
+    try { globalThis.chrome?.storage?.local?.set?.({ 'pl2-mode': colorMode }); } catch { /* Not an extension. */ }
+  }, [colorMode]);
+
+  useEffect(() => {
     const onResize = () => {
       setViewportWidth(window.innerWidth);
       setViewportHeight(window.innerHeight);

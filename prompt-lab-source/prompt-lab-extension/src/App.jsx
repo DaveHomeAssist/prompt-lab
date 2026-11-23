@@ -8,6 +8,7 @@ import {
 } from './promptUtils';
 import { scanSensitiveData } from './piiScanner.js';
 import { captureContext, openSettings } from './lib/platform.js';
+import { HIGHLIGHT_DRAFT_KEY } from './lib/highlight/sendToWrite.js';
 import { buildCaptureInsertion } from './lib/captureContext.js';
 import { T, DEFAULT_GOLDEN_THRESHOLD } from './constants';
 import useLibrary from './hooks/usePromptLibrary.js';
@@ -399,6 +400,41 @@ export default function App({
     tab, setTab,
   });
   const { activeSection, openCreateView, openSection, openRunsView } = nav;
+  const highlightActions = useRef({});
+  highlightActions.current = { openCreateView, clearEditor, setRaw, notify };
+  useEffect(() => {
+    const storage = globalThis.chrome?.storage;
+    if (!storage?.session?.get || !storage?.onChanged?.addListener) return undefined;
+    let cancelled = false;
+    const apply = (draft) => {
+      if (cancelled || !draft || typeof draft.text !== 'string' || !draft.text.trim()) return;
+      const actions = highlightActions.current;
+      actions.openCreateView('editor');
+      actions.clearEditor();
+      actions.setRaw(draft.text);
+      actions.notify(typeof draft.notice === 'string' && draft.notice.trim() ? draft.notice : 'Selection loaded in Write');
+      try { storage.session.remove?.(HIGHLIGHT_DRAFT_KEY); } catch { /* The draft was already applied. */ }
+    };
+    storage.session.get(HIGHLIGHT_DRAFT_KEY, (stored) => {
+      if (!cancelled) apply(stored?.[HIGHLIGHT_DRAFT_KEY]);
+    });
+    const listener = (changes, area) => {
+      if (area === 'session' && changes[HIGHLIGHT_DRAFT_KEY]?.newValue) apply(changes[HIGHLIGHT_DRAFT_KEY].newValue);
+    };
+    storage.onChanged.addListener(listener);
+    return () => {
+      cancelled = true;
+      storage.onChanged.removeListener(listener);
+    };
+  }, []);
+  useEffect(() => {
+    const onNotice = (event) => {
+      const message = typeof event.detail === 'string' ? event.detail : 'Highlight enhance failed.';
+      highlightActions.current.notify(message);
+    };
+    window.addEventListener('promptlab:highlight-notice', onNotice);
+    return () => window.removeEventListener('promptlab:highlight-notice', onNotice);
+  }, []);
   useEffect(() => {
     if (typeof appShellRef.current?.scrollTo === 'function') {
       appShellRef.current.scrollTo({ top: 0, left: 0 });

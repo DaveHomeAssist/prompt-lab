@@ -21,7 +21,7 @@
 // a scope and that nothing here collides with a browser- or OS-reserved
 // combination that a page cannot override (see RESERVED_COMBOS).
 
-export const SHORTCUT_GROUPS = Object.freeze(['Global', 'Navigation', 'Scratch', 'Scratch editor', 'Browser']);
+export const SHORTCUT_GROUPS = Object.freeze(['Global', 'Navigation', 'Scratch', 'Scratch editor', 'System', 'Browser']);
 
 export const SHORTCUT_MAP = Object.freeze([
   { id: 'enhance', group: 'Global', scope: 'global', key: 'Enter', mod: true, label: 'Enhance prompt' },
@@ -45,6 +45,7 @@ export const SHORTCUT_MAP = Object.freeze([
   { id: 'italic', group: 'Scratch editor', scope: 'editor', key: 'i', mod: true, label: 'Italic' },
   { id: 'link', group: 'Scratch editor', scope: 'editor', key: 'k', mod: true, label: 'Insert link (instead of the command palette)' },
   { id: 'indent', group: 'Scratch editor', scope: 'editor', key: 'Tab', label: 'Indent two spaces' },
+  { id: 'highlightEnhance', group: 'System', scope: 'os', key: 'e', mod: true, alt: true, label: 'Enhance selected text in any app (desktop shortcut, turn off in Settings)' },
   { id: 'zoomIn', group: 'Browser', scope: 'browser', key: '+', mod: true, label: 'Zoom in' },
   { id: 'zoomOut', group: 'Browser', scope: 'browser', key: '-', mod: true, label: 'Zoom out' },
   { id: 'zoomReset', group: 'Browser', scope: 'browser', key: '0', mod: true, label: 'Reset zoom' },

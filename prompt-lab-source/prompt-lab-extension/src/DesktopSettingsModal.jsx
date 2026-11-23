@@ -11,6 +11,15 @@ import {
   saveProviderSettings,
   testProviderConnection,
 } from './lib/platform.js';
+import { isDesktopAppSurface } from './lib/billing.js';
+import {
+  defaultHighlightAccelerator,
+  formatHighlightAccelerator,
+  isMacPlatform,
+  parseHighlightAccelerator,
+  readHighlightSettings,
+  writeHighlightSettings,
+} from './lib/highlight/shortcutSettings.js';
 
 const IS_WEB = typeof import.meta !== 'undefined'
   && import.meta.env?.VITE_WEB_MODE === 'true';
@@ -40,6 +49,11 @@ export default function DesktopSettingsModal({ show, onClose, m, colorMode, noti
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [hostedModels, setHostedModels] = useState([]);
   const [hostedModelsError, setHostedModelsError] = useState('');
+  const desktopSurface = isDesktopAppSurface();
+  const [highlightEnabled, setHighlightEnabled] = useState(true);
+  const [highlightAccelerator, setHighlightAccelerator] = useState('');
+  const [highlightMessage, setHighlightMessage] = useState('');
+  const [highlightTone, setHighlightTone] = useState('neutral');
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
   const closeDialog = useCallback(() => closeRef.current?.(), []);
@@ -53,6 +67,15 @@ export default function DesktopSettingsModal({ show, onClose, m, colorMode, noti
   const readOnlyInputClass = `${inputClass} cursor-not-allowed opacity-70`;
   const isHostedWeb = !isExtension && IS_WEB;
   const hostedSelectionAvailable = hostedModels.some(model => model.id === settings.anthropicModel);
+
+  useEffect(() => {
+    if (!show || !desktopSurface) return;
+    const settings = readHighlightSettings();
+    setHighlightEnabled(settings.enabled);
+    setHighlightAccelerator(formatHighlightAccelerator(settings.accelerator));
+    setHighlightMessage('');
+    setHighlightTone('neutral');
+  }, [show, desktopSurface]);
 
   useEffect(() => {
     if (!show || !isHostedWeb) return;
@@ -124,6 +147,36 @@ export default function DesktopSettingsModal({ show, onClose, m, colorMode, noti
 
   function updateSetting(key, value) {
     setSettings(prev => ({ ...prev, [key]: value }));
+  }
+
+  async function applyHighlight(nextEnabled, nextAccelerator) {
+    const mac = isMacPlatform(globalThis.navigator?.platform);
+    const parsed = parseHighlightAccelerator(nextAccelerator, { mac });
+    if (!parsed.ok) {
+      setHighlightMessage(parsed.error);
+      setHighlightTone('error');
+      return;
+    }
+    const saved = writeHighlightSettings({ enabled: nextEnabled, accelerator: parsed.accelerator });
+    if (!saved.ok) {
+      setHighlightMessage(saved.error || 'The shortcut could not be saved.');
+      setHighlightTone('error');
+      return;
+    }
+    try {
+      await globalThis.PromptLabHighlightNative?.configure?.({
+        enabled: saved.value.enabled,
+        accelerator: saved.value.accelerator,
+      });
+      setHighlightAccelerator(formatHighlightAccelerator(saved.value.accelerator));
+      setHighlightMessage(saved.value.enabled
+        ? `Shortcut ${formatHighlightAccelerator(saved.value.accelerator)} is on.`
+        : 'Highlight shortcut is off.');
+      setHighlightTone('success');
+    } catch (error) {
+      setHighlightMessage(error?.message || 'The shortcut could not be registered.');
+      setHighlightTone('error');
+    }
   }
 
   async function handleSave() {
@@ -494,6 +547,45 @@ export default function DesktopSettingsModal({ show, onClose, m, colorMode, noti
                 </label>
               )}
             </>
+          )}
+
+          {desktopSurface && (
+            <fieldset className={`space-y-2 border-t ${m.border} pt-4`}>
+              <legend className={`text-sm font-semibold ${m.text}`}>Highlight to enhance</legend>
+              <p className={`text-xs ${m.textMuted}`}>
+                {isMacPlatform(globalThis.navigator?.platform)
+                  ? `Default ${formatHighlightAccelerator(defaultHighlightAccelerator(true))}. Copies the selection, enhances it, and pastes over it.`
+                  : `Default ${formatHighlightAccelerator(defaultHighlightAccelerator(false))}. Copies the selection, enhances it, and pastes over it.`}
+                {' '}A macOS Services menu entry is a follow-up and is not in this version.
+              </p>
+              <label className={`flex items-center gap-2 text-sm ${m.text}`}>
+                <input
+                  type="checkbox"
+                  checked={highlightEnabled}
+                  onChange={(event) => {
+                    const enabled = event.target.checked;
+                    setHighlightEnabled(enabled);
+                    void applyHighlight(enabled, highlightAccelerator);
+                  }}
+                />
+                Enable the highlight shortcut
+              </label>
+              <label className="block space-y-1">
+                <span className={`text-xs font-medium uppercase tracking-wide ${m.textMuted}`}>Shortcut</span>
+                <input
+                  type="text"
+                  value={highlightAccelerator}
+                  aria-label="Highlight shortcut"
+                  disabled={!highlightEnabled}
+                  onChange={(event) => setHighlightAccelerator(event.target.value)}
+                  onBlur={() => { if (highlightEnabled) void applyHighlight(true, highlightAccelerator); }}
+                  className={inputClass}
+                />
+              </label>
+              <p role="status" className={`text-xs ${highlightTone === 'error' ? 'text-red-400' : highlightTone === 'success' ? 'text-emerald-400' : m.textMuted}`}>
+                {highlightMessage || 'Use Alt, Shift, Ctrl or Command, plus a letter or digit.'}
+              </p>
+            </fieldset>
           )}
 
           <div className={`space-y-3 border-t ${m.border} pt-4`}>

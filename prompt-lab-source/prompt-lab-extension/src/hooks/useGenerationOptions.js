@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  GENERATION_EVENT, GENERATION_STORAGE_KEY, normalizeGenerationOptions,
+  GENERATION_EVENT, GENERATION_STORAGE_KEY, mirrorGenerationOptions, normalizeGenerationOptions,
   readGenerationOptions, writeGenerationOptions,
 } from '../lib/generationOptions.js';
 
@@ -20,6 +20,7 @@ export default function useGenerationOptions() {
       setOptions(next);
       setError(event.type === GENERATION_EVENT ? event.detail?.error || '' : '');
     };
+    mirrorGenerationOptions(current.current);
     window.addEventListener('storage', adopt);
     window.addEventListener(GENERATION_EVENT, adopt);
     return () => {

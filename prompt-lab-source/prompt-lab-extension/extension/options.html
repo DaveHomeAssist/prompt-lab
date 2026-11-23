@@ -145,6 +145,15 @@
       line-height: 1.35;
       margin-top: -0.2rem;
     }
+    .check-row {
+      display: flex;
+      gap: 0.55rem;
+      align-items: flex-start;
+      font-size: 0.85rem;
+      color: var(--text);
+      cursor: pointer;
+    }
+    .check-row input { margin-top: 0.2rem; accent-color: var(--accent); }
 
     button.primary {
       background: var(--accent);
@@ -322,6 +331,17 @@
         <input type="text" id="ollamaModelManual" placeholder="Or type a model name manually" autocomplete="off" style="margin-top:0.35rem;">
       </div>
       <p class="hint">Ollama runs locally. No API key needed. Hit ↻ to discover installed models, or type one manually.</p>
+    </div>
+
+    <hr class="divider">
+
+    <div>
+      <label class="field-label" for="highlightMenu">Right-click menu</label>
+      <label class="check-row" for="highlightMenu">
+        <input type="checkbox" id="highlightMenu" checked>
+        <span>Show “Enhance with Prompt Lab” and “Send to Prompt Lab” when text is selected</span>
+      </label>
+      <p class="hint">Turn this off to remove those items. The side panel stays available from the toolbar.</p>
     </div>
 
     <hr class="divider">

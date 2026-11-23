@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Highlight enhance demo</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 24px; background: #f4f1ea; color: #1c1917; }
+    label { display: block; margin: 12px 0; }
+    textarea, input { width: 420px; font: 16px/1.4 system-ui, sans-serif; }
+    [contenteditable] { width: 420px; min-height: 48px; border: 1px solid #a8a29e; padding: 8px; background: white; }
+    #menu-host { position: relative; height: 120px; }
+  </style>
+</head>
+<body>
+  <h1>Highlight enhance demo</h1>
+  <label>Plain textarea <textarea id="plain">hello world</textarea></label>
+  <label>Input <input id="field" value="hello world"></label>
+  <p>Contenteditable</p>
+  <div id="editable" contenteditable="true">hello world</div>
+  <p>Rich editor</p>
+  <div id="rich" contenteditable="true">hello world</div>
+  <p>Locked editor</p>
+  <div id="locked" contenteditable="true">hello world</div>
+  <div id="menu-host"></div>
+  <script type="module" src="./highlight-demo.js"></script>
+</body>
+</html>
