@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { storageKeys } from '../lib/storage.js';
 import { normalizeEntry } from '../lib/promptSchema.js';
+import { scanSensitiveData } from '../piiScanner.js';
 import {
   EXAMPLE_PROJECT_PROFILE,
   MAX_PROFILE_INSTRUCTIONS,
@@ -195,6 +196,64 @@ describe('profile save stamp, suggestion, and import', () => {
     expect(suggestProjectProfile(profiles, { tags: ['api'], collection: '' }).id).toBe('alpha');
     expect(suggestProjectProfile(profiles, { tags: [], collection: 'Work/Billing' }).id).toBe('folder');
     expect(suggestProjectProfile(profiles, { tags: ['unrelated'], collection: 'Notes' })).toBeNull();
+  });
+
+  it('maps pack outputHints into outputFormat and leaves them on the scanned preamble', () => {
+    const raw = {
+      name: 'Pack project',
+      emoji: '📦',
+      instructions: 'Use the pack voice.',
+      tags: ['pack'],
+      outputHints: 'Lead with the decision. Reply to pack@example.com if blocked.',
+    };
+    const parsed = parseProfileImport({ profiles: [raw] });
+    expect(parsed.ok).toBe(true);
+    expect(parsed.profiles[0].outputFormat).toBe(raw.outputHints);
+    const listed = parseProfileImport({
+      profiles: [{ name: 'Listed', instructions: 'Voice.', outputHints: ['Lead with the decision.', 'Use short sections.'] }],
+    });
+    expect(listed.profiles[0].outputFormat).toBe('Lead with the decision.\nUse short sections.');
+    const written = writeProjectProfiles(mergeProfileLists([], [raw]), memory());
+    expect(written.ok).toBe(true);
+    expect(written.profiles[0].outputFormat).toBe(raw.outputHints);
+    const applied = applyProfilePreamble({ messages: [{ role: 'user', content: 'Go.' }] }, written.profiles[0]);
+    expect(applied.payload.system).toContain(`Output format: ${raw.outputHints}`);
+    expect(applied.payload.messages[0].content).toBe('Go.');
+    const { matches } = scanSensitiveData({ payload: applied.payload });
+    expect(matches.some((match) => match.type === 'email' && match.path.join('.') === 'system')).toBe(true);
+  });
+
+  it('keeps an explicit outputFormat when a pack also includes outputHints', () => {
+    const raw = {
+      name: 'Both',
+      emoji: '📦',
+      instructions: 'Use the pack voice.',
+      outputFormat: 'Numbered steps.',
+      outputHints: 'A single paragraph.',
+    };
+    const parsed = parseProfileImport({ profiles: [raw] });
+    expect(parsed.profiles[0].outputFormat).toBe('Numbered steps.');
+    const written = writeProjectProfiles(mergeProfileLists([], [raw]), memory());
+    expect(written.profiles[0].outputFormat).toBe('Numbered steps.');
+    expect(buildProfilePreamble(written.profiles[0])).toContain('Output format: Numbered steps.');
+    expect(buildProfilePreamble(written.profiles[0])).not.toContain('A single paragraph.');
+  });
+
+  it('imports a pack profile that has no outputHints', () => {
+    const raw = {
+      name: 'Plain',
+      emoji: '📝',
+      instructions: 'Plain voice.',
+      tags: ['notes'],
+    };
+    const parsed = parseProfileImport({ profiles: [raw] });
+    expect(parsed.ok).toBe(true);
+    expect(parsed.profiles[0].outputFormat).toBe('');
+    const written = writeProjectProfiles(mergeProfileLists([], [raw]), memory());
+    expect(written.profiles[0].outputFormat).toBe('');
+    expect(buildProfilePreamble(written.profiles[0])).toBe('Project profile: Plain\nPlain voice.');
+    const kept = parseProfileImport({ profiles: [{ ...raw, outputFormat: 'Keep this.' }] });
+    expect(kept.profiles[0].outputFormat).toBe('Keep this.');
   });
 
   it('reads the documented import file and the labelled example', () => {

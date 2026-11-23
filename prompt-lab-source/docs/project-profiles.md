@@ -25,6 +25,8 @@ Use an emoji or a color, or neither. The active profile is the one with `"select
 
 `schemaVersion` 1 and `kind` `prompt-lab-project-profiles`. A newer `schemaVersion` is refused. A bare array of profiles is also accepted.
 
+A pack profile may name the format field `outputHints` (a string, or a list of strings). Import copies that text into `outputFormat` when `outputFormat` is empty. When both are present, `outputFormat` is kept. The imported text is part of the system preamble, so the existing sensitive-data scan still reads it before a run is sent.
+
 ```json
 {
   "schemaVersion": 1,

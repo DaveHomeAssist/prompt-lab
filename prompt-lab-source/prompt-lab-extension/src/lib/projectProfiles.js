@@ -36,6 +36,20 @@ function storageOf(storage) {
   return localStorage;
 }
 
+/**
+ * Pack files call this field `outputHints`. The editor and the send preamble
+ * read `outputFormat`. A non-empty outputFormat is kept when both are present.
+ * A list of hint strings is joined so the same preamble scan still sees them.
+ */
+function profileOutputFormat(raw) {
+  const explicit = ensureString(raw.outputFormat).trim();
+  if (explicit) return explicit.slice(0, MAX_PROFILE_OUTPUT_FORMAT);
+  const hints = Array.isArray(raw.outputHints)
+    ? raw.outputHints.map((hint) => ensureString(hint).trim()).filter(Boolean).join('\n')
+    : ensureString(raw.outputHints).trim();
+  return hints.slice(0, MAX_PROFILE_OUTPUT_FORMAT);
+}
+
 export function normalizeProfile(raw, now = new Date().toISOString()) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
   const name = ensureString(raw.name).trim().slice(0, MAX_PROFILE_NAME);
@@ -50,7 +64,7 @@ export function normalizeProfile(raw, now = new Date().toISOString()) {
     color: PROFILE_COLORS.includes(raw.color) ? raw.color : '',
     instructions: ensureString(raw.instructions).slice(0, MAX_PROFILE_INSTRUCTIONS),
     defaultTags: normalizeTagList(raw.defaultTags).slice(0, 12),
-    outputFormat: ensureString(raw.outputFormat).trim().slice(0, MAX_PROFILE_OUTPUT_FORMAT),
+    outputFormat: profileOutputFormat(raw),
     example: raw.example === true,
     selected: raw.selected === true,
     createdAt,
