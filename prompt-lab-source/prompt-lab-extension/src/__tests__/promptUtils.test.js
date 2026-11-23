@@ -12,6 +12,9 @@ describe('extractVars', () => {
     expect(extractVars(null)).toEqual([]); expect(extractVars(42)).toEqual([]); expect(extractVars(undefined)).toEqual([]);
   });
   it('handles variables with spaces', () => { expect(extractVars('{{first name}} and {{last name}}')).toEqual(['first name', 'last name']); });
+  it('reads the name from a default and ignores a leading space', () => {
+    expect(extractVars('Hi {{name|Ada}} and {{ name }}')).toEqual(['name']);
+  });
 });
 describe('fillTemplateVars', () => {
   const DOLLARS = "cost $$5 | match $& | before $` | after $' | group $1 | named $<x>";
@@ -32,6 +35,12 @@ describe('fillTemplateVars', () => {
   it('handles names with spaces and regex characters', () => {
     expect(fillTemplateVars('{{first name}} {{a.b}} {{a+b}}', { 'first name': 'Dana', 'a.b': 'dot', 'a+b': 'plus' }))
       .toBe('Dana dot plus');
+  });
+  it('uses {{name|default}} when no value is provided and lets a value win', () => {
+    expect(fillTemplateVars('Hello {{name|Ada}}', {})).toBe('Hello Ada');
+    expect(fillTemplateVars('Hello {{name|Ada}} and {{name}}', { name: 'Sam' })).toBe('Hello Sam and Sam');
+    expect(fillTemplateVars('Hello {{name|Ada}}', {}, { applyDefaults: false })).toBe('Hello {{name|Ada}}');
+    expect(fillTemplateVars('{{name|cost $$5}}', {})).toBe('cost $$5');
   });
   it('treats missing values and non-string input as empty', () => {
     expect(fillTemplateVars('[{{name}}]', { name: undefined })).toBe('[]');

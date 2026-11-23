@@ -1,4 +1,5 @@
 import { computeDiff } from './DiffEngine.js';
+import { parsePromptVariables } from './lib/promptVariables.js';
 import { ensureString } from './lib/utils.js';
 import {
   normalizeAssumptions,
@@ -34,30 +35,39 @@ export function scorePrompt(text) {
 }
 
 export function extractVars(text) {
-  if (typeof text !== 'string') return [];
-  return [...new Set([...text.matchAll(/\{\{(\w[\w ]*)\}\}/g)].map(m => m[1]))];
-}
-
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return parsePromptVariables(text).map((variable) => variable.name);
 }
 
 /**
- * Fills each exact `{{name}}` placeholder from `values` in one pass, with the
- * value coming from a callback. A string replacement would read `$&`, `$$`,
- * `` $` `` and `$'` inside a value as replacement syntax, and filling one name
- * at a time would expand any `{{...}}` text that a value happens to contain.
- * Placeholders without a value are left as written.
+ * Fills each `{{name}}` and `{{name|default}}` placeholder in one pass, with
+ * the value coming from a callback. A string replacement would read `$&`,
+ * `$$`, `` $` `` and `$'` inside a value as replacement syntax, and filling
+ * one name at a time would expand any `{{...}}` text that a value happens to
+ * contain. A name with no provided value and no default is left as written.
+ * `{{name|default}}` supplies that default for every use of the name unless
+ * `applyDefaults` is false. A provided value, including an empty string, wins
+ * over the default.
  */
-export function fillTemplateVars(text, values) {
+export function fillTemplateVars(text, values, options = {}) {
   const source = ensureString(text);
-  const tokens = new Map(Object.entries(values || {}).map(([name, value]) => [
-    `{{${name}}}`,
-    ensureString(value),
-  ]));
-  if (tokens.size === 0) return source;
-  const pattern = [...tokens.keys()].sort((a, b) => b.length - a.length).map(escapeRegExp).join('|');
-  return source.replace(new RegExp(pattern, 'g'), (token) => tokens.get(token));
+  const applyDefaults = options.applyDefaults !== false;
+  const provided = new Map(Object.entries(values || {}).map(([name, value]) => [name, ensureString(value)]));
+  const defaults = new Map();
+  if (applyDefaults) {
+    for (const variable of parsePromptVariables(source)) {
+      if (variable.defaultValue != null && !defaults.has(variable.name)) defaults.set(variable.name, variable.defaultValue);
+    }
+  }
+  if (provided.size === 0 && defaults.size === 0) return source;
+  return source.replace(/\{\{([^{}]+)\}\}/g, (token, inner) => {
+    const bar = inner.indexOf('|');
+    const rawName = bar === -1 ? inner : inner.slice(0, bar);
+    if (!rawName || rawName[0] === ' ' || rawName.includes('\n')) return token;
+    const name = rawName.trimEnd();
+    if (provided.has(name)) return provided.get(name);
+    if (defaults.has(name)) return defaults.get(name);
+    return token;
+  });
 }
 
 function pad2(value) {

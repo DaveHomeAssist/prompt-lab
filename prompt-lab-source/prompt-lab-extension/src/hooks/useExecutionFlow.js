@@ -232,28 +232,33 @@ export default function useExecutionFlow({ ui, lib, editor, persistence, profile
         ],
       };
     }
+    const payloadSource = payload?.messages?.find(message => message?.role === 'user')?.content;
+    const sentSource = ensureString(meta?.evaluatedSource) || ensureString(payloadSource) || ensureString(raw);
     const reviewed = preflight.review({
       payload, scope: 'enhance', label: `Enhance (${enhanceModeId})`,
       isCurrent: () => ownerRef.current === ownerKey,
-      resume: approvedPayload => executeEnhance(approvedPayload, enhanceModeId, options),
+      resume: approvedPayload => executeEnhance(approvedPayload, enhanceModeId, options, sentSource),
     });
     if (!reviewed.payload) {
       await saveEvalRun({
         promptId: editingId,
         promptTitle: (saveTitle || suggestTitleFromText(raw)).trim() || suggestTitleFromText(raw),
         mode: 'enhance', enhanceMode: enhanceModeId, provider: 'blocked',
-        model: payload?.model || 'unknown', input: raw,
+        model: payload?.model || 'unknown', input: sentSource,
         output: 'Prompt blocked before send due to sensitive data detection.',
         latencyMs: 0, status: 'blocked', notes: 'Sensitive data detected before send.',
       }).then(() => evalRunsHook.refreshEvalRuns(editingId)).catch(caught => logWarn('save blocked eval run', caught));
       return;
     }
-    return executeEnhance(reviewed.payload, enhanceModeId, options);
+    return executeEnhance(reviewed.payload, enhanceModeId, options, sentSource);
   };
 
   // Only review() and its private one-use continuation enter this function.
-  const executeEnhance = async (payload, enhanceModeId, options) => {
+  const executeEnhance = async (payload, enhanceModeId, options, sentSource) => {
     if (enhanceInFlightRef.current || ownerRef.current !== ownerKey) return;
+    const recordedInput = ensureString(sentSource)
+      || ensureString(payload?.messages?.find(message => message?.role === 'user')?.content)
+      || ensureString(raw);
     enhanceInFlightRef.current = true;
     const reqId = enhanceReqRef.current + 1;
     enhanceReqRef.current = reqId;
@@ -336,9 +341,8 @@ export default function useExecutionFlow({ ui, lib, editor, persistence, profile
         throw err;
       }
       if (parsed.partial === true) acceptPartial(parsed, txt, data);
-      const sentSource = ensureString(payload?.messages?.find(message => message?.role === 'user')?.content || raw);
       let correctionUsed = false;
-      let qualityAssessment = assessEnhancementQuality(sentSource, parsed);
+      let qualityAssessment = assessEnhancementQuality(recordedInput, parsed);
       if (!qualityAssessment.passed) {
         correctionUsed = true;
         qualityGateFailure = qualityAssessment;
@@ -360,7 +364,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence, profile
           throw err;
         }
         if (corrected.partial === true) acceptPartial(corrected, correctionText, correctionData);
-        qualityAssessment = assessEnhancementQuality(sentSource, corrected);
+        qualityAssessment = assessEnhancementQuality(recordedInput, corrected);
         if (!qualityAssessment.passed) {
           qualityGateFailure = qualityAssessment;
           throw new AppError({
@@ -408,7 +412,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence, profile
       saveEvalRun({
         id: runId, promptId: editingId, promptTitle: (saveTitle || nextTitle).trim() || nextTitle,
         mode: 'enhance', enhanceMode: enhanceModeId, provider: executionProvider, model: executionModel,
-        input: raw, output: parsed.enhanced || txt, latencyMs, notes: notesText,
+        input: recordedInput, output: parsed.enhanced || txt, latencyMs, notes: notesText,
         schemaVersion: nextResultMeta.schemaVersion, primaryId: nextResultMeta.primaryId,
         requestedOutputTokens: nextResultMeta.requestedOutputTokens,
         metadataIncomplete: nextResultMeta.metadataIncomplete,
@@ -428,7 +432,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence, profile
           promptId: editingId,
           promptTitle: (saveTitle || suggestTitleFromText(raw)).trim() || suggestTitleFromText(raw),
           mode: 'enhance', enhanceMode: enhanceModeId, provider: executionProvider, model: executionModel,
-          input: raw, output: 'Enhance cancelled before completion.', latencyMs: nowMs() - startedAt,
+          input: recordedInput, output: 'Enhance cancelled before completion.', latencyMs: nowMs() - startedAt,
           status: 'canceled', usage: accumulatedUsage,
         }).then(() => evalRunsHook.refreshEvalRuns(editingId)).catch(err => logWarn('save canceled eval run', err));
         if (reqId === enhanceReqRef.current) {
@@ -449,7 +453,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence, profile
           promptId: editingId,
           promptTitle: (saveTitle || suggestTitleFromText(raw)).trim() || suggestTitleFromText(raw),
           mode: 'enhance', enhanceMode: enhanceModeId, provider: executionProvider, model: executionModel,
-          input: raw, output: caught?.salvagedText || caught?.partialText || appError.userMessage || appError.message || 'Enhance failed.',
+          input: recordedInput, output: caught?.salvagedText || caught?.partialText || appError.userMessage || appError.message || 'Enhance failed.',
           latencyMs: nowMs() - startedAt, status: 'error', usage: accumulatedUsage,
           notes: [appError.category ? `Error category: ${appError.category}` : '',
             qualityGateFailure?.failures?.length ? `Quality gate: ${qualityGateFailure.failures.join(', ')}` : '',

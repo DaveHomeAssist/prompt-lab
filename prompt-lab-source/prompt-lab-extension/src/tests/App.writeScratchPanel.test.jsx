@@ -69,7 +69,12 @@ vi.mock('../hooks/useEditorState.js', () => ({ default: mocks.useEditorState }))
 vi.mock('../hooks/usePersistenceFlow.js', () => ({ default: mocks.usePersistenceFlow }));
 vi.mock('../hooks/useExecutionFlow.js', () => ({ default: mocks.useExecutionFlow }));
 vi.mock('../hooks/useNavigation.js', () => ({ default: mocks.useNavigation }));
-vi.mock('../lib/platform.js', () => ({ isExtension: false, openSettings: vi.fn() }));
+vi.mock('../lib/platform.js', () => ({
+  isExtension: false,
+  openSettings: vi.fn(),
+  getActiveProvider: () => new Promise(() => {}),
+  watchActiveProvider: () => () => {},
+}));
 vi.mock('../lib/navigationRegistry.js', async (importOriginal) => ({
   ...(await importOriginal()),
   resolveRouteState: vi.fn(() => null),

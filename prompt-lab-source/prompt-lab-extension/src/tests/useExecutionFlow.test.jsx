@@ -297,6 +297,34 @@ describe('useExecutionFlow', () => {
     expect(result.current.saveTitle).toBe('Name entered during refinement');
   });
 
+  it('records the filled prompt in run history and leaves the editor template alone', async () => {
+    const { result } = renderExecutionFlow({ raw: 'Write about {{topic}}' });
+    await act(async () => {
+      await result.current.enhance({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 800,
+        messages: [{ role: 'user', content: 'Write about launch' }],
+      });
+    });
+    expect(result.current.raw).toBe('Write about {{topic}}');
+    await waitFor(() => expect(savedRuns).toHaveLength(1));
+    expect(savedRuns[0]).toEqual(expect.objectContaining({ input: 'Write about launch', status: 'success' }));
+  });
+
+  it('records the source App names even when the editor template stays unresolved', async () => {
+    callModel.mockRejectedValueOnce(new Error('Provider unavailable'));
+    const { result } = renderExecutionFlow({ raw: 'Write about {{topic}}' });
+    await act(async () => {
+      await result.current.enhance(
+        { messages: [{ role: 'user', content: 'Write about {{topic}}' }] },
+        { evaluatedSource: 'Write about launch' },
+      );
+    });
+    expect(result.current.raw).toBe('Write about {{topic}}');
+    await waitFor(() => expect(savedRuns).toHaveLength(1));
+    expect(savedRuns[0]).toEqual(expect.objectContaining({ input: 'Write about launch', status: 'error' }));
+  });
+
   it('enhance_success_creates_eval_run', async () => {
     const { result } = renderExecutionFlow();
 

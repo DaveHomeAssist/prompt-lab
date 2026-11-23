@@ -176,6 +176,8 @@ vi.mock('../hooks/useNavigation.js', () => ({ default: mocks.useNavigation }));
 
 vi.mock('../lib/platform.js', () => ({
   isExtension: true,
+  getActiveProvider: () => new Promise(() => {}),
+  watchActiveProvider: () => () => {},
 }));
 
 vi.mock('../lib/navigationRegistry.js', () => ({

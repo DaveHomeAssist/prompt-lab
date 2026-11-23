@@ -4,6 +4,7 @@ import {
   ngramSimilarity,
   suggestTitleFromText,
   extractVars,
+  isGhostVar,
 } from './promptUtils';
 import { scanSensitiveData } from './piiScanner.js';
 import { captureContext, openSettings } from './lib/platform.js';
@@ -41,8 +42,11 @@ import { isExtension, sessionSet } from './lib/platform.js';
 import {
   matchShortcut,
   buildCommandActions,
-  filterCommands,
 } from './lib/navigationRegistry.js';
+import { buildPaletteCatalog, searchPaletteItems } from './lib/commandPaletteSearch.js';
+import { parsePromptVariables } from './lib/promptVariables.js';
+import usePromptVariableGate from './hooks/usePromptVariableGate.js';
+import PromptVariableDialog from './modals/PromptVariableDialog.jsx';
 import MainWorkspace from './MainWorkspace';
 import { SIDE_PANE_WIDTH, WRITE_SIDE_VIEWS } from './lib/sidePane.js';
 import ScratchSidePanel from './ScratchSidePanel.jsx';
@@ -342,10 +346,17 @@ export default function App({
     varVals, setVarVals, showVarForm, setShowVarForm, pendingTemplate, applyTemplate, skipTemplate,
     editorLayout, setEditorLayout,
     composerBlocks, setComposerBlocks,
-    enhance, enhanceWithMode, doSave, clearEditor, closeSavePanel, openSavePanel, openOptions, copy, cancelEnhance,
+    buildEnhancePayloadFor, enhance, enhanceWithMode, doSave, clearEditor, closeSavePanel, openSavePanel, openOptions, copy: clipboardCopy, cancelEnhance,
     loadEntry, deleteEntry, restoreEntryVersion, sendEntryToABTest, addToComposer,
     hasSavablePrompt, currentTestCases,
   } = ed;
+  const variableGate = usePromptVariableGate({ promptId: editingId });
+  const preparePromptText = variableGate.prepare;
+  const copy = async (text, message, options) => {
+    const prepared = await preparePromptText(text, options?.promptKey);
+    if (!prepared || prepared.cancelled) return undefined;
+    return clipboardCopy(prepared.text, message);
+  };
 
   const openBilling = (featureId = null) => {
     if (!billingUiEnabled || desktopPlanLink) return;
@@ -793,14 +804,44 @@ export default function App({
   // ── Command palette (driven by navigationRegistry) ──
   const closePalette = () => setShowCmdPalette(false);
   const handleEnhanceRequest = (overridePayload, meta) => {
-    trackTelemetry('editor.enhance_requested', {
-      mode: meta?.modeId || enhMode,
-      inputLength: raw.length,
-      wordCount: wc,
-      editing: Boolean(editingId),
-      plan: billing.plan,
+    const isEvent = overridePayload && typeof overridePayload === 'object' && 'nativeEvent' in overridePayload;
+    const payloadOverride = !isEvent && overridePayload && typeof overridePayload === 'object' ? overridePayload : null;
+    const source = payloadOverride
+      ? String(payloadOverride.messages?.find((message) => message?.role === 'user')?.content || raw)
+      : raw;
+    const variables = parsePromptVariables(source);
+    const needsFill = variables.some((variable) => !isGhostVar(variable.name) || variable.defaultValue != null);
+    const hasGhost = variables.some((variable) => isGhostVar(variable.name));
+    const send = (preparedText) => {
+      trackTelemetry('editor.enhance_requested', {
+        mode: meta?.modeId || enhMode,
+        inputLength: preparedText === raw ? raw.length : preparedText.length,
+        wordCount: preparedText === raw ? wc : preparedText.trim().split(/\s+/).filter(Boolean).length,
+        editing: Boolean(editingId),
+        plan: billing.plan,
+      });
+      const nextMeta = { ...(meta || {}), evaluatedSource: preparedText };
+      if (payloadOverride) {
+        const messages = (payloadOverride.messages || []).map((message) => (
+          message?.role === 'user' ? { ...message, content: preparedText } : message
+        ));
+        enhance({ ...payloadOverride, messages }, nextMeta);
+        return;
+      }
+      if (preparedText !== raw) {
+        enhance(buildEnhancePayloadFor(preparedText, nextMeta.modeId || enhMode, nextMeta.options), nextMeta);
+        return;
+      }
+      enhance(overridePayload, nextMeta);
+    };
+    if (!needsFill && !hasGhost) {
+      send(source);
+      return;
+    }
+    preparePromptText(source).then((prepared) => {
+      if (!prepared || prepared.cancelled) return;
+      send(prepared.text);
     });
-    enhance(overridePayload, meta);
   };
   const handleExportLibrary = () => {
     if (canExportLibrary) {
@@ -1198,7 +1239,22 @@ export default function App({
     manageAccount: clerkUser && clerkAccountActions?.manageAccount ? () => { closePalette(); clerkAccountActions.manageAccount(); } : undefined,
     signOut: clerkUser && clerkAccountActions?.signOut ? () => { closePalette(); clerkAccountActions.signOut(); } : undefined,
   });
-  const filteredCmds = filterCommands(CMD_ACTIONS, cmdQuery);
+  const openPalettePrompt = (entry) => {
+    handleLoadEntry(entry, 'palette');
+    closePalette();
+  };
+  const paletteItems = buildPaletteCatalog({
+    actions: CMD_ACTIONS,
+    prompts: (lib.library || []).map((entry) => ({ ...entry, action: () => openPalettePrompt(entry) })),
+    settings: [
+      { label: 'Setting: Show enhancement notes', keywords: 'settings notes appearance', action: () => { setShowSettings(true); closePalette(); } },
+      { label: 'Setting: Density', keywords: 'settings compact comfortable spacious density', action: () => { setShowSettings(true); closePalette(); } },
+      { label: 'Setting: Provider and model', keywords: 'settings api model provider options', action: () => { openOptions(); closePalette(); } },
+      { label: 'Setting: Keyboard shortcuts', keywords: 'settings shortcuts help', action: () => { setShowShortcuts(true); closePalette(); } },
+      { label: 'Setting: Light and dark theme', keywords: 'settings theme appearance color mode', action: () => { setColorMode(p => p === 'dark' ? 'light' : 'dark'); closePalette(); } },
+    ],
+  });
+  const filteredCmds = searchPaletteItems(paletteItems, cmdQuery);
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
@@ -1385,6 +1441,8 @@ export default function App({
               setRaw={setRaw}
               notify={notify}
               copy={copy}
+              preparePromptText={preparePromptText}
+              writeClipboard={clipboardCopy}
               draftTitle={saveTitle}
               onDraftTitleChange={setSaveTitle}
               onAutosave={autosaveDualDraft}
@@ -1408,6 +1466,8 @@ export default function App({
               recentPrompts={lib.recentPrompts}
               loadEntry={(entry) => handleLoadEntry(entry, 'create')}
               copy={copy}
+              preparePromptText={preparePromptText}
+              writeClipboard={clipboardCopy}
               bumpUse={lib.bumpUse}
               showCreateContext={showCreateContext}
               currentEntry={currentEntry}
@@ -1745,6 +1805,15 @@ export default function App({
           onClose={() => setShowVarForm(false)}
         />
       )}
+
+      <PromptVariableDialog
+        m={m}
+        request={variableGate.request}
+        onChange={variableGate.setValues}
+        onSubmit={variableGate.submit}
+        onSkip={variableGate.skip}
+        onCancel={variableGate.cancel}
+      />
 
       {showSettings && !lib.importPreview && (
         <SettingsModal

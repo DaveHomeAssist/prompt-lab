@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Ic from './icons';
+import CopyAsMenu from './CopyAsMenu.jsx';
+import RunCostEstimate from './RunCostEstimate.jsx';
 import { handleTabArrowKeys } from './hooks/useDialogA11y.js';
 
 const MIN_PANE_WIDTH = 28;
@@ -29,6 +31,8 @@ export default function DualPaneWorkspace({
   notify = () => {},
   openEntry,
   copy,
+  preparePromptText,
+  writeClipboard,
   draftTitle,
   onDraftTitleChange,
   dirty,
@@ -380,6 +384,7 @@ export default function DualPaneWorkspace({
             <button type="button" onClick={() => applyPrompt('replace')}>Replace draft</button>
             <button type="button" onClick={() => applyPrompt('append')}>Append</button>
             <button type="button" onClick={handleCopy}>Copy</button>
+            <CopyAsMenu text={promptContent(selected)} title={selected.title} promptKey={selected.id ? `id:${selected.id}` : undefined} preparePromptText={preparePromptText} onCopy={writeClipboard || copy} />
             <button type="button" onClick={() => openEntry?.(selected)} disabled={!openEntry}>Open full</button>
           </div>
         </div>
@@ -392,6 +397,8 @@ export default function DualPaneWorkspace({
         >
           {enhancing ? 'Enhancing…' : 'Enhance draft'}
         </button>
+        <CopyAsMenu text={raw} title={title} preparePromptText={preparePromptText} onCopy={writeClipboard || copy} />
+        <RunCostEstimate text={raw} />
         <button
           type="button"
           onClick={() => runDraftAction(onSave, 'Save as new prompt')}

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { lintPrompt, applyLintQuickFixAtSelection } from '../promptLint';
+import { listPromptLint, applyLintQuickFixAtSelection } from '../promptLint';
 import { normalizeError } from '../lib/errorTaxonomy.js';
 import useGenerationOptions from './useGenerationOptions.js';
 
@@ -34,7 +34,7 @@ export default function useEditorState() {
     }
     lintTimerRef.current = setTimeout(() => {
       try {
-        setLintIssues(lintPrompt(raw));
+        setLintIssues(listPromptLint(raw));
         setLintError(null);
       } catch (caught) {
         setLintIssues([]);

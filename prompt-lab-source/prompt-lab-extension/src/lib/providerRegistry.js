@@ -601,6 +601,14 @@ export function normalizeProvider(provider) {
   return VALID_PROVIDERS.includes(provider) ? provider : DEFAULT_PROVIDER;
 }
 
+/** The selected provider and model. Never includes API keys or other secrets. */
+export function activeProviderSelection(settings = {}) {
+  const provider = normalizeProvider(settings?.provider);
+  const descriptor = getProvider(provider);
+  const model = String(settings?.[descriptor.modelField] || descriptor.defaultModel || '').trim() || descriptor.defaultModel;
+  return { provider, model };
+}
+
 /** Get all provider descriptors as an array. */
 export function allProviders() {
   return VALID_PROVIDERS.map((id) => PROVIDERS[id]);

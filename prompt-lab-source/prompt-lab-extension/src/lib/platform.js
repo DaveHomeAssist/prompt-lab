@@ -14,6 +14,8 @@
 
 import { getInstalledProviderFixture } from './providerFixture.js';
 import { diagnostics } from './diagnostics.js';
+import { activeProviderSelection } from './providerRegistry.js';
+import { PROVIDER_SETTINGS_CHANGED } from './providerSettingsEvents.js';
 
 const IS_EXTENSION =
   typeof chrome !== 'undefined' &&
@@ -153,6 +155,17 @@ function extGetConfiguredProviders() {
   ));
 }
 
+const ACTIVE_PROVIDER_FALLBACK = Object.freeze({ provider: 'anthropic', model: 'claude-sonnet-4-6' });
+
+function extGetActiveProvider() {
+  return extProviderSettings().then((response) => {
+    const active = response?.active;
+    if (active?.provider && active?.model) return { provider: active.provider, model: active.model };
+    const first = Array.isArray(response?.providers) ? response.providers[0] : null;
+    return first?.provider && first?.model ? { provider: first.provider, model: first.model } : ACTIVE_PROVIDER_FALLBACK;
+  });
+}
+
 function extGetActiveProviderRoute() {
   return extProviderSettings().then((response) => {
     const selected = response?.selected;
@@ -204,10 +217,39 @@ async function desktopGetConfiguredProviders() {
   return getConfiguredProvidersDirect();
 }
 
+async function desktopGetActiveProvider() {
+  const { loadSettings } = await getDesktopApi();
+  return activeProviderSelection(loadSettings());
+}
+
 async function desktopGetActiveProviderRoute() {
   const { loadSettings } = await getDesktopApi();
   const { activeProviderRoute } = await import('./providerRegistry.js');
   return activeProviderRoute(loadSettings());
+}
+
+const ACTIVE_SETTING_KEYS = ['provider', 'anthropicModel', 'openaiModel', 'geminiModel', 'openrouterModel', 'ollamaModel', 'ollamaBaseUrl'];
+
+export function watchActiveProvider(onChange) {
+  if (typeof onChange !== 'function') return () => {};
+  const refresh = () => { onChange(); };
+  if (typeof window !== 'undefined') {
+    window.addEventListener(PROVIDER_SETTINGS_CHANGED, refresh);
+    window.addEventListener('storage', refresh);
+  }
+  const onChromeChange = (changes, area) => {
+    if (area !== 'local' || !changes) return;
+    if (ACTIVE_SETTING_KEYS.some((key) => Object.prototype.hasOwnProperty.call(changes, key))) onChange();
+  };
+  const chromeStorage = typeof chrome !== 'undefined' ? chrome.storage?.onChanged : null;
+  chromeStorage?.addListener?.(onChromeChange);
+  return () => {
+    if (typeof window !== 'undefined') {
+      window.removeEventListener(PROVIDER_SETTINGS_CHANGED, refresh);
+      window.removeEventListener('storage', refresh);
+    }
+    chromeStorage?.removeListener?.(onChromeChange);
+  };
 }
 
 async function desktopTestProviderConnection(payload, settings) {
@@ -304,6 +346,7 @@ export const loadProviderSettings = IS_EXTENSION ? extLoadProviderSettings : des
 export const saveProviderSettings = IS_EXTENSION ? extSaveProviderSettings : desktopSaveProviderSettings;
 export const testProviderConnection = IS_EXTENSION ? extTestProviderConnection : desktopTestProviderConnection;
 export const getConfiguredProviders = IS_EXTENSION ? extGetConfiguredProviders : desktopGetConfiguredProviders;
+export const getActiveProvider = IS_EXTENSION ? extGetActiveProvider : desktopGetActiveProvider;
 export const getActiveProviderRoute = IS_EXTENSION ? extGetActiveProviderRoute : desktopGetActiveProviderRoute;
 export const captureContext = IS_EXTENSION ? extCaptureContext : desktopCaptureContext;
 export const sessionGet = IS_EXTENSION ? extSessionGet : desktopSessionGet;
