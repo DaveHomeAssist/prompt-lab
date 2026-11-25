@@ -15,6 +15,7 @@
     "./docs/enhancement-council-spec.md",
     "./docs/feature-health-dashboard.md",
     "./docs/glossary.md",
+    "./docs/library-organization.md",
     "./prompt-lab-extension/*.md",
     "./prompt-lab-desktop/*.md",
     "./prompt-lab-web/*.md",
