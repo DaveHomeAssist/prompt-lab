@@ -490,19 +490,38 @@ fn secure_event_input_enabled() -> bool { false }
 
 #[cfg(target_os = "macos")]
 fn current_pasteboard_types() -> Vec<String> {
-    use objc::runtime::{Class, Object};
+    // `msg_send!` expands to the unhygienic `sel!` macro, which is not in
+    // scope here and fails the macOS build. `Message::send_message` is the
+    // same runtime call with an explicit selector.
+    use objc::runtime::{Class, Object, Sel};
+    use objc::Message;
     unsafe {
         let Some(class) = Class::get("NSPasteboard") else { return Vec::new(); };
-        let board: *mut Object = objc::msg_send![class, generalPasteboard];
+        let board: *mut Object = match class.send_message(Sel::register("generalPasteboard"), ()) {
+            Ok(board) => board,
+            Err(_) => return Vec::new(),
+        };
         if board.is_null() { return Vec::new(); }
-        let types: *mut Object = objc::msg_send![board, types];
+        let types: *mut Object = match (&*board).send_message(Sel::register("types"), ()) {
+            Ok(types) => types,
+            Err(_) => return Vec::new(),
+        };
         if types.is_null() { return Vec::new(); }
-        let count: usize = objc::msg_send![types, count];
+        let count: usize = match (&*types).send_message(Sel::register("count"), ()) {
+            Ok(count) => count,
+            Err(_) => return Vec::new(),
+        };
         let mut names = Vec::with_capacity(count);
         for index in 0..count {
-            let item: *mut Object = objc::msg_send![types, objectAtIndex: index];
+            let item: *mut Object = match (&*types).send_message(Sel::register("objectAtIndex:"), (index,)) {
+                Ok(item) => item,
+                Err(_) => continue,
+            };
             if item.is_null() { continue; }
-            let bytes: *const i8 = objc::msg_send![item, UTF8String];
+            let bytes: *const i8 = match (&*item).send_message(Sel::register("UTF8String"), ()) {
+                Ok(bytes) => bytes,
+                Err(_) => continue,
+            };
             if bytes.is_null() { continue; }
             if let Ok(text) = std::ffi::CStr::from_ptr(bytes).to_str() {
                 names.push(text.to_string());
