@@ -24,7 +24,6 @@ test('scan: returns empty when disabled', () => {
 });
 
 test('scan: detects sk- API key pattern', () => {
-  // regex expects sk-[A-Za-z0-9]{16,} — no hyphens after sk-
   const { matches } = scanSensitiveData({ prompt: 'key is sk-abc12345678901234567890' });
   assert.ok(matches.some(m => m.type === 'api_key'));
 });

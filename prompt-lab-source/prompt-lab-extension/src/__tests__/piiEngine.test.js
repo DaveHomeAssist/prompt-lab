@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { patterns, redactText, scanForPII } from '../lib/piiEngine.js';
+import { PROSE_KEPT_CASES, SECRET_REDACTION_CASES } from './secretRedactionCases.js';
 
 describe('piiEngine', () => {
   it('exposes the shared built-in registry', () => {
@@ -248,5 +249,46 @@ describe('piiEngine send-time redaction regressions', () => {
 
       expect(redactText(text, { findings })).toBe('mail EMAIL please');
     });
+  });
+});
+
+describe('current provider keys, env files, and other credential shapes', () => {
+  it.each(SECRET_REDACTION_CASES)('redacts %s', (_name, input, expected, secret) => {
+    expect(redactText(input)).toBe(expected);
+    expect(redactText(input)).not.toContain(secret);
+  });
+
+  it('keeps the existing placeholder shape for a bracketed redaction', () => {
+    expect(redactText('key sk-proj-FAKEFAKEFAKEFAKEFAKE', { placeholderStyle: 'brackets' })).toBe('key [API_KEY]');
+  });
+
+  it('treats an unquoted passphrase as one span through the end of the line', () => {
+    const text = 'password: correct horse battery staple';
+    expect(scanForPII(text).findings).toEqual([
+      expect.objectContaining({ type: 'secret_value', value: 'correct horse battery staple', placeholder: 'SECRET' }),
+    ]);
+  });
+
+  it.each(PROSE_KEPT_CASES)('leaves ordinary prose alone: %s', (text) => {
+    expect(scanForPII(text)).toEqual({ hasPII: false, findings: [] });
+    expect(redactText(text)).toBe(text);
+  });
+
+  it('redacts a real key inside a 200KB near-miss paste within a time bound', () => {
+    const secret = 'sk-ant-api03-FAKEFAKEFAKEFAKEFAKEFAKE0123456789';
+    const chunk = 'sk- eyJ password: ab -----BEGIN NOT A KEY----- AKIA ghp_ xoxb- sk_live_ whsec_ github_pat_ AIza The token sits on the desk. ';
+    let big = '';
+    while (big.length < 50000) big += 'eyJ';
+    while (big.length < 100000) big += 'sk-';
+    while (big.length < 150000) big += '-----BEGIN ';
+    while (big.length < 200000) big += chunk;
+    big = `${big.slice(0, 200000)}\n${secret}\n`;
+
+    const started = performance.now();
+    const redacted = redactText(big);
+    expect(performance.now() - started).toBeLessThan(1000);
+    expect(big.length).toBeGreaterThan(200000);
+    expect(redacted).not.toContain(secret);
+    expect(redacted).toContain('API_KEY');
   });
 });

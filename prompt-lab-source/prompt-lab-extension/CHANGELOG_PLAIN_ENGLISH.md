@@ -1,5 +1,18 @@
 # Prompt Lab Changelog (Plain English)
 
+## Send-time checks catch current keys and pasted env files (unreleased)
+
+- A prompt is checked before it is sent. Current Anthropic keys (`sk-ant-…`),
+  OpenAI project, service-account and admin keys, GitHub, Stripe, Slack, AWS
+  and Google keys, JSON web tokens, and PEM private key blocks are now redacted.
+- A pasted `.env` line whose name has a secret word (such as KEY, SECRET,
+  TOKEN, PASSWORD, or DSN) redacts the whole value, whether or not it is
+  quoted. `postgres://user:pass@…` redacts the user and password.
+- An unquoted multi-word password is redacted through the end of the line.
+  Ordinary sentences are left as written.
+- Highlight Enhance uses the same check and still sends nothing when it finds
+  a secret. A long hyphenated paste no longer makes the check stall.
+
 ## Workspace backups restore without extra questions (unreleased)
 
 - Restoring a workspace backup no longer stops to ask about two different
