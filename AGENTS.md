@@ -108,6 +108,7 @@ This is an operator-maintained snapshot, not a background sync service. Never pu
 
 ## Session Log
 
+[2026-11-25] [PLB] [fix] Highlight Accept uses the browser undo stack, and unclassified or secure fields are not sent (042)
 [2026-11-23] [PLB] [feature] Highlight a selection to enhance it in place from the extension context menu and the desktop global shortcut (042)
 [2026-11-23] [PLB] [prep] Add a read-only sync:preflight checklist for rollout steps R3–R7, and Keep separate, Delete my synced data, and Export synced Library behind VITE_PL_ACCOUNT_SYNC (flags stay off)
 [2026-11-17] [PLB] [fix] Bound SDK JWKS fetches (30s issuer cooldown, 5s abort, one 5xx retry), stop spoofing the Clerk User-Agent, and keep the owner email and starter-library attribution out of the CWS bundle (041)

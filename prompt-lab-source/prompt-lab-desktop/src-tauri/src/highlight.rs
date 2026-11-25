@@ -18,6 +18,22 @@ use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut,
 
 const WINDOW: &str = "highlight-accept";
 const LIMIT: usize = 20_000;
+pub const SECURE_FIELD_MESSAGE: &str = "Secure field, nothing sent.";
+
+/// Password managers mark concealed or transient pasteboard items with these
+/// types. The text itself can look ordinary, so the type is what we trust.
+pub fn concealed_pasteboard_type(types: &[impl AsRef<str>]) -> bool {
+    types.iter().any(|kind| {
+        let name = kind.as_ref();
+        name.eq_ignore_ascii_case("org.nspasteboard.ConcealedType")
+            || name.eq_ignore_ascii_case("org.nspasteboard.TransientType")
+    })
+}
+
+/// A true result from IsSecureEventInputEnabled means the copy must not run.
+pub fn secure_input_block(enabled: bool) -> Option<&'static str> {
+    if enabled { Some(SECURE_FIELD_MESSAGE) } else { None }
+}
 
 #[derive(Clone, Serialize, Deserialize)]
 struct HighlightConfig {
@@ -77,6 +93,7 @@ pub(crate) trait ClipboardPort {
     fn capture_hold(&mut self) -> Result<ClipHold, String>;
     fn apply_hold(&mut self, hold: &ClipHold) -> Result<(), String>;
     fn write_text(&mut self, text: &str) -> Result<(), String>;
+    fn pasteboard_types(&mut self) -> Vec<String> { Vec::new() }
 }
 
 fn restore_hold<C: ClipboardPort>(clip: &mut C, hold: &ClipHold) -> Result<(), String> {
@@ -106,6 +123,10 @@ pub fn capture_selection<C: ClipboardPort>(clip: &mut C, copy: impl FnOnce(&mut 
         return Err(error);
     }
     let selected = clip.capture_hold().ok().and_then(|hold| hold.text_content().map(str::to_string)).unwrap_or_default();
+    if concealed_pasteboard_type(&clip.pasteboard_types()) {
+        let _ = clip.apply_hold(&original);
+        return Err(SECURE_FIELD_MESSAGE.into());
+    }
     restore_hold(clip, &original).map_err(|_| "Couldn't restore the clipboard after copying the selection.".to_string())?;
     if selected == sentinel {
         return Err("Couldn't copy the selection. On macOS, grant Accessibility permission and try again.".into());
@@ -193,6 +214,9 @@ impl ClipboardPort for OsClipboard {
     }
     fn write_text(&mut self, text: &str) -> Result<(), String> {
         self.inner.set_text(text).map_err(|error| format!("Couldn't write the clipboard: {error}"))
+    }
+    fn pasteboard_types(&mut self) -> Vec<String> {
+        current_pasteboard_types()
     }
 }
 
@@ -381,6 +405,9 @@ fn on_shortcut(app: &AppHandle) {
 fn capture_os() -> Result<String, String> {
     let mut clip = OsClipboard::new()?;
     let text = capture_selection(&mut clip, |_clip| {
+        if let Some(message) = secure_input_block(secure_event_input_enabled()) {
+            return Err(message.into());
+        }
         press_copy()?;
         thread::sleep(Duration::from_millis(80));
         Ok(())
@@ -448,6 +475,45 @@ pub fn highlight_accept(app: AppHandle, state: State<HighlightState>, text: Stri
     }
     result
 }
+
+#[cfg(target_os = "macos")]
+fn secure_event_input_enabled() -> bool {
+    #[link(name = "Carbon", kind = "framework")]
+    extern "C" {
+        fn IsSecureEventInputEnabled() -> u8;
+    }
+    unsafe { IsSecureEventInputEnabled() != 0 }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn secure_event_input_enabled() -> bool { false }
+
+#[cfg(target_os = "macos")]
+fn current_pasteboard_types() -> Vec<String> {
+    use objc::runtime::{Class, Object};
+    unsafe {
+        let Some(class) = Class::get("NSPasteboard") else { return Vec::new(); };
+        let board: *mut Object = objc::msg_send![class, generalPasteboard];
+        if board.is_null() { return Vec::new(); }
+        let types: *mut Object = objc::msg_send![board, types];
+        if types.is_null() { return Vec::new(); }
+        let count: usize = objc::msg_send![types, count];
+        let mut names = Vec::with_capacity(count);
+        for index in 0..count {
+            let item: *mut Object = objc::msg_send![types, objectAtIndex: index];
+            if item.is_null() { continue; }
+            let bytes: *const i8 = objc::msg_send![item, UTF8String];
+            if bytes.is_null() { continue; }
+            if let Ok(text) = std::ffi::CStr::from_ptr(bytes).to_str() {
+                names.push(text.to_string());
+            }
+        }
+        names
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn current_pasteboard_types() -> Vec<String> { Vec::new() }
 
 #[cfg(target_os = "macos")]
 fn accessibility_trusted(prompt: bool) -> bool {
@@ -693,6 +759,39 @@ mod tests {
             Ok(())
         }).unwrap();
         assert!(matches!(clip.hold, ClipHold::Files(files) if files == vec![PathBuf::from("/tmp/notes.txt")]));
+    }
+
+    struct MarkedClipboard { hold: ClipHold, types: Vec<String> }
+
+    impl ClipboardPort for MarkedClipboard {
+        fn capture_hold(&mut self) -> Result<ClipHold, String> { Ok(self.hold.clone()) }
+        fn apply_hold(&mut self, hold: &ClipHold) -> Result<(), String> { self.hold = hold.clone(); Ok(()) }
+        fn write_text(&mut self, text: &str) -> Result<(), String> { self.hold = ClipHold::Text(text.to_string()); Ok(()) }
+        fn pasteboard_types(&mut self) -> Vec<String> { self.types.clone() }
+    }
+
+    #[test]
+    fn concealed_and_transient_pasteboard_types_are_rejected() {
+        assert!(concealed_pasteboard_type(&["org.nspasteboard.ConcealedType"]));
+        assert!(concealed_pasteboard_type(&["public.utf8-plain-text", "org.nspasteboard.TransientType"]));
+        assert!(concealed_pasteboard_type(&["ORG.NSPASTEBOARD.CONCEALEDTYPE"]));
+        assert!(!concealed_pasteboard_type(&["public.utf8-plain-text", "public.utf8-plain-text"]));
+        assert_eq!(secure_input_block(true), Some(SECURE_FIELD_MESSAGE));
+        assert_eq!(secure_input_block(false), None);
+    }
+
+    #[test]
+    fn capture_rejects_a_concealed_pasteboard_and_restores_the_clipboard() {
+        let mut clip = MarkedClipboard {
+            hold: ClipHold::Text("keep me".into()),
+            types: vec!["org.nspasteboard.ConcealedType".into()],
+        };
+        let error = capture_selection(&mut clip, |clip| {
+            clip.write_text("looks ordinary")?;
+            Ok(())
+        }, 11).unwrap_err();
+        assert_eq!(error, SECURE_FIELD_MESSAGE);
+        assert!(matches!(clip.hold, ClipHold::Text(text) if text == "keep me"));
     }
 
     #[test]

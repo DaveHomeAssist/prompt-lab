@@ -1,5 +1,5 @@
 import { createServer } from 'node:http';
-import { createReadStream, existsSync } from 'node:fs';
+import { createReadStream, existsSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -8,7 +8,14 @@ import { chromium, expect, test } from '@playwright/test';
 const here = fileURLToPath(new URL('.', import.meta.url));
 const repoRoot = join(here, '..', '..', '..');
 const extensionPath = join(here, '..', 'dist');
-const shots = '/opt/cursor/artifacts';
+const shots = process.env.HIGHLIGHT_SCREENSHOT_DIR || join(tmpdir(), 'prompt-lab-highlight-shots');
+mkdirSync(shots, { recursive: true });
+const undoKey = process.platform === 'darwin' ? 'Meta+Z' : 'Control+Z';
+
+async function undoField(page, selector) {
+  await page.locator(selector).focus();
+  await page.keyboard.press(undoKey);
+}
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png' };
 
 function startServer() {
@@ -50,16 +57,22 @@ test.describe('highlight to enhance on a local page', () => {
     await page.evaluate(() => window.__highlight.accept());
     await expect.poll(() => page.locator('#plain').inputValue()).toBe('Enhanced hello world');
     await page.screenshot({ path: `${shots}/highlight-after-accept.png` });
+    await undoField(page, '#plain');
+    await expect.poll(() => page.locator('#plain').inputValue()).toBe('hello world');
 
     await page.evaluate(() => window.__highlight.run('field', 'dark'));
     await expect.poll(() => page.evaluate(() => window.__card?.query('style')?.textContent || '')).toContain('#101018');
     await page.screenshot({ path: `${shots}/highlight-card-dark.png` });
     await page.evaluate(() => window.__highlight.accept());
     await expect.poll(() => page.locator('#field').inputValue()).toBe('Enhanced hello world');
+    await undoField(page, '#field');
+    await expect.poll(() => page.locator('#field').inputValue()).toBe('hello world');
 
     await page.evaluate(() => window.__highlight.run('editable', 'light'));
     await page.evaluate(() => window.__highlight.accept());
     await expect.poll(() => page.locator('#editable').innerText()).toBe('Enhanced hello world');
+    await undoField(page, '#editable');
+    await expect.poll(() => page.locator('#editable').innerText()).toBe('hello world');
 
     await page.evaluate(() => window.__highlight.run('rich', 'light'));
     await page.evaluate(() => window.__highlight.accept());

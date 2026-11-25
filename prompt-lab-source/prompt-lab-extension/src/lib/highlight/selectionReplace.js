@@ -1,8 +1,11 @@
 // Capture a text selection and replace it in place.
-// Inputs and textareas use setRangeText so the page's own undo stack records
-// the edit. Contenteditable uses execCommand('insertText') and, if that does
-// not land, a beforeinput/input event the editor can apply itself.
+// Inputs and textareas go through document.execCommand('insertText') so Chrome
+// records the edit on the field's own undo stack. setRangeText is only the
+// fallback when that command returns false. Contenteditable uses the same
+// command first, then a beforeinput/input event the editor can apply itself.
 // Nothing here reads extension storage or provider credentials.
+
+import { secretFieldRefusal } from '../../../extension/lib/highlightField.js';
 
 const TEXT_INPUT_TYPES = new Set(['', 'text', 'search', 'url', 'tel', 'email']);
 
@@ -92,16 +95,39 @@ function dispatchInput(element, text) {
  * Replace the stored offsets with `text` and confirm the control's value.
  * Returns verify() so the caller can check the page did not revert the edit.
  */
+function selectControlRange(element, start, end) {
+  try { element.focus(); } catch { /* Focus can fail and the command can still run. */ }
+  if (typeof element.setSelectionRange === 'function') {
+    try { element.setSelectionRange(start, end); } catch { /* Non-text inputs have no caret. */ }
+  }
+}
+
 export function replaceTextControl(element, text, start, end) {
   const before = String(element.value ?? '');
   if (!Number.isInteger(start) || !Number.isInteger(end) || start < 0 || end > before.length || start >= end) {
     return { ok: false, reason: 'no-selection' };
   }
   const expected = before.slice(0, start) + text + before.slice(end);
-  try { element.focus(); } catch { /* The control can reject focus and still accept setRangeText. */ }
-  if (typeof element.setSelectionRange === 'function') {
-    try { element.setSelectionRange(start, end); } catch { /* Non-text inputs have no caret. */ }
+  const doc = element.ownerDocument;
+  selectControlRange(element, start, end);
+  let commandOk = false;
+  try {
+    commandOk = doc.execCommand('insertText', false, text) === true;
+  } catch {
+    commandOk = false;
   }
+  if (commandOk && element.value === expected) {
+    dispatchInput(element, text);
+    element.dispatchEvent(new Event('change', { bubbles: true }));
+    return { ok: true, method: 'execCommand', verify: () => element.value === expected };
+  }
+  // The command did not land. Put the field back before the fallback so a
+  // partial command cannot combine with setRangeText.
+  if (element.value !== before) {
+    element.value = before;
+    selectControlRange(element, start, end);
+  }
+  if (commandOk) return { ok: false, reason: 'unverified' };
   if (typeof element.setRangeText !== 'function') return { ok: false, reason: 'setRangeText-unavailable' };
   element.setRangeText(text, start, end, 'end');
   if (element.value !== expected) return { ok: false, reason: 'unverified' };
@@ -186,9 +212,8 @@ export function replaceContentEditable(host, range, text) {
 /** Describe the current selection and keep a replace() closure over the live node. */
 export function captureSelection(doc = document) {
   const active = doc.activeElement;
-  if (isPasswordField(active)) {
-    return { blocked: 'password', message: 'Password fields are left alone.' };
-  }
+  const refused = secretFieldRefusal(active);
+  if (refused) return refused;
   if (isTextControl(active)) {
     const start = active.selectionStart;
     const end = active.selectionEnd;
@@ -213,6 +238,8 @@ export function captureSelection(doc = document) {
   let range;
   try { range = selection.getRangeAt(0).cloneRange(); } catch { return null; }
   const host = editableHost(range.commonAncestorContainer);
+  const hostRefused = secretFieldRefusal(host);
+  if (hostRefused) return hostRefused;
   if (!host) {
     return {
       text,
