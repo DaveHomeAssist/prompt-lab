@@ -6,6 +6,9 @@ import { PROVIDER_SETTINGS_KEYS } from './lib/providerRegistry.js';
 // Static import: Manifest V3 service workers reject import(), so a dynamic
 // load of the enhance module never reaches the provider.
 import { enhanceSelection } from './highlight-worker.js';
+import { enhanceDecision } from './lib/highlightField.js';
+
+export { enhanceDecision };
 
 export const HIGHLIGHT_MENU_KEY = 'pl2-highlight-context-menu';
 export const HIGHLIGHT_GENERATION_KEY = 'pl2-generation-options-v1';
@@ -88,20 +91,71 @@ async function syncMenus() {
   }
 }
 
+function frameLooksCrossOrigin(tab, info) {
+  try {
+    const frameUrl = new URL(info?.frameUrl || info?.pageUrl || '');
+    const tabUrl = new URL(tab?.url || '');
+    return frameUrl.origin !== tabUrl.origin;
+  } catch {
+    return false;
+  }
+}
+
 async function capturedText(tab, info) {
   const frameId = frameIdOf(info);
+  const crossOrigin = frameLooksCrossOrigin(tab, info);
   try {
     await inject(tab.id, frameId);
   } catch (error) {
-    return { ok: false, frameId, reason: error?.message || 'This page cannot be edited in place.', fallback: info.selectionText || '' };
+    return {
+      ok: false,
+      frameId,
+      reason: crossOrigin ? 'frame' : 'unclassified',
+      message: crossOrigin
+        ? "This frame couldn't be checked, so nothing was sent."
+        : "This field couldn't be checked, so nothing was sent.",
+      detail: error?.message || '',
+    };
   }
   const captured = await sendToFrame(tab.id, frameId, { type: 'PL_HIGHLIGHT', action: 'capture' });
-  return { ...captured, frameId, fallback: info.selectionText || '' };
+  if (!captured?.ok) {
+    return {
+      ...captured,
+      ok: false,
+      frameId,
+      reason: captured?.reason || (crossOrigin ? 'frame' : 'unclassified'),
+      message: captured?.message || (crossOrigin
+        ? "This frame couldn't be checked, so nothing was sent."
+        : "This field couldn't be checked, so nothing was sent."),
+    };
+  }
+  return { ...captured, frameId };
+}
+
+async function showNotice(tab, frameId, theme, message) {
+  const note = { type: 'PL_HIGHLIGHT', action: 'notice', theme, message };
+  const first = await sendToFrame(tab.id, frameId, note);
+  if (first?.ok) return;
+  try {
+    await inject(tab.id, frameId);
+    if ((await sendToFrame(tab.id, frameId, note))?.ok) return;
+  } catch { /* The target frame cannot show UI. */ }
+  if (frameId !== 0) {
+    try {
+      await inject(tab.id, 0);
+      await sendToFrame(tab.id, 0, note);
+    } catch { /* Nothing was sent. The notice could not be shown. */ }
+  }
 }
 
 async function onSend(tab, info) {
   const captured = await capturedText(tab, info);
-  const text = captured.ok ? captured.text : (captured.fallback || '');
+  if (captured.blocked === 'password' || captured.blocked === 'secret' || captured.reason === 'password' || captured.reason === 'secret') {
+    const themeStore = await storageGet(HIGHLIGHT_THEME_KEY);
+    await showNotice(tab, captured.frameId, themeStore[HIGHLIGHT_THEME_KEY], captured.message || 'Secure fields are left alone. Nothing was sent.');
+    return;
+  }
+  const text = captured.ok ? captured.text : '';
   if (!text.trim()) {
     if (captured.frameId != null && captured.reason !== 'This page cannot be edited in place.') {
       await sendToFrame(tab.id, captured.frameId, {
@@ -117,29 +171,14 @@ async function onSend(tab, info) {
 
 async function onEnhance(tab, info) {
   const captured = await capturedText(tab, info);
-  const text = captured.ok ? captured.text : String(captured.fallback || '');
   const themeStore = await storageGet([HIGHLIGHT_THEME_KEY, HIGHLIGHT_GENERATION_KEY, ...PROVIDER_SETTINGS_KEYS]);
   const theme = themeStore[HIGHLIGHT_THEME_KEY];
-  if (captured.reason === 'password') {
-    await sendToFrame(tab.id, captured.frameId, {
-      type: 'PL_HIGHLIGHT',
-      action: 'notice',
-      theme,
-      message: captured.message || 'Password fields are left alone.',
-    });
+  const decision = enhanceDecision(captured);
+  if (!decision.proceed) {
+    await showNotice(tab, captured.frameId ?? frameIdOf(info), theme, decision.message);
     return;
   }
-  if (!text.trim()) {
-    if (captured.ok === false && captured.frameId != null) {
-      await sendToFrame(tab.id, captured.frameId, {
-        type: 'PL_HIGHLIGHT',
-        action: 'notice',
-        theme,
-        message: 'Select some text first.',
-      }).catch?.(() => {});
-    }
-    return;
-  }
+  const text = decision.text;
   const token = tokenSeq + 1;
   tokenSeq = token;
   if (captured.ok) {
@@ -170,11 +209,10 @@ async function onEnhance(tab, info) {
       });
       return;
     }
-    if (result.ok) {
-      await deliverToWrite(tab, result.enhanced, 'This page could not show the card. The enhanced text is in Write.');
-    } else {
-      await deliverToWrite(tab, text, result.message || 'Enhance failed. The selection is in Write.');
-    }
+    await showNotice(tab, captured.frameId, theme, result.ok
+      ? 'This page could not show the card, so nothing was inserted.'
+      : (result.message || 'Enhance failed. Nothing was sent.'));
+    return;
   } catch (error) {
     if (aborts.get(tab.id)?.token !== token) return;
     const message = error?.message || 'Enhance failed.';

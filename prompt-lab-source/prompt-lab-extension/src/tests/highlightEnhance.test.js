@@ -5,7 +5,8 @@ import { mountAcceptCard } from '../lib/highlight/acceptCard.js';
 import { cancelHighlight } from '../lib/highlight/cancelHighlight.js';
 import { captureSelectionFromClipboard, pasteEnhancedAndRestore } from '../lib/highlight/clipboardEnhance.js';
 import { buildHighlightPayload, enhanceHighlightText, readEnhancedText } from '../lib/highlight/enhancePayload.js';
-import { captureSelection, confirmReplace } from '../lib/highlight/selectionReplace.js';
+import { captureSelection, confirmReplace, replaceTextControl } from '../lib/highlight/selectionReplace.js';
+import { enhanceDecision, secretFieldRefusal } from '../../extension/lib/highlightField.js';
 import { applyHighlightDraft } from '../lib/highlight/sendToWrite.js';
 import {
   defaultHighlightAccelerator,
@@ -44,22 +45,47 @@ afterEach(() => {
 });
 
 describe('selection capture and replace', () => {
-  it('replaces a textarea selection with setRangeText and an input event', () => {
+  it('replaces a textarea through execCommand so the browser can undo it', () => {
     const field = document.createElement('textarea');
     field.value = 'hello world';
     document.body.append(field);
     field.focus();
     field.setSelectionRange(0, 5);
+    const original = document.execCommand?.bind(document);
+    document.execCommand = (command, _ui, value) => {
+      if (command !== 'insertText') return false;
+      const start = field.selectionStart;
+      const end = field.selectionEnd;
+      field.value = field.value.slice(0, start) + value + field.value.slice(end);
+      return true;
+    };
     const events = [];
     field.addEventListener('input', (event) => events.push(event.inputType));
-    const captured = captureSelection(document);
-    expect(captured.kind).toBe('textarea');
-    expect(captured.text).toBe('hello');
-    const result = captured.replace('HELLO');
-    expect(result).toMatchObject({ ok: true, method: 'setRangeText' });
-    expect(field.value).toBe('HELLO world');
-    expect(events).toEqual(['insertReplacementText']);
-    expect(result.verify()).toBe(true);
+    try {
+      const result = replaceTextControl(field, 'HELLO', 0, 5);
+      expect(result).toMatchObject({ ok: true, method: 'execCommand' });
+      expect(field.value).toBe('HELLO world');
+      expect(events).toEqual(['insertReplacementText']);
+    } finally {
+      document.execCommand = original;
+    }
+  });
+
+  it('falls back to setRangeText only when execCommand returns false', () => {
+    const field = document.createElement('textarea');
+    field.value = 'hello world';
+    document.body.append(field);
+    field.focus();
+    field.setSelectionRange(0, 5);
+    const original = document.execCommand?.bind(document);
+    document.execCommand = () => false;
+    try {
+      const result = replaceTextControl(field, 'HELLO', 0, 5);
+      expect(result).toMatchObject({ ok: true, method: 'setRangeText' });
+      expect(field.value).toBe('HELLO world');
+    } finally {
+      document.execCommand = original;
+    }
   });
 
   it('replaces an input selection and refuses a password field', () => {
@@ -115,6 +141,58 @@ describe('selection capture and replace', () => {
     const result = await confirmReplace(captured.replace, 'GONE', async () => {});
     expect(result.ok).toBe(false);
     expect(host.textContent).toBe('stay put');
+  });
+});
+
+describe('fail closed when the field cannot be classified', () => {
+  it('refuses password fields, secret autocomplete, and a password shadow host', () => {
+    const password = document.createElement('input');
+    password.type = 'password';
+    expect(secretFieldRefusal(password)?.blocked).toBe('password');
+
+    const current = document.createElement('input');
+    current.setAttribute('autocomplete', 'section-login current-password');
+    expect(secretFieldRefusal(current)?.blocked).toBe('secret');
+
+    const otp = document.createElement('input');
+    otp.setAttribute('autocomplete', 'one-time-code');
+    expect(secretFieldRefusal(otp)?.blocked).toBe('secret');
+
+    const host = {
+      tagName: 'INPUT',
+      getAttribute: (name) => (name === 'type' ? 'password' : null),
+      parentElement: null,
+      getRootNode: () => ({}),
+    };
+    const inner = {
+      tagName: 'SPAN',
+      getAttribute: () => null,
+      parentElement: null,
+      getRootNode: () => ({ host }),
+    };
+    expect(secretFieldRefusal(inner)?.blocked).toBe('password');
+
+    const field = document.createElement('input');
+    field.type = 'password';
+    field.value = 'secret';
+    document.body.append(field);
+    field.focus();
+    expect(captureSelection(document)?.blocked).toBe('password');
+    expect(field.value).toBe('secret');
+  });
+
+  it('does not send browser selection text when the field was not classified', () => {
+    expect(enhanceDecision({ ok: false, reason: 'unclassified', fallback: 'secret from the menu' })).toMatchObject({
+      proceed: false,
+    });
+    expect(enhanceDecision({ ok: false, reason: 'frame', message: 'frame blocked', fallback: 'hidden' }).proceed).toBe(false);
+    expect(enhanceDecision({ ok: false, reason: 'password', message: 'Password fields are left alone. Nothing was sent.' }).proceed).toBe(false);
+    expect(enhanceDecision({ ok: true, kind: 'selection', text: 'loose selection' }).proceed).toBe(false);
+    expect(enhanceDecision({ ok: true, kind: 'textarea', text: 'hello' })).toEqual({ proceed: true, text: 'hello' });
+    expect(enhanceDecision({ ok: true, kind: 'contenteditable', text: 'hello' }).proceed).toBe(true);
+    const refused = enhanceDecision({ ok: false, fallback: 'must not be used' });
+    expect(refused.proceed).toBe(false);
+    expect(JSON.stringify(refused)).not.toContain('must not be used');
   });
 });
 
