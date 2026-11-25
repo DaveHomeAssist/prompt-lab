@@ -5,6 +5,7 @@ import { mountAcceptCard } from '../lib/highlight/acceptCard.js';
 import { cancelHighlight } from '../lib/highlight/cancelHighlight.js';
 import { captureSelectionFromClipboard, pasteEnhancedAndRestore } from '../lib/highlight/clipboardEnhance.js';
 import { buildHighlightPayload, enhanceHighlightText, readEnhancedText } from '../lib/highlight/enhancePayload.js';
+import { PROSE_KEPT_CASES, SECRET_REDACTION_CASES } from '../__tests__/secretRedactionCases.js';
 import { captureSelection, confirmReplace, replaceTextControl } from '../lib/highlight/selectionReplace.js';
 import { enhanceDecision, secretFieldRefusal } from '../../extension/lib/highlightField.js';
 import { applyHighlightDraft } from '../lib/highlight/sendToWrite.js';
@@ -277,6 +278,33 @@ describe('highlight enhance payload', () => {
     });
     expect(called).toBe(false);
     expect(result).toMatchObject({ ok: false, code: 'sensitive' });
+  });
+
+  it.each(SECRET_REDACTION_CASES)('does not send %s', async (_name, input, _expected, secret) => {
+    const calls = [];
+    const result = await enhanceHighlightText(input, {
+      route: { provider: 'anthropic', model: 'claude-sonnet-4-6' },
+      call: async (payload) => {
+        calls.push(payload);
+        return { content: [{ text: JSON.stringify({ schema_version: 2, primary_id: 'refined', enhanced: 'Clearer wording' }) }] };
+      },
+    });
+    expect(result).toMatchObject({ ok: false, code: 'sensitive' });
+    expect(calls).toEqual([]);
+    expect(JSON.stringify(result)).not.toContain(secret);
+  });
+
+  it.each(PROSE_KEPT_CASES)('still sends ordinary prose: %s', async (text) => {
+    const calls = [];
+    const result = await enhanceHighlightText(text, {
+      route: { provider: 'anthropic', model: 'claude-sonnet-4-6' },
+      call: async (payload) => {
+        calls.push(payload.messages[0].content);
+        return { content: [{ text: JSON.stringify({ schema_version: 2, primary_id: 'refined', enhanced: 'Clearer wording' }) }] };
+      },
+    });
+    expect(result).toMatchObject({ ok: true, enhanced: 'Clearer wording' });
+    expect(calls).toEqual([text]);
   });
 });
 
