@@ -327,13 +327,16 @@ const API_KEY_REGEX = new RegExp(String.raw`(?<![A-Za-z0-9_])(?:` + [
   String.raw`xox[abprs]-[A-Za-z0-9-]{10,}`,
   String.raw`AKIA[0-9A-Z]{16}`,
   String.raw`AIza[0-9A-Za-z_-]{20,}`,
-  String.raw`(?:api|secret|access|private)[_-]?(?:key|token)\s*[:=]\s*["']?[A-Za-z0-9_-]{12,}`,
+  String.raw`(?:api|secret|access|private)[_\-\s]?(?:key|token)\s*[:=]\s*["']?[A-Za-z0-9_-]{12,}`,
 ].join('|') + String.raw`)(?![A-Za-z0-9])`, 'gi');
 
-// Quoted values may hold spaces. An unquoted run of passphrase words goes to
-// the end of the line. A single token still stops at whitespace and at ";" / "&".
+// A later "token: ..." or "password = ..." on the same line is its own assignment.
+// The passphrase run stops before it, so a rejected multi-word match cannot
+// swallow the next secret.
+const SECRET_LABEL = String.raw`token|secret|password|passwd|private[_-]?key|client[_-]?secret`;
+const NOT_NEXT_ASSIGNMENT = String.raw`(?!(?:${SECRET_LABEL})\b\s*[:=])`;
 const SECRET_ASSIGNMENT_REGEX = new RegExp(
-  String.raw`\b(?:token|secret|password|passwd|private[_-]?key|client[_-]?secret)\b\s*[:=]\s*(?:"([^"\r\n]*)"|'([^'\r\n]*)'|([^\s"'\r\n]+(?:[ \t]+[^\s"'\r\n]+)+)|([^\s"'\`;&<>]+))`,
+  String.raw`\b(?:${SECRET_LABEL})\b\s*[:=]\s*(?:"([^"\r\n]*)"|'([^'\r\n]*)'|([^\s"'\r\n]+(?:[ \t]+${NOT_NEXT_ASSIGNMENT}[^\s"'\r\n]+)+)|([^\s"'\`;&<>]+))`,
   'gi',
 );
 

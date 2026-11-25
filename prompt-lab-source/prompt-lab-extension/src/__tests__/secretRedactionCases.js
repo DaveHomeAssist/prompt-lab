@@ -57,6 +57,9 @@ export const SECRET_REDACTION_CASES = [
   ['url userinfo in a sentence', 'Connect to postgres://app:s3cret-pass@db.internal/app today.', 'Connect to postgres://SECRET@db.internal/app today.', 's3cret-pass'],
   ['unquoted multi-word password', 'password: correct horse battery staple', 'password: SECRET', 'correct horse battery staple'],
   ['unquoted passphrase keeps the period', 'password: correct horse battery staple.', 'password: SECRET.', 'correct horse battery staple'],
+  ['later assignment after a short password', 'password: short and token: mnopqrstuvwx', 'password: short and token: SECRET', 'mnopqrstuvwx'],
+  ['space-separated api key label', 'api key: abcdefghijklmnop', 'API_KEY', 'abcdefghijklmnop'],
+  ['space-separated secret key label', 'note secret key: abcdefghijklmnop end', 'note API_KEY end', 'abcdefghijklmnop'],
 ];
 
 export const PROSE_KEPT_CASES = [

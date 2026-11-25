@@ -12,6 +12,9 @@
   Ordinary sentences are left as written.
 - Highlight Enhance uses the same check and still sends nothing when it finds
   a secret. A long hyphenated paste no longer makes the check stall.
+- A short password followed by another assignment on the same line, such as
+  `token: …`, still redacts that later value. `api key:` with a space is
+  redacted again too.
 
 ## Workspace backups restore without extra questions (unreleased)
 

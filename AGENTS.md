@@ -109,6 +109,7 @@ This is an operator-maintained snapshot, not a background sync service. Never pu
 
 ## Session Log
 
+[2026-11-25] [PLB] [fix] Keep a later same-line assignment and a space-separated api key label in send-time redaction (043)
 [2026-11-25] [PLB] [fix] Redact current provider keys, env assignments, URL userinfo, JWTs and PEM blocks before send, including highlight Enhance (043)
 [2026-11-25] [PLB] [fix] Highlight Accept uses the browser undo stack, and unclassified or secure fields are not sent (042)
 [2026-11-23] [PLB] [feature] Highlight a selection to enhance it in place from the extension context menu and the desktop global shortcut (042)
