@@ -55,6 +55,12 @@ const extras = [
   ['private key assignment', 'private_key: abcdefghij1234567890 and then more words'],
   ['bracket style key', 'key sk-proj-FAKEFAKEFAKEFAKEFAKE'],
   ['two emails', 'Email test@example.com and other@example.com today'],
+  ['phone after a non-ASCII letter', '电话212-555-7890'],
+  ['ssn after a non-ASCII letter', '联系123-45-6789'],
+  ['card after a non-ASCII letter', '卡4111111111111111'],
+  ['ip after a non-ASCII letter', '地址192.168.0.10'],
+  ['secret label after a non-ASCII letter', '密码token: abcdefghijklmnop'],
+  ['bearer after a non-ASCII letter', '授权bearer abcdefghijklmnopqrstuvwxyz0123456789'],
 ];
 
 const named = [

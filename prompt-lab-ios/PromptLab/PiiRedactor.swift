@@ -302,14 +302,23 @@ private extension PiiRedactor {
         }
     }
 
-    /// ICU treats `\d` as any Unicode digit. The extension's patterns are not
-    /// Unicode-aware, so ASCII digits are the shared meaning.
+    /// ICU treats `\d` as any Unicode digit and `\b` as a Unicode word
+    /// boundary. The shared patterns use JavaScript's ASCII meaning: digits
+    /// are `[0-9]`, and a boundary sits between `[A-Za-z0-9_]` and anything else.
+    static let asciiWordBoundary = "(?:(?<=[A-Za-z0-9_])(?![A-Za-z0-9_])|(?<![A-Za-z0-9_])(?=[A-Za-z0-9_]))"
+    static let asciiNonWordBoundary = "(?:(?<=[A-Za-z0-9_])(?=[A-Za-z0-9_])|(?<![A-Za-z0-9_])(?![A-Za-z0-9_]))"
+
     static func asciiDigits(_ pattern: String) -> String {
         var result = ""
         var escaped = false
         for character in pattern {
             if escaped {
-                result += character == "d" ? "[0-9]" : "\\\(character)"
+                switch character {
+                case "d": result += "[0-9]"
+                case "b": result += asciiWordBoundary
+                case "B": result += asciiNonWordBoundary
+                default: result += "\\\(character)"
+                }
                 escaped = false
             } else if character == "\\" {
                 escaped = true

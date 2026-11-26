@@ -1331,6 +1331,90 @@
           "placeholder": "EMAIL"
         }
       ]
+    },
+    {
+      "name": "phone after a non-ASCII letter",
+      "input": "电话212-555-7890",
+      "plain": "电话PHONE",
+      "brackets": "电话[PHONE]",
+      "findings": [
+        {
+          "type": "phone",
+          "start": 2,
+          "end": 14,
+          "placeholder": "PHONE"
+        }
+      ]
+    },
+    {
+      "name": "ssn after a non-ASCII letter",
+      "input": "联系123-45-6789",
+      "plain": "联系SSN",
+      "brackets": "联系[SSN]",
+      "findings": [
+        {
+          "type": "ssn",
+          "start": 2,
+          "end": 13,
+          "placeholder": "SSN"
+        }
+      ]
+    },
+    {
+      "name": "card after a non-ASCII letter",
+      "input": "卡4111111111111111",
+      "plain": "卡CARD",
+      "brackets": "卡[CARD]",
+      "findings": [
+        {
+          "type": "credit_card",
+          "start": 1,
+          "end": 17,
+          "placeholder": "CARD"
+        }
+      ]
+    },
+    {
+      "name": "ip after a non-ASCII letter",
+      "input": "地址192.168.0.10",
+      "plain": "地址IP",
+      "brackets": "地址[IP]",
+      "findings": [
+        {
+          "type": "ip",
+          "start": 2,
+          "end": 14,
+          "placeholder": "IP"
+        }
+      ]
+    },
+    {
+      "name": "secret label after a non-ASCII letter",
+      "input": "密码token: abcdefghijklmnop",
+      "plain": "密码token: SECRET",
+      "brackets": "密码token: [SECRET]",
+      "findings": [
+        {
+          "type": "secret_value",
+          "start": 9,
+          "end": 25,
+          "placeholder": "SECRET"
+        }
+      ]
+    },
+    {
+      "name": "bearer after a non-ASCII letter",
+      "input": "授权bearer abcdefghijklmnopqrstuvwxyz0123456789",
+      "plain": "授权bearer BEARER_TOKEN",
+      "brackets": "授权bearer [BEARER_TOKEN]",
+      "findings": [
+        {
+          "type": "bearer_token",
+          "start": 9,
+          "end": 45,
+          "placeholder": "BEARER_TOKEN"
+        }
+      ]
     }
   ]
 }

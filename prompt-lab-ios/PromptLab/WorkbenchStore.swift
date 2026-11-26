@@ -24,6 +24,7 @@ final class WorkbenchStore {
     private(set) var result: EnhanceResponse?
     var sensitiveReview: SensitiveReview?
     var redactionNotice: String?
+    var isSettingsPresented = false
 
     @ObservationIgnored private let provider: any ProviderClient
     @ObservationIgnored private let keychain: any APIKeyStoring
