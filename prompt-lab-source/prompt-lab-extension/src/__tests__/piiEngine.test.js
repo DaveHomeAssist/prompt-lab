@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { patterns, redactText, scanForPII } from '../lib/piiEngine.js';
 import { PROSE_KEPT_CASES, SECRET_REDACTION_CASES } from './secretRedactionCases.js';
+import patternSpec from '../../../shared/pii-patterns.json' with { type: 'json' };
+import redactionFixtures from '../../../shared/pii-redaction-fixtures.json' with { type: 'json' };
 
 describe('piiEngine', () => {
   it('exposes the shared built-in registry', () => {
@@ -290,5 +292,33 @@ describe('current provider keys, env files, and other credential shapes', () => 
     expect(big.length).toBeGreaterThan(200000);
     expect(redacted).not.toContain(secret);
     expect(redacted).toContain('API_KEY');
+  });
+});
+
+describe('shared sensitive-data spec', () => {
+  it('compiles the pattern file the iOS app ships', () => {
+    expect(Object.keys(patterns)).toEqual(patternSpec.detectors.map((detector) => detector.id));
+    for (const detector of patternSpec.detectors) {
+      const pattern = patterns[detector.id];
+      expect(pattern.label).toBe(detector.label);
+      expect(pattern.placeholder).toBe(detector.placeholder);
+      if (detector.regex) {
+        expect(pattern.regex.source).toBe(detector.regex);
+        expect(pattern.regex.flags).toBe(detector.flags);
+      } else {
+        expect(pattern.regex).toBeUndefined();
+      }
+    }
+  });
+
+  it('matches the fixture corpus consumed by the iOS tests', () => {
+    for (const fixture of redactionFixtures.cases) {
+      expect({ name: fixture.name, text: redactText(fixture.input) }).toEqual({ name: fixture.name, text: fixture.plain });
+      expect({ name: fixture.name, text: redactText(fixture.input, { placeholderStyle: 'brackets' }) }).toEqual({ name: fixture.name, text: fixture.brackets });
+      expect({
+        name: fixture.name,
+        findings: scanForPII(fixture.input).findings.map(({ type, start, end, placeholder }) => ({ type, start, end, placeholder })),
+      }).toEqual({ name: fixture.name, findings: fixture.findings });
+    }
   });
 });

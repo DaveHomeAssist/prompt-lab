@@ -102,7 +102,7 @@ The hosted web deployment is split into a landing route and an app route:
 
 - `prompt-lab-ios/` is a universal SwiftUI app for iOS/iPadOS 17+
 - It uses SwiftData for prompts, pads, and run history and Keychain for the Anthropic key
-- It currently supports Anthropic only and deliberately excludes A/B compare, composer chains, billing, telemetry, PII scanning, and other providers
+- It supports Anthropic only. Before a prompt is sent, the same sensitive-data spec as the extension (`prompt-lab-source/shared/pii-patterns.json`) redacts API keys, tokens, private keys, emails, phone numbers, card numbers, and the other built-in detectors, after the user confirms. It deliberately excludes A/B compare, composer chains, billing, telemetry, and other providers.
 - `contracts/promptlab-enhance-contract-v1.json` is the compatibility boundary enforced by Vitest and XCTest
 - M0 through M3 are implemented; TestFlight/App Store distribution remains blocked on owner-supplied release inputs
 

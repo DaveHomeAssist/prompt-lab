@@ -38,11 +38,13 @@ The version-bump tool must update this complete allowlist:
 | Tauri bundle | `prompt-lab-desktop/src-tauri/tauri.conf.json` |
 | Rust crate | `prompt-lab-desktop/src-tauri/Cargo.toml` and the Prompt Lab package entry in `Cargo.lock` |
 | Shared UI | `prompt-lab-extension/src/constants.js` (`APP_VERSION`) |
+| iOS app | `prompt-lab-ios/PromptLab.xcodeproj/project.pbxproj` (`MARKETING_VERSION` and `CURRENT_PROJECT_VERSION`) |
 
 Compatibility and schema versions are not product-release versions. The tool
 must not change library export fixtures, JSON contract versions, database
-schema versions, dependency versions, or the native SwiftUI version unless the
-corresponding format, dependency, or native release is intentionally changing.
+schema versions, or dependency versions. The iOS marketing version and build
+number are the product version and move with this allowlist. SwiftData schema
+versions do not.
 
 ## Required version-bump command
 

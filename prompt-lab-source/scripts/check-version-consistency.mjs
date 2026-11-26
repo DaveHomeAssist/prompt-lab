@@ -4,7 +4,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 export const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export const packages = ['', 'prompt-lab-extension/', 'prompt-lab-web/', 'prompt-lab-desktop/'];
-export const specialFiles = ['prompt-lab-extension/extension/manifest.json', 'prompt-lab-extension/public/manifest.json', 'prompt-lab-desktop/src-tauri/tauri.conf.json', 'prompt-lab-desktop/src-tauri/Cargo.toml', 'prompt-lab-desktop/src-tauri/Cargo.lock', 'prompt-lab-extension/src/constants.js', 'prompt-lab-web/index.html'];
+export const specialFiles = ['prompt-lab-extension/extension/manifest.json', 'prompt-lab-extension/public/manifest.json', 'prompt-lab-desktop/src-tauri/tauri.conf.json', 'prompt-lab-desktop/src-tauri/Cargo.toml', 'prompt-lab-desktop/src-tauri/Cargo.lock', 'prompt-lab-extension/src/constants.js', 'prompt-lab-web/index.html', '../prompt-lab-ios/PromptLab.xcodeproj/project.pbxproj'];
 // The landing hero badge carries the full release in data-release and shows v<major>.<minor>.
 export const landingBadgePattern = /(<div class="hero-badge" data-release=")([^"]+)(">\s*<span class="hero-badge-dot"><\/span>\s*v)(\d+\.\d+)(?= )/;
 export const versionFiles = [...packages.flatMap(prefix => [`${prefix}package.json`, `${prefix}package-lock.json`]), ...specialFiles];
@@ -22,6 +22,11 @@ export function checkVersions(root = sourceRoot, read = file => readFileSync(res
       const badge = text.match(landingBadgePattern);
       const release = badge?.[2];
       versions = [release && badge[4] === release.split('.').slice(0, 2).join('.') ? release : `${release ?? 'missing'} (badge v${badge?.[4] ?? 'missing'})`];
+    }
+    else if (file.endsWith('project.pbxproj')) {
+      const marketing = [...text.matchAll(/MARKETING_VERSION = ([0-9]+(?:\.[0-9]+)*);/g)].map((match) => match[1]);
+      const build = [...text.matchAll(/CURRENT_PROJECT_VERSION = ([0-9]+(?:\.[0-9]+)*);/g)].map((match) => match[1]);
+      versions = marketing.length || build.length ? [...marketing, ...build] : [undefined];
     }
     else if (file.endsWith('Cargo.toml')) versions = [text.match(/\[package\][\s\S]*?\nversion\s*=\s*"([^"]+)"/)?.[1]];
     else versions = [text.match(/\[\[package\]\]\nname = "prompt-lab-desktop"\nversion = "([^"]+)"/)?.[1]];

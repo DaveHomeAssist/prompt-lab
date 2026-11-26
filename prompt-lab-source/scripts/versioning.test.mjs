@@ -2,17 +2,23 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, copyFileSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { checkVersions, sourceRoot, versionFiles } from './check-version-consistency.mjs';
 import { bumpVersion, planVersionBump } from './bump-version.mjs';
 
 function fixture(run) {
-  const root = mkdtempSync(join(tmpdir(), 'promptlab-version-'));
+  const workspace = mkdtempSync(join(tmpdir(), 'promptlab-version-'));
+  const root = join(workspace, 'prompt-lab-source');
   try {
-    for (const file of versionFiles) { mkdirSync(dirname(join(root, file)), { recursive: true }); copyFileSync(join(sourceRoot, file), join(root, file)); }
+    for (const file of versionFiles) {
+      const from = resolve(sourceRoot, file);
+      const to = resolve(root, file);
+      mkdirSync(dirname(to), { recursive: true });
+      copyFileSync(from, to);
+    }
     return run(root);
-  } finally { rmSync(root, { recursive: true, force: true }); }
+  } finally { rmSync(workspace, { recursive: true, force: true }); }
 }
 test('bumps every product version without changing locked dependencies', () => fixture(root => {
   const before = JSON.parse(readFileSync(join(root, 'prompt-lab-extension/package-lock.json')));

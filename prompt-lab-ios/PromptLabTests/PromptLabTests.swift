@@ -432,11 +432,22 @@ final class PromptLabTests: XCTestCase {
         XCTAssertEqual(prompts.first?.tags, records.first?.response?.tags)
     }
 
-    func testAppIdentityAndAnthropicKeychainPath() {
+    func testAppIdentityAndAnthropicKeychainPath() throws {
         XCTAssertEqual(Bundle.main.bundleIdentifier, "com.davehomeassist.promptlab")
         let info = Bundle.main.infoDictionary
         XCTAssertEqual(info?["CFBundleShortVersionString"] as? String, "1.9.0")
         XCTAssertEqual(info?["CFBundleVersion"] as? String, "1.9.0")
+        XCTAssertEqual(info?["CFBundleDisplayName"] as? String, "Prompt Lab")
+        XCTAssertEqual(info?["ITSAppUsesNonExemptEncryption"] as? Bool, false)
+        let privacyURL = try XCTUnwrap(Bundle.main.url(forResource: "PrivacyInfo", withExtension: "xcprivacy"))
+        let privacy = try PropertyListSerialization.propertyList(from: Data(contentsOf: privacyURL), format: nil) as? [String: Any]
+        XCTAssertEqual(privacy?["NSPrivacyTracking"] as? Bool, false)
+        let collected = privacy?["NSPrivacyCollectedDataTypes"] as? [[String: Any]]
+        XCTAssertEqual(collected?.first?["NSPrivacyCollectedDataType"] as? String, "NSPrivacyCollectedDataTypeOtherUserContent")
+        XCTAssertEqual(collected?.first?["NSPrivacyCollectedDataTypeLinked"] as? Bool, false)
+        XCTAssertEqual(collected?.first?["NSPrivacyCollectedDataTypeTracking"] as? Bool, false)
+        let purposes = collected?.first?["NSPrivacyCollectedDataTypePurposes"] as? [String]
+        XCTAssertEqual(purposes, ["NSPrivacyCollectedDataTypePurposeAppFunctionality"])
         XCTAssertEqual(KeychainStore.defaultService, "com.davehomeassist.promptlab")
         XCTAssertEqual(KeychainStore.defaultAccount, "anthropic-api-key")
     }
@@ -862,6 +873,140 @@ private struct RequiresKeyProviderClient: ProviderClient {
     func streamEnhance(request: EnhanceRequest, apiKey: String) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
             continuation.finish(throwing: ProviderError.remote("Provider should not be called without a key."))
+        }
+    }
+}
+
+final class PiiRedactorTests: XCTestCase {
+    private struct FixtureFile: Decodable {
+        struct Finding: Decodable {
+            let type: String
+            let start: Int
+            let end: Int
+            let placeholder: String
+        }
+        struct Case: Decodable {
+            let name: String
+            let input: String
+            let plain: String
+            let brackets: String
+            let findings: [Finding]
+        }
+        let cases: [Case]
+    }
+
+    func testSharedCorpusMatchesTheExtensionEngine() throws {
+        let url = try XCTUnwrap(
+            Bundle(for: Self.self).url(forResource: "pii-redaction-fixtures", withExtension: "json")
+        )
+        let fixtures = try JSONDecoder().decode(FixtureFile.self, from: Data(contentsOf: url))
+        let redactor = PiiRedactor.shared
+        XCTAssertEqual(redactor.spec.detectors.map(\.id), [
+            "ssn", "credit_card", "email", "phone", "ip", "api_key", "bearer_token", "secret_value",
+        ])
+        for item in fixtures.cases {
+            XCTAssertEqual(redactor.redact(item.input), item.plain, item.name)
+            XCTAssertEqual(redactor.redact(item.input, style: .brackets), item.brackets, item.name)
+            let findings = redactor.scan(item.input).findings.map { "\($0.type):\($0.start):\($0.end):\($0.placeholder)" }
+            let expected = item.findings.map { "\($0.type):\($0.start):\($0.end):\($0.placeholder)" }
+            XCTAssertEqual(findings, expected, item.name)
+        }
+    }
+
+    @MainActor
+    func testSensitivePromptIsNotSentUntilTheUserRedactsIt() async throws {
+        let provider = RecordingProviderClient()
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let store = WorkbenchStore(provider: provider, keychain: MemoryAPIKeyStore())
+        let original = "use sk-ant-api03-FAKEFAKEFAKEFAKEFAKE please"
+        store.draft = original
+
+        await store.enhance(modelContext: context)
+
+        let review = try XCTUnwrap(store.sensitiveReview)
+        XCTAssertEqual(store.state, .idle)
+        XCTAssertTrue(provider.prompts.isEmpty)
+        XCTAssertFalse(review.redacted.contains("sk-ant-"))
+        XCTAssertEqual(review.redacted, "use [API_KEY] please")
+        XCTAssertEqual(review.matches.map(\.type), ["api_key"])
+
+        await store.confirmEnhance(redact: true, modelContext: context)
+
+        XCTAssertNil(store.sensitiveReview)
+        XCTAssertEqual(store.state, .completed)
+        XCTAssertEqual(provider.prompts, ["use [API_KEY] please"])
+        XCTAssertEqual(store.draft, original)
+        XCTAssertEqual(store.redactionNotice, "Redacted before sending: [API_KEY].")
+        let runs = try context.fetch(FetchDescriptor<RunRecord>())
+        XCTAssertEqual(runs.first?.input, original)
+    }
+
+    @MainActor
+    func testSendAnywayKeepsTheOriginalPrompt() async throws {
+        let provider = RecordingProviderClient()
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let store = WorkbenchStore(provider: provider, keychain: MemoryAPIKeyStore())
+        let original = "mail ada@example.com please"
+        store.draft = original
+
+        await store.enhance(modelContext: context)
+        XCTAssertNotNil(store.sensitiveReview)
+        await store.confirmEnhance(redact: false, modelContext: context)
+
+        XCTAssertEqual(provider.prompts, [original])
+        XCTAssertNil(store.redactionNotice)
+        XCTAssertEqual(store.state, .completed)
+    }
+
+    @MainActor
+    func testCancelSensitiveReviewDoesNotCallTheProvider() async throws {
+        let provider = RecordingProviderClient()
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let store = WorkbenchStore(provider: provider, keychain: MemoryAPIKeyStore())
+        store.draft = "token: abcdefghijklmnop"
+
+        await store.enhance(modelContext: context)
+        XCTAssertNotNil(store.sensitiveReview)
+        store.cancelSensitiveReview()
+
+        XCTAssertNil(store.sensitiveReview)
+        XCTAssertTrue(provider.prompts.isEmpty)
+        XCTAssertEqual(try context.fetchCount(FetchDescriptor<RunRecord>()), 0)
+        XCTAssertEqual(store.state, .idle)
+    }
+
+    @MainActor
+    func testEditingTheDraftDropsTheReview() async throws {
+        let provider = RecordingProviderClient()
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let store = WorkbenchStore(provider: provider, keychain: MemoryAPIKeyStore())
+        store.draft = "secret: abcdefghijklmnop"
+
+        await store.enhance(modelContext: context)
+        XCTAssertNotNil(store.sensitiveReview)
+        store.draft = "A prompt with nothing sensitive in it."
+
+        XCTAssertNil(store.sensitiveReview)
+        XCTAssertTrue(provider.prompts.isEmpty)
+    }
+}
+
+private final class RecordingProviderClient: ProviderClient {
+    let providerID = "anthropic"
+    let modelID = "recorded-redaction"
+    let requiresAPIKey = false
+    private(set) var prompts: [String] = []
+
+    func streamEnhance(request: EnhanceRequest, apiKey: String) -> AsyncThrowingStream<String, Error> {
+        prompts.append(request.prompt)
+        let payload = #"{"enhanced":"Redacted result","variants":[{"label":"A","content":"One"},{"label":"B","content":"Two"}],"notes":"Recorded.","assumptions":[],"tags":["Other"]}"#
+        return AsyncThrowingStream { continuation in
+            continuation.yield(payload)
+            continuation.finish()
         }
     }
 }
