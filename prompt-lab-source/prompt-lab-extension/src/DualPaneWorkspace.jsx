@@ -185,7 +185,7 @@ export default function DualPaneWorkspace({
     const content = promptContent(selected);
     if (!content) return;
     try {
-      if (copy) await copy(content, `Copied ${selected.title}.`);
+      if (copy) await copy(content, `Copied ${selected.title}.`, selected.id ? { promptKey: `id:${selected.id}` } : undefined);
       else await navigator.clipboard.writeText(content);
       announce(`Copied ${selected.title}.`, !copy);
     } catch {

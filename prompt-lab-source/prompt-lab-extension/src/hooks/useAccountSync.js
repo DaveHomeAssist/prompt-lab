@@ -76,7 +76,7 @@ export default function useAccountSync({ clerkUser, clerkGetToken, config = read
       const keptSeparate = isKeptSeparate(window.localStorage, runUserId);
       const uploadsSuspended = result.status === 'uploads-suspended' || areUploadsSuspended(window.localStorage, runUserId);
       const status = uploadsSuspended ? 'uploads-suspended' : result.status === 'owner-mismatch' && keptSeparate ? 'kept-separate' : result.status;
-      setSyncState({ status, keptSeparate: status === 'kept-separate', uploadsSuspended: status === 'uploads-suspended', pending: status === 'uploads-suspended' ? 0 : result.pending, conflicts: result.conflicts, unseenConflicts: unseen, tooLarge: result.tooLarge || 0, error: result.error, at: Date.now(), needsReopen: Boolean(bridged.needsReopen) });
+      setSyncState({ status, keptSeparate: status === 'kept-separate', uploadsSuspended: status === 'uploads-suspended', pending: status === 'uploads-suspended' ? 0 : result.pending, conflicts: result.conflicts, unseenConflicts: unseen, tooLarge: result.tooLarge || 0, queueCorrupt: Boolean(result.queueCorrupt), error: result.error, at: Date.now(), needsReopen: Boolean(bridged.needsReopen) });
       failures = result.status === 'synced' || result.status === 'owner-mismatch' || status === 'uploads-suspended' ? 0 : failures + 1;
       // Signed out, another account's data on this device, over quota, or this
       // device chose not to upload after deleting synced data: wait instead of retrying.

@@ -27,8 +27,14 @@ export default function usePromptVariableGate({ promptId } = {}) {
     if (manual.length === 0) {
       return { cancelled: false, text: fillTemplateVars(source, ghostValues, { applyDefaults: false }) };
     }
-    const promptKey = typeof promptKeyOverride === 'string' && promptKeyOverride
+    // A caller-supplied key (the prompt being copied) wins over the prompt
+    // open in Write. Without one, values follow that prompt, or a hash of the
+    // text when nothing is open.
+    const explicitKey = typeof promptKeyOverride === 'string'
       ? promptKeyOverride
+      : promptKeyOverride?.promptKey;
+    const promptKey = typeof explicitKey === 'string' && explicitKey
+      ? explicitKey
       : variablePromptKey(promptId, source);
     const recent = readRecentVariables(promptKey);
     return new Promise((resolve) => {

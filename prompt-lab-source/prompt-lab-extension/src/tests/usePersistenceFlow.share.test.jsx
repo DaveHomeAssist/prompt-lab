@@ -173,7 +173,9 @@ describe('usePersistenceFlow share + template paths', () => {
     });
 
     expect(result.current.enhanced).toBe('Hello Dana from 2026-03-17');
-    expect(result.current.editingId).toBe(entry.id);
+    // Filled values open as a new draft so Save cannot version the template.
+    expect(result.current.editingId).toBeNull();
+    expect(result.current.editingVersionId).toBeNull();
     expect(result.current.saveTitle).toBe(entry.title);
     expect(result.current.saveTags).toEqual(entry.tags);
     expect(result.current.saveCollection).toBe(entry.collection);
@@ -181,6 +183,20 @@ describe('usePersistenceFlow share + template paths', () => {
     expect(result.current.pendingTemplate).toBe(null);
     expect(entry.createdAt).toBe('2026-03-12T00:00:00.000Z');
     expect(entry.tags).toEqual(['template', 'shared']);
+  });
+
+  it('skip loads the template itself and keeps its version history', async () => {
+    const entry = Object.freeze(makeEntry());
+    const { result } = renderPersistenceFlow({ entry });
+
+    await act(async () => {
+      await result.current.loadEntry(entry);
+    });
+    act(() => { result.current.skipTemplate(); });
+
+    expect(result.current.editingId).toBe(entry.id);
+    expect(result.current.enhanced).toBe(entry.enhanced);
+    expect(result.current.raw).toBe(entry.original);
   });
 
   it('version_fields_round_trip', () => {
