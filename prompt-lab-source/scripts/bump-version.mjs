@@ -20,6 +20,11 @@ export function planVersionBump(version, root = sourceRoot) {
       text = JSON.stringify(data, null, 2) + '\n';
     } else if (file.endsWith('constants.js')) text = source.replace(/(export const APP_VERSION\s*=\s*['"])[^'"]+/, `$1${version}`);
     else if (file.endsWith('index.html')) text = source.replace(landingBadgePattern, (match, open, release, middle) => `${open}${version}${middle}${version.split('.').slice(0, 2).join('.')}`);
+    else if (file.endsWith('project.pbxproj')) {
+      text = source
+        .replace(/(MARKETING_VERSION = )[0-9]+(?:\.[0-9]+)*/g, `$1${version}`)
+        .replace(/(CURRENT_PROJECT_VERSION = )[0-9]+(?:\.[0-9]+)*/g, `$1${version}`);
+    }
     else if (file.endsWith('Cargo.toml')) text = source.replace(/(\[package\][\s\S]*?\nversion\s*=\s*")[^"]+/, `$1${version}`);
     else text = source.replace(/(\[\[package\]\]\r?\nname = "prompt-lab-desktop"\r?\nversion = ")[^"]+/, `$1${version}`);
     after.set(file, text);

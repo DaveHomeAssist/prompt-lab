@@ -42,6 +42,10 @@ The app targets both iPhone and iPad. Regular-width iPads keep a rebalanced thre
 
 The key is stored as a generic-password Keychain item with service `com.davehomeassist.promptlab` and account `anthropic-api-key`, using `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`. The app looks the key up by that service and account. The key is not written to UserDefaults, synced through iCloud Keychain, or logged.
 
+## Sensitive data before send
+
+Enhance scans the draft with the shared patterns in `prompt-lab-source/shared/pii-patterns.json` before any network request. If it finds API keys, tokens, private keys, emails, phone numbers, card numbers, or the other built-in detectors, a sheet lists each item and the placeholder that would replace it. **Redact & Send** transmits the bracketed text (`[API_KEY]`, `[EMAIL]`, and so on). **Send Anyway** transmits the draft unchanged. **Cancel** sends nothing. The editor keeps what you typed. The steps still left for a TestFlight upload are in [TESTFLIGHT.md](TESTFLIGHT.md).
+
 ## What works
 
 - Adaptive SwiftUI workbench using three-column `NavigationSplitView` at regular width and explicit `NavigationStack` routes at compact width
@@ -75,7 +79,6 @@ xcrun simctl launch booted com.davehomeassist.promptlab \
 - Composer chains
 - Billing or Pro gating
 - Telemetry
-- PII scanning
 - Ollama
 - OpenAI, Gemini, OpenRouter, or any provider other than Anthropic
 

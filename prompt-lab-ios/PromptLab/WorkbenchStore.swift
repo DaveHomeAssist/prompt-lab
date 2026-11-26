@@ -22,6 +22,8 @@ final class WorkbenchStore {
     private(set) var state: EnhanceState = .idle
     private(set) var streamedText = ""
     private(set) var result: EnhanceResponse?
+    var sensitiveReview: SensitiveReview?
+    var redactionNotice: String?
     var isSettingsPresented = false
 
     @ObservationIgnored private let provider: any ProviderClient
@@ -32,13 +34,17 @@ final class WorkbenchStore {
     private struct Attempt {
         let id = UUID()
         let input: String
+        let outgoing: String
         let promptID: String?
         let title: String
         let mode: EnhanceMode
+        let redactionNotice: String?
         let startedAt = Date()
     }
 
     private func invalidateAttempt() {
+        sensitiveReview = nil
+        redactionNotice = nil
         guard activeAttemptID != nil else { return }
         activeAttemptID = nil
         enhanceTask?.cancel()
@@ -48,12 +54,26 @@ final class WorkbenchStore {
     }
 
     private func beginAttempt() -> Attempt? {
-        guard activeAttemptID == nil else { return nil }
+        guard sensitiveReview == nil, activeAttemptID == nil else { return nil }
         let input = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !input.isEmpty else { return nil }
-        let attempt = Attempt(input: input, promptID: currentPromptID,
-                              title: currentPromptID == nil ? PromptTitleSuggester.suggest(from: input) : currentPromptTitle,
-                              mode: selectedMode)
+        if let review = PiiRedactor.shared.review(of: input) {
+            sensitiveReview = review
+            return nil
+        }
+        return makeAttempt(input: input, outgoing: input, redactionNotice: nil)
+    }
+
+    private func makeAttempt(input: String, outgoing: String, redactionNotice: String?) -> Attempt? {
+        guard activeAttemptID == nil else { return nil }
+        let attempt = Attempt(
+            input: input,
+            outgoing: outgoing,
+            promptID: currentPromptID,
+            title: currentPromptID == nil ? PromptTitleSuggester.suggest(from: input) : currentPromptTitle,
+            mode: selectedMode,
+            redactionNotice: redactionNotice
+        )
         activeAttemptID = attempt.id
         return attempt
     }
@@ -186,6 +206,34 @@ final class WorkbenchStore {
         }
     }
 
+    func cancelSensitiveReview() {
+        sensitiveReview = nil
+    }
+
+    func startConfirmedEnhance(redact: Bool, modelContext: ModelContext) {
+        guard let attempt = approvedAttempt(redact: redact) else { return }
+        enhanceTask = Task { [weak self] in
+            await self?.performEnhance(attempt, modelContext: modelContext)
+        }
+    }
+
+    func confirmEnhance(redact: Bool, modelContext: ModelContext) async {
+        guard let attempt = approvedAttempt(redact: redact) else { return }
+        await performEnhance(attempt, modelContext: modelContext)
+    }
+
+    private func approvedAttempt(redact: Bool) -> Attempt? {
+        guard let review = sensitiveReview else { return nil }
+        let outgoing = redact ? review.redacted : review.original
+        guard let attempt = makeAttempt(
+            input: review.original,
+            outgoing: outgoing,
+            redactionNotice: redact ? review.notice : nil
+        ) else { return nil }
+        sensitiveReview = nil
+        return attempt
+    }
+
     func cancelEnhance() {
         enhanceTask?.cancel()
     }
@@ -226,8 +274,9 @@ final class WorkbenchStore {
         state = .inFlight
         streamedText = ""
         result = nil
+        redactionNotice = attempt.redactionNotice
         let startedAt = attempt.startedAt
-        let request = EnhanceRequest(prompt: input, mode: attempt.mode)
+        let request = EnhanceRequest(prompt: attempt.outgoing, mode: attempt.mode)
 
         do {
             for try await chunk in provider.streamEnhance(request: request, apiKey: apiKey) {

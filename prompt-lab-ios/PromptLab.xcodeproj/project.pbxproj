@@ -23,6 +23,11 @@
 		AB000000000000000000000F /* PromptLabUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC0000000000000000000011 /* PromptLabUITests.swift */; };
 		AB0000000000000000000010 /* PromptLabSchema.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC0000000000000000000013 /* PromptLabSchema.swift */; };
 		AB0000000000000000000011 /* promptlab-library-v2.json in Resources */ = {isa = PBXBuildFile; fileRef = AC0000000000000000000014 /* promptlab-library-v2.json */; };
+		AB0000000000000000000012 /* PiiRedactor.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC0000000000000000000015 /* PiiRedactor.swift */; };
+		AB0000000000000000000013 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = AC0000000000000000000016 /* PrivacyInfo.xcprivacy */; };
+		AB0000000000000000000014 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AC0000000000000000000017 /* Assets.xcassets */; };
+		AB0000000000000000000015 /* pii-patterns.json in Resources */ = {isa = PBXBuildFile; fileRef = AC0000000000000000000018 /* pii-patterns.json */; };
+		AB0000000000000000000016 /* pii-redaction-fixtures.json in Resources */ = {isa = PBXBuildFile; fileRef = AC0000000000000000000019 /* pii-redaction-fixtures.json */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -56,6 +61,11 @@
 		AC0000000000000000000012 /* PromptLabUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PromptLabUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		AC0000000000000000000013 /* PromptLabSchema.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptLabSchema.swift; sourceTree = "<group>"; };
 		AC0000000000000000000014 /* promptlab-library-v2.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "promptlab-library-v2.json"; path = "../contracts/promptlab-library-v2.json"; sourceTree = SOURCE_ROOT; };
+		AC0000000000000000000015 /* PiiRedactor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PiiRedactor.swift; sourceTree = "<group>"; };
+		AC0000000000000000000016 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		AC0000000000000000000017 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		AC0000000000000000000018 /* pii-patterns.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "pii-patterns.json"; path = "../prompt-lab-source/shared/pii-patterns.json"; sourceTree = SOURCE_ROOT; };
+		AC0000000000000000000019 /* pii-redaction-fixtures.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "pii-redaction-fixtures.json"; path = "../prompt-lab-source/shared/pii-redaction-fixtures.json"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -85,6 +95,10 @@
 				AC000000000000000000000B /* ProviderClient.swift */,
 				AC000000000000000000000C /* KeychainStore.swift */,
 				AC000000000000000000000E /* LibraryInterchange.swift */,
+				AC0000000000000000000015 /* PiiRedactor.swift */,
+				AC0000000000000000000016 /* PrivacyInfo.xcprivacy */,
+				AC0000000000000000000017 /* Assets.xcassets */,
+				AC0000000000000000000018 /* pii-patterns.json */,
 				AF0000000000000000000004 /* Models */,
 				AF0000000000000000000005 /* Features */,
 			);
@@ -93,7 +107,7 @@
 		};
 		AF0000000000000000000002 /* PromptLabTests */ = {
 			isa = PBXGroup;
-			children = (AC0000000000000000000007 /* PromptLabTests.swift */, AC000000000000000000000F /* web-library-export-1.7.0.json */, AC0000000000000000000010 /* promptlab-enhance-contract-v1.json */, AC0000000000000000000014 /* promptlab-library-v2.json */,);
+			children = (AC0000000000000000000007 /* PromptLabTests.swift */, AC000000000000000000000F /* web-library-export-1.7.0.json */, AC0000000000000000000010 /* promptlab-enhance-contract-v1.json */, AC0000000000000000000014 /* promptlab-library-v2.json */, AC0000000000000000000019 /* pii-redaction-fixtures.json */,);
 			path = PromptLabTests;
 			sourceTree = "<group>";
 		};
@@ -186,8 +200,8 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		BD0000000000000000000001 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
-		BD0000000000000000000002 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (AB000000000000000000000D, AB000000000000000000000E, AB0000000000000000000011,); runOnlyForDeploymentPostprocessing = 0; };
+		BD0000000000000000000001 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (AB0000000000000000000013, AB0000000000000000000014, AB0000000000000000000015,); runOnlyForDeploymentPostprocessing = 0; };
+		BD0000000000000000000002 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (AB000000000000000000000D, AB000000000000000000000E, AB0000000000000000000011, AB0000000000000000000016,); runOnlyForDeploymentPostprocessing = 0; };
 		BD0000000000000000000003 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
 
@@ -195,7 +209,7 @@
 		BC0000000000000000000001 = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
-			files = (AB0000000000000000000001, AB0000000000000000000010, AB0000000000000000000002, AB0000000000000000000003, AB0000000000000000000004, AB0000000000000000000005, AB0000000000000000000006, AB0000000000000000000008, AB0000000000000000000009, AB000000000000000000000A, AB000000000000000000000B, AB000000000000000000000C,);
+			files = (AB0000000000000000000001, AB0000000000000000000010, AB0000000000000000000002, AB0000000000000000000003, AB0000000000000000000004, AB0000000000000000000005, AB0000000000000000000006, AB0000000000000000000008, AB0000000000000000000009, AB000000000000000000000A, AB000000000000000000000B, AB000000000000000000000C, AB0000000000000000000012,);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		BC0000000000000000000002 = {
@@ -226,6 +240,7 @@
 			ENABLE_TESTABILITY = YES;
 			GENERATE_INFOPLIST_FILE = YES;
 			INFOPLIST_KEY_CFBundleDisplayName = "Prompt Lab";
+			INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 			INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 			INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 			INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -242,12 +257,14 @@
 			SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 			SWIFT_VERSION = 5.0;
 			TARGETED_DEVICE_FAMILY = "1,2";
+			ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 		}; name = Debug; };
 		BF0000000000000000000012 = {isa = XCBuildConfiguration; buildSettings = {
 			CODE_SIGN_STYLE = Automatic;
 			CURRENT_PROJECT_VERSION = 1.9.0;
 			GENERATE_INFOPLIST_FILE = YES;
 			INFOPLIST_KEY_CFBundleDisplayName = "Prompt Lab";
+			INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 			INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 			INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 			INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -263,6 +280,7 @@
 			SWIFT_EMIT_LOC_STRINGS = YES;
 			SWIFT_VERSION = 5.0;
 			TARGETED_DEVICE_FAMILY = "1,2";
+			ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 		}; name = Release; };
 		BF0000000000000000000021 = {isa = XCBuildConfiguration; buildSettings = {
 			BUNDLE_LOADER = "$(TEST_HOST)";

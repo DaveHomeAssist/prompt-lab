@@ -50,6 +50,18 @@ struct WorkbenchRootView: View {
         .sheet(isPresented: $store.isSettingsPresented) {
             SettingsSheet()
         }
+        .sheet(isPresented: Binding(
+            get: { store.sensitiveReview != nil },
+            set: { if !$0 { store.cancelSensitiveReview() } }
+        )) {
+            if let review = store.sensitiveReview {
+                SensitiveDataSheet(review: review) { redact in
+                    store.startConfirmedEnhance(redact: redact, modelContext: modelContext)
+                } onCancel: {
+                    store.cancelSensitiveReview()
+                }
+            }
+        }
         .task {
             guard runRecordedDemo, store.draft.isEmpty else { return }
             store.draft = "Analyze this product feature idea and recommend the smallest useful version."
@@ -599,6 +611,13 @@ private struct EditorView: View {
             Label("Enhance canceled. The partial attempt is available in Runs.", systemImage: "xmark.circle")
                 .font(.callout)
                 .foregroundStyle(.secondary)
+        }
+        if let notice = store.redactionNotice {
+            Label(notice, systemImage: "eye.slash")
+                .font(.callout)
+                .foregroundStyle(.orange)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("redactionNotice")
         }
         if store.isEnhancing {
             ProgressView("Streaming from Anthropic…")
@@ -1162,5 +1181,70 @@ private struct SettingsSheet: View {
                 message = error.localizedDescription
             }
         }
+    }
+}
+
+private struct SensitiveDataSheet: View {
+    let review: SensitiveReview
+    let onDecision: (Bool) -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("The following potentially sensitive items were found in your prompt. Choose whether to redact them, send unchanged, or cancel.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    VStack(alignment: .leading, spacing: 10) {
+                        ForEach(review.matches) { match in
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(match.type)
+                                    .font(.caption.weight(.semibold))
+                                    .textCase(.uppercase)
+                                    .foregroundStyle(.orange)
+                                Text(match.snippet)
+                                    .font(.caption.monospaced())
+                                    .lineLimit(2)
+                                Text("Sends as \(match.replacement)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .accessibilityElement(children: .combine)
+                        }
+                    }
+                    .accessibilityElement(children: .contain)
+                    .accessibilityLabel("Detected sensitive items")
+
+                    Text("Text that will be sent")
+                        .font(.caption.weight(.semibold))
+                    Text(review.redacted)
+                        .font(.callout.monospaced())
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(10)
+                        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
+
+                    VStack(spacing: 8) {
+                        Button("Redact & Send") { onDecision(true) }
+                            .buttonStyle(.borderedProminent)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .accessibilityIdentifier("redactAndSendButton")
+                        Button("Send Anyway") { onDecision(false) }
+                            .buttonStyle(.bordered)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .accessibilityIdentifier("sendAnywayButton")
+                        Button("Cancel", role: .cancel, action: onCancel)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .accessibilityIdentifier("cancelSensitiveButton")
+                    }
+                }
+                .padding()
+            }
+            .navigationTitle("Sensitive Data Detected")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+        .accessibilityIdentifier("sensitiveDataSheet")
     }
 }

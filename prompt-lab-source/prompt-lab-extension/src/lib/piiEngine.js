@@ -1,26 +1,52 @@
 import { luhnPasses } from './utils.js';
+import patternSpec from '../../../shared/pii-patterns.json' with { type: 'json' };
 
-// Body of a credential value, shared by the secret-assignment and Bearer detectors:
-// base64/base64url characters, optionally dot-joined (JWT segments) and "="-padded.
-// The quantifiers are greedy and unbounded on purpose. A lazy or capped quantifier
-// stops early (or misses entirely) and the rest of the secret reaches the provider.
-const TOKEN_BODY = String.raw`[A-Za-z0-9+/_\-]+(?:\.[A-Za-z0-9+/_\-]+)*=*`;
-const SECRET_MIN_LENGTH = 10;
-const ENV_VALUE_MIN_LENGTH = 4;
+// Pattern text, labels, and thresholds live in the shared spec so the iOS port
+// compiles the same expressions. Quantifiers in the credential patterns are
+// greedy and unbounded on purpose: a lazy or capped quantifier stops early
+// and the rest of the secret reaches the provider.
+const {
+  secretMinLength: SECRET_MIN_LENGTH,
+  envValueMinLength: ENV_VALUE_MIN_LENGTH,
+  bearerMinLength: BEARER_MIN_LENGTH,
+} = patternSpec.constants;
 // Sentence punctuation after a bare value is prose, not part of the secret.
-const TRAILING_PROSE_PUNCTUATION = /[.,:)]+$/;
+const TRAILING_PROSE_PUNCTUATION = new RegExp(patternSpec.constants.trailingProsePunctuation);
 // Template and environment references ({{db_password}}, ${SECRET}, $DB_PASSWORD, %TOKEN%)
 // name a secret without containing one.
-const SECRET_REFERENCE = /^(?:\{\{[^{}]*\}\}|\$\{[^{}]*\}|\$[A-Za-z_][A-Za-z0-9_]*|%[A-Za-z_][A-Za-z0-9_]*%)$/;
-const BEARER_MIN_LENGTH = 16;
+const SECRET_REFERENCE = new RegExp(patternSpec.constants.secretReference);
 // A SNAKE_CASE segment that names a secret. Exact segment (or a trailing plural),
 // so MONKEY and AUTHOR do not match KEY and AUTH.
-const ENV_SECRET_SEGMENT = /^(?:PASSWORD|PASSWD|CREDENTIAL|PRIVATE|SECRET|TOKEN|AUTH|DSN|PWD|KEY)S?$/i;
+const ENV_SECRET_SEGMENT = new RegExp(patternSpec.constants.envSecretSegment, 'i');
 // Function words. A multi-word value made only of other words is a passphrase
 // ("correct horse battery staple"). A value that uses one of these is a sentence
 // ("it is private") and only its first token is eligible, which then fails the
 // length check and stays as written.
-const PROSE_WORDS = new Set('a an the and or but if then else it is are was were be to of for in on at by with from as that this these those my your our their we you they do does not no please more must have has had will can should would could just than into over also only about them its so'.split(' '));
+const PROSE_WORDS = new Set(patternSpec.constants.proseWords);
+const PEM_BEGIN = patternSpec.constants.pemBegin;
+const PEM_END = patternSpec.constants.pemEndMarker;
+const PEM_HEADER = new RegExp(patternSpec.constants.pemHeader);
+const PEM_END_PATTERN = new RegExp(patternSpec.constants.pemEnd);
+const JWT_ASSIGNED = new RegExp(patternSpec.constants.jwtAssignmentPrefix, 'i');
+const EMAIL_LOCAL_CHAR = new RegExp(patternSpec.constants.emailLocalChar);
+const EMAIL_DOMAIN_CHAR = new RegExp(patternSpec.constants.emailDomainChar);
+const EMAIL_TLD = new RegExp(patternSpec.constants.emailTld);
+const ASCII_WORD = new RegExp(patternSpec.constants.asciiWord);
+const SCHEME_CHAR = new RegExp(patternSpec.constants.schemeChar);
+const SCHEME_START = new RegExp(patternSpec.constants.schemeStartChar);
+const PASSPHRASE_WORD = new RegExp(patternSpec.constants.passphraseWord);
+const ENV_ASSIGNMENT = new RegExp(patternSpec.constants.envAssignment);
+
+function detectorSpec(id) {
+  const detector = patternSpec.detectors.find((item) => item.id === id);
+  if (!detector) throw new Error(`Missing sensitive-data detector: ${id}`);
+  return detector;
+}
+
+function detectorRegex(id) {
+  const detector = detectorSpec(id);
+  return new RegExp(detector.regex, detector.flags || '');
+}
 
 function isKeyChar(ch) {
   if (!ch) return false;
@@ -73,7 +99,7 @@ function findEnvSecrets(source) {
   const visit = (line, start) => {
     const lead = line.match(/^[ \t]*/)[0].length;
     const body = line.slice(lead).replace(/\r$/, '');
-    const assignment = /^(?:export[ \t]+)?([A-Za-z_][A-Za-z0-9_]*)[ \t]*=[ \t]*([\s\S]*)$/.exec(body);
+    const assignment = ENV_ASSIGNMENT.exec(body);
     if (!assignment || !envNameIsSecret(assignment[1])) return;
     const parsed = parseEnvValue(assignment[2]);
     if (!parsed.value || parsed.value.length < ENV_VALUE_MIN_LENGTH || SECRET_REFERENCE.test(parsed.value)) return;
@@ -93,7 +119,7 @@ function findEnvSecrets(source) {
 }
 
 function isUserinfoBoundary(ch) {
-  return !ch || ch === '/' || ch === '@' || ch === ':' || ch === ' ' || ch === '\t' || ch === '\n' || ch === '\r';
+  return !ch || patternSpec.constants.userinfoBoundaries.includes(ch);
 }
 
 // scheme://user:password@ in one forward pass. No nested quantifiers.
@@ -104,9 +130,9 @@ function findUrlUserinfo(source) {
     const scheme = source.indexOf('://', from);
     if (scheme < 0) break;
     let start = scheme - 1;
-    while (start >= 0 && /[A-Za-z0-9+.-]/.test(source[start])) start -= 1;
+    while (start >= 0 && SCHEME_CHAR.test(source[start])) start -= 1;
     start += 1;
-    if (start >= scheme || !/[A-Za-z]/.test(source[start])) {
+    if (start >= scheme || !SCHEME_START.test(source[start])) {
       from = scheme + 3;
       continue;
     }
@@ -140,7 +166,7 @@ function normalizePassphrase(raw) {
   const passphrase = words.length >= 2 && words.length <= 16 && words.every((word) => {
     const bare = word.replace(TRAILING_PROSE_PUNCTUATION, '');
     return bare.length >= 2
-      && /^[A-Za-z0-9][A-Za-z0-9'-]*$/.test(bare)
+      && PASSPHRASE_WORD.test(bare)
       && !PROSE_WORDS.has(bare.toLowerCase());
   });
   if (passphrase) return trimmed;
@@ -167,15 +193,12 @@ function locateSecret(match, value) {
 function secretValueOk(value, match) {
   if (!value || SECRET_REFERENCE.test(value)) return false;
   if (match.env) return value.length >= ENV_VALUE_MIN_LENGTH;
-  if (match.url) return value.length >= 6;
+  if (match.url) return value.length >= patternSpec.constants.urlSecretMinLength;
   return value.length >= SECRET_MIN_LENGTH;
 }
 
 // PEM blocks and JWTs are walked with indexOf. A regex with a lazy "anything
 // until END" (or eyJ…eyJ… with no dots) re-scans a long miss from every hit.
-const PEM_BEGIN = '-----BEGIN ';
-const PEM_END = '-----END ';
-
 function findPrivateKeys(source) {
   const found = [];
   let from = 0;
@@ -185,17 +208,17 @@ function findPrivateKeys(source) {
     const headerClose = source.indexOf('-----', start + PEM_BEGIN.length);
     if (headerClose < 0) break;
     const header = source.slice(start + PEM_BEGIN.length, headerClose);
-    if (header.length > 40 || !/^[A-Z0-9 ]*PRIVATE KEY$/.test(header)) {
+    if (header.length > patternSpec.constants.pemHeaderMax || !PEM_HEADER.test(header)) {
       from = start + PEM_BEGIN.length;
       continue;
     }
     const end = source.indexOf(PEM_END, headerClose + 5);
-    if (end < 0 || end - start > 16000) {
+    if (end < 0 || end - start > patternSpec.constants.pemMaxSpan) {
       from = headerClose + 5;
       continue;
     }
-    const tail = source.slice(end, Math.min(source.length, end + 80));
-    const endMatch = /^-----END [A-Z0-9 ]{0,40}PRIVATE KEY-----/.exec(tail);
+    const tail = source.slice(end, Math.min(source.length, end + patternSpec.constants.snippetMax));
+    const endMatch = PEM_END_PATTERN.exec(tail);
     if (!endMatch) {
       from = end + PEM_END.length;
       continue;
@@ -233,7 +256,7 @@ function findJwts(source) {
   while (from < source.length) {
     const start = source.indexOf('eyJ', from);
     if (start < 0) break;
-    if (start > 0 && /[A-Za-z0-9_]/.test(source[start - 1])) {
+    if (start > 0 && ASCII_WORD.test(source[start - 1])) {
       from = start + 3;
       continue;
     }
@@ -242,10 +265,10 @@ function findJwts(source) {
       from = scanned.resume;
       continue;
     }
-    const prefix = source.slice(Math.max(0, start - 64), start);
+    const prefix = source.slice(Math.max(0, start - patternSpec.constants.jwtPrefixWindow), start);
     // A Bearer token keeps the BEARER_TOKEN label. An assignment such as
     // "token: <jwt>" keeps the SECRET label. Both are matched elsewhere.
-    if (/(?:bearer[ \t]|(?:token|secret|password|passwd)\s*[:=]\s*["']?)$/i.test(prefix)) {
+    if (JWT_ASSIGNED.test(prefix)) {
       from = scanned.end;
       continue;
     }
@@ -281,24 +304,24 @@ function findEmails(source) {
       continue;
     }
     let start = at - 1;
-    while (start >= 0 && at - start <= 64 && /[A-Za-z0-9._%+-]/.test(source[start])) start -= 1;
+    while (start >= 0 && at - start <= patternSpec.constants.emailLocalMax && EMAIL_LOCAL_CHAR.test(source[start])) start -= 1;
     start += 1;
-    if (start === at || (start > 0 && /[A-Za-z0-9_]/.test(source[start - 1]))) {
+    if (start === at || (start > 0 && ASCII_WORD.test(source[start - 1]))) {
       from = at + 1;
       continue;
     }
     let end = at + 1;
-    const domainLimit = Math.min(source.length, end + 253);
-    while (end < domainLimit && /[A-Za-z0-9.-]/.test(source[end])) end += 1;
+    const domainLimit = Math.min(source.length, end + patternSpec.constants.emailDomainMax);
+    while (end < domainLimit && EMAIL_DOMAIN_CHAR.test(source[end])) end += 1;
     while (end > at + 1 && source[end - 1] === '.') end -= 1;
     const domain = source.slice(at + 1, end);
     const dot = domain.lastIndexOf('.');
     const tld = dot >= 0 ? domain.slice(dot + 1) : '';
-    if (dot <= 0 || tld.length < 2 || tld.length > 24 || !/^[A-Za-z]+$/.test(tld)) {
+    if (dot <= 0 || tld.length < patternSpec.constants.tldMin || tld.length > patternSpec.constants.tldMax || !EMAIL_TLD.test(tld)) {
       from = at + 1;
       continue;
     }
-    if (end < source.length && /[A-Za-z0-9_]/.test(source[end])) {
+    if (end < source.length && ASCII_WORD.test(source[end])) {
       from = at + 1;
       continue;
     }
@@ -312,93 +335,52 @@ function findCredentialBlocks(source) {
   return [...findPrivateKeys(source), ...findJwts(source)];
 }
 
-// Provider keys. No upper bound and no trailing \b: a cap drops the whole key
-// once it is longer than the cap, and \b fails when the key ends in "-" or "_".
-// The trailing lookahead only checks that the key ended; hyphens and underscores
-// are inside the body, so they are consumed rather than treated as a boundary.
-const API_KEY_REGEX = new RegExp(String.raw`(?<![A-Za-z0-9_])(?:` + [
-  String.raw`sk-ant-[A-Za-z0-9_-]{16,}`,
-  String.raw`sk-(?:proj|svcacct|admin)-[A-Za-z0-9_-]{16,}`,
-  String.raw`sk-[A-Za-z0-9]{16,}`,
-  String.raw`github_pat_[A-Za-z0-9_]{20,}`,
-  String.raw`gh[pousr]_[A-Za-z0-9_]{20,}`,
-  String.raw`(?:sk|rk)_(?:live|test)_[A-Za-z0-9]{10,}`,
-  String.raw`whsec_[A-Za-z0-9]{10,}`,
-  String.raw`xox[abprs]-[A-Za-z0-9-]{10,}`,
-  String.raw`AKIA[0-9A-Z]{16}`,
-  String.raw`AIza[0-9A-Za-z_-]{20,}`,
-  String.raw`(?:api|secret|access|private)[_\-\s]?(?:key|token)\s*[:=]\s*["']?[A-Za-z0-9_-]{12,}`,
-].join('|') + String.raw`)(?![A-Za-z0-9])`, 'gi');
+function patternFields(id) {
+  const detector = detectorSpec(id);
+  return {
+    label: detector.label,
+    description: detector.description,
+    placeholder: detector.placeholder,
+    ...(detector.regex ? { regex: detectorRegex(id) } : {}),
+  };
+}
 
-// A later "token: ..." or "password = ..." on the same line is its own assignment.
-// The passphrase run stops before it, so a rejected multi-word match cannot
-// swallow the next secret.
-const SECRET_LABEL = String.raw`token|secret|password|passwd|private[_-]?key|client[_-]?secret`;
-const NOT_NEXT_ASSIGNMENT = String.raw`(?!(?:${SECRET_LABEL})\b\s*[:=])`;
-const SECRET_ASSIGNMENT_REGEX = new RegExp(
-  String.raw`\b(?:${SECRET_LABEL})\b\s*[:=]\s*(?:"([^"\r\n]*)"|'([^'\r\n]*)'|([^\s"'\r\n]+(?:[ \t]+${NOT_NEXT_ASSIGNMENT}[^\s"'\r\n]+)+)|([^\s"'\`;&<>]+))`,
-  'gi',
-);
-
+// Provider keys have no upper bound and no trailing \b: a cap drops the whole
+// key once it is longer than the cap, and \b fails when the key ends in "-" or "_".
+// A later assignment on the same line stops a passphrase run so it cannot swallow
+// the next secret. Both expressions are compiled from the shared spec.
 export const patterns = Object.freeze({
-  ssn: Object.freeze({
-    label: 'SSN',
-    description: 'Looks like a US Social Security number.',
-    placeholder: 'SSN',
-    regex: /\b\d{3}-?\d{2}-?\d{4}\b/g,
-  }),
+  ssn: Object.freeze(patternFields('ssn')),
   credit_card: Object.freeze({
-    label: 'Credit card',
-    description: 'Looks like a payment card number.',
-    placeholder: 'CARD',
-    regex: /\b(?:\d[ -]*?){13,19}\b/g,
+    ...patternFields('credit_card'),
     validate: (value) => luhnPasses(value),
   }),
   email: Object.freeze({
-    label: 'Email address',
-    description: 'Contains an email address.',
-    placeholder: 'EMAIL',
+    ...patternFields('email'),
     // indexOf walk, capped at the RFC local-part and domain lengths. An uncapped
     // local-part regex re-scans every hyphenated miss (sk-sk-sk-…) looking for "@".
     // The "@" in scheme://user:password@host is not an email address.
     find: findEmails,
   }),
   phone: Object.freeze({
-    label: 'Phone number',
-    description: 'Looks like a phone number.',
-    placeholder: 'PHONE',
+    ...patternFields('phone'),
     // \b cannot sit before "(" or "+" (both non-word), so a leading paren or country-code
     // plus must be allowed to start the match or it is left behind when redacting.
-    regex: /(?:\b(?=\d)|(?=[+(]))(?:\+?1[-.\s]?)?(?:\(?\d{3}\)?[-.\s]?)\d{3}[-.\s]?\d{4}\b/g,
   }),
-  ip: Object.freeze({
-    label: 'IP address',
-    description: 'Contains an IPv4 address.',
-    placeholder: 'IP',
-    regex: /\b(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)\b/g,
-  }),
+  ip: Object.freeze(patternFields('ip')),
   api_key: Object.freeze({
-    label: 'API key / token',
-    description: 'Looks like an API credential or token.',
-    placeholder: 'API_KEY',
-    regex: API_KEY_REGEX,
+    ...patternFields('api_key'),
     find: findCredentialBlocks,
   }),
   // Registered after api_key so an exact tie (a Bearer token that is also a provider key)
   // keeps the more specific api_key label; see resolveOverlaps.
   bearer_token: Object.freeze({
-    label: 'Bearer token',
-    description: 'Looks like an HTTP Authorization bearer token.',
-    placeholder: 'BEARER_TOKEN',
-    regex: new RegExp(String.raw`\bbearer[ \t]+(${TOKEN_BODY})`, 'gi'),
+    ...patternFields('bearer_token'),
     extract: (match) => match[1] || match[0],
     validate: (value) => value.length >= BEARER_MIN_LENGTH,
   }),
   secret_value: Object.freeze({
-    label: 'Secret-looking value',
-    description: 'Looks like a password or secret assignment.',
-    placeholder: 'SECRET',
-    regex: SECRET_ASSIGNMENT_REGEX,
+    ...patternFields('secret_value'),
     find: (source) => [...findEnvSecrets(source), ...findUrlUserinfo(source)],
     extract: extractSecret,
     locate: locateSecret,
@@ -452,7 +434,9 @@ function buildDetectors(options = {}) {
 }
 
 function snippetOf(value) {
-  return value.length > 80 ? `${value.slice(0, 77)}...` : value;
+  const max = patternSpec.constants.snippetMax;
+  const head = patternSpec.constants.snippetHead;
+  return value.length > max ? `${value.slice(0, head)}...` : value;
 }
 
 function makeFinding(detector, match, index) {
