@@ -407,6 +407,48 @@ describe('LibraryWorkspace layout preference', () => {
     expect(within(tile).getByLabelText('Select Favorite prompt')).toBeInTheDocument();
     expect(within(tile).getByLabelText('Inspect Favorite prompt')).toBeInTheDocument();
   });
+  it('copies the inspected prompt under its own id, not the prompt open in Write', () => {
+    const { callbacks } = renderLibrary();
+    fireEvent.click(screen.getByRole('button', { name: 'Copy Favorite prompt' }));
+    expect(callbacks.copy).toHaveBeenCalledWith(
+      expect.stringContaining('{{topic}}'),
+      undefined,
+      { promptKey: 'id:favorite' },
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Inspect Favorite prompt' }));
+    const inspector = screen.getByRole('complementary', { name: 'Favorite prompt' });
+    fireEvent.click(within(inspector).getByRole('button', { name: 'Copy', exact: true }));
+    expect(callbacks.copy).toHaveBeenLastCalledWith(
+      expect.stringContaining('{{topic}}'),
+      undefined,
+      { promptKey: 'id:favorite' },
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Content' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Copy original' }));
+    expect(callbacks.copy).toHaveBeenLastCalledWith(
+      'Draft a brief about {{topic}}',
+      undefined,
+      { promptKey: 'id:favorite' },
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Copy output' }));
+    expect(callbacks.copy).toHaveBeenLastCalledWith(
+      'Create a reusable brief about {{topic}} in JSON.',
+      undefined,
+      { promptKey: 'id:favorite' },
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Variants' }));
+    const variant = within(inspector).getByText('Briefly explain {{topic}}.').closest('section');
+    fireEvent.click(within(variant).getByRole('button', { name: 'Copy' }));
+    expect(callbacks.copy).toHaveBeenLastCalledWith(
+      'Briefly explain {{topic}}.',
+      undefined,
+      { promptKey: 'id:favorite' },
+    );
+  });
+
   it('sorts newly loaded starter prompts before newer-authored older imports', () => {
     const starter = { ...entries[1], id: 'starter', title: 'Loaded starter', createdAt: '2020-01-01T00:00:00Z', updatedAt: '2020-01-01T00:00:00Z', metadata: { packLoadedAt: '2026-09-05T00:00:00Z' } };
     renderLibrary({ lib: makeLib({ library: [entries[0], starter] }) });

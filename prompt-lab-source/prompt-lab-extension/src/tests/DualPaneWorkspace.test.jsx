@@ -78,7 +78,7 @@ describe('DualPaneWorkspace', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
     await act(async () => {});
-    expect(copy).toHaveBeenCalledWith('SECOND CONTENT\nWITH A FULL SECOND LINE', 'Copied Second prompt.');
+    expect(copy).toHaveBeenCalledWith('SECOND CONTENT\nWITH A FULL SECOND LINE', 'Copied Second prompt.', { promptKey: 'id:two' });
 
     fireEvent.click(screen.getByRole('button', { name: 'Open full' }));
     expect(openEntry).toHaveBeenCalledWith(expect.objectContaining({ id: 'two' }));

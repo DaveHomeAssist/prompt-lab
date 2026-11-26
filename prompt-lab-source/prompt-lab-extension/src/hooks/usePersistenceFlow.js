@@ -288,20 +288,83 @@ export default function usePersistenceFlow({ ui, lib, editor, profileSendRef }) 
     }
   };
 
+  // Fill every string the editor actually shows. The Write input is `original`.
+  // The output box is the selected result candidate, which normalizeEntry builds
+  // from the unfilled template before this fill, so updating `enhanced` alone
+  // leaves both boxes on the placeholders while session state holds the fill.
   const buildResolvedEntry = (entry, values) => {
     const normalized = normalizeEntry(entry);
     if (!normalized) return null;
-    return { ...normalized, enhanced: fillTemplateVars(normalized.enhanced, values) };
+    const fill = (text) => fillTemplateVars(text, values);
+    const variants = (normalized.variants || []).map((variant) => ({
+      ...variant,
+      content: fill(variant?.content || ''),
+    }));
+    // Revert matches these spans exactly against the candidate. Leaving the
+    // placeholders here makes Accept/Revert miss the filled text, and reapply
+    // can put the placeholder back into the draft.
+    const sourceMeta = normalized.resultMeta && typeof normalized.resultMeta === 'object' ? normalized.resultMeta : null;
+    const resultMeta = sourceMeta
+      ? {
+        ...sourceMeta,
+        ...(Array.isArray(sourceMeta.candidates) ? {
+          candidates: sourceMeta.candidates.map((candidate) => ({
+            ...candidate,
+            content: fill(candidate?.content || ''),
+          })),
+        } : {}),
+        ...(Array.isArray(sourceMeta.reversibleEdits) ? {
+          reversibleEdits: sourceMeta.reversibleEdits.map((edit) => (
+            edit && typeof edit === 'object'
+              ? { ...edit, before: fill(edit.before || ''), after: fill(edit.after || '') }
+              : edit
+          )),
+        } : {}),
+        ...(Array.isArray(sourceMeta.assumptions) ? {
+          assumptions: sourceMeta.assumptions.map((assumption) => (
+            assumption && typeof assumption === 'object'
+              ? { ...assumption, addedText: fill(assumption.addedText || '') }
+              : assumption
+          )),
+        } : {}),
+      }
+      : sourceMeta;
+    return {
+      ...normalized,
+      original: fill(normalized.original),
+      enhanced: fill(normalized.enhanced),
+      variants,
+      resultMeta,
+    };
   };
 
   const applyEntry = (entry) => {
     routeResolvedEntry(entry, 'editor');
   };
 
+  const detachFilledDraft = (resolved) => {
+    // The filled text is a new unsaved draft. Clearing the source id (and the
+    // snapshot save would copy versions from) makes Save create a new prompt.
+    // The template keeps its experiment, scratch note, and follow-up origin:
+    // a surviving runId would reassign that eval run to the new prompt.
+    activeEntryRef.current = null;
+    setEditingId(null);
+    setEditingVersionId(null);
+    setSaveTargetId(null);
+    setSaveSourceEntry(null);
+    setSourceNoteId('');
+    setFollowUpOrigin(null);
+    const meta = resolved?.resultMeta;
+    if (meta && typeof meta === 'object') {
+      setResultMeta?.({ ...meta, runId: '' });
+    }
+  };
+
   const applyTemplateWithVals = (entry, values, target = 'editor') => {
     const resolved = buildResolvedEntry(entry, values);
     if (!resolved) return;
     routeResolvedEntry(resolved, target);
+    if (target === 'editor') detachFilledDraft(resolved);
   };
 
   const resolveEntryForTarget = async (entry, target = 'editor') => {
