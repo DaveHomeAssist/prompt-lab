@@ -41,7 +41,11 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 375, height: 812 
       .toContain('Raw version\nSecond line');
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem('pl2-session-pl2-session')).enhanced))
       .toContain('Improved version\nSecond line');
-    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('pl2-session-pl2-session')).raw)).toBe(template.prompt);
+    // Apply Template opens the filled text as a new draft; the saved template keeps its placeholders.
+    const filled = template.prompt
+      .replace('{{paste_original}}', 'Raw version\nSecond line')
+      .replace('{{paste_enhanced}}', 'Improved version\nSecond line');
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('pl2-session-pl2-session')).raw)).toBe(filled);
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem('pl2-library'))[0].original)).toBe(template.prompt);
     await page.goto('/app/#/library');
     await page.getByRole('button', { name: 'Editor', exact: true }).click();
