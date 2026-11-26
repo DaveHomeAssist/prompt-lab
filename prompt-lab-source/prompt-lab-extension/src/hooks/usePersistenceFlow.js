@@ -288,20 +288,58 @@ export default function usePersistenceFlow({ ui, lib, editor, profileSendRef }) 
     }
   };
 
+  // Fill every string the editor actually shows. The Write input is `original`.
+  // The output box is the selected result candidate, which normalizeEntry builds
+  // from the unfilled template before this fill, so updating `enhanced` alone
+  // leaves both boxes on the placeholders while session state holds the fill.
   const buildResolvedEntry = (entry, values) => {
     const normalized = normalizeEntry(entry);
     if (!normalized) return null;
-    return { ...normalized, enhanced: fillTemplateVars(normalized.enhanced, values) };
+    const fill = (text) => fillTemplateVars(text, values);
+    const variants = (normalized.variants || []).map((variant) => ({
+      ...variant,
+      content: fill(variant?.content || ''),
+    }));
+    const resultMeta = normalized.resultMeta && Array.isArray(normalized.resultMeta.candidates)
+      ? {
+        ...normalized.resultMeta,
+        candidates: normalized.resultMeta.candidates.map((candidate) => ({
+          ...candidate,
+          content: fill(candidate?.content || ''),
+        })),
+      }
+      : normalized.resultMeta;
+    return {
+      ...normalized,
+      original: fill(normalized.original),
+      enhanced: fill(normalized.enhanced),
+      variants,
+      resultMeta,
+    };
   };
 
   const applyEntry = (entry) => {
     routeResolvedEntry(entry, 'editor');
   };
 
+  const detachFilledDraft = () => {
+    // The filled text is a new unsaved draft. Clearing the source id (and the
+    // snapshot save would copy versions from) makes Save create a new prompt.
+    // Skip still opens the template itself and keeps its version history.
+    activeEntryRef.current = null;
+    setEditingId(null);
+    setEditingVersionId(null);
+    setSaveTargetId(null);
+    setSaveSourceEntry(null);
+    setSourceNoteId('');
+    setFollowUpOrigin(null);
+  };
+
   const applyTemplateWithVals = (entry, values, target = 'editor') => {
     const resolved = buildResolvedEntry(entry, values);
     if (!resolved) return;
     routeResolvedEntry(resolved, target);
+    if (target === 'editor') detachFilledDraft();
   };
 
   const resolveEntryForTarget = async (entry, target = 'editor') => {

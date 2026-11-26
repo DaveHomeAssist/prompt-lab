@@ -57,6 +57,10 @@ function entryText(entry) {
   return entry?.enhanced || entry?.original || '';
 }
 
+function promptCopyOptions(entry) {
+  return entry?.id ? { promptKey: `id:${entry.id}` } : undefined;
+}
+
 function stringList(value) {
   if (Array.isArray(value)) return value.map((item) => String(item).trim()).filter(Boolean);
   return String(value || '').split(',').map((item) => item.trim()).filter(Boolean);
@@ -195,8 +199,8 @@ function InspectorContent({ m, selected, smartView, inspectorTab, detailsDraft, 
 
   if (inspectorTab === 'content') {
     return <div className="pl-inspector-content-view">
-      {selected.original?.trim() && <section><div><h3>Original</h3><button type="button" onClick={() => copy(selected.original)}>Copy original</button></div><pre>{selected.original}</pre></section>}
-      <section><div><h3>Saved output</h3><button type="button" onClick={() => copy(content)}>Copy output</button></div><pre>{content}</pre></section>
+      {selected.original?.trim() && <section><div><h3>Original</h3><button type="button" onClick={() => copy(selected.original, undefined, promptCopyOptions(selected))}>Copy original</button></div><pre>{selected.original}</pre></section>}
+      <section><div><h3>Saved output</h3><button type="button" onClick={() => copy(content, undefined, promptCopyOptions(selected))}>Copy output</button></div><pre>{content}</pre></section>
     </div>;
   }
 
@@ -211,13 +215,13 @@ function InspectorContent({ m, selected, smartView, inspectorTab, detailsDraft, 
 
   if (inspectorTab === 'variants') {
     return (selected.variants || []).length > 0
-      ? <div className="pl-variant-list">{selected.variants.map((variant, index) => <section key={variant.id || `${variant.label}-${index}`}><div><h3>{variant.label || `Variant ${index + 1}`}</h3><button type="button" onClick={() => copy(variant.content)}>Copy</button></div><pre>{variant.content}</pre></section>)}</div>
+      ? <div className="pl-variant-list">{selected.variants.map((variant, index) => <section key={variant.id || `${variant.label}-${index}`}><div><h3>{variant.label || `Variant ${index + 1}`}</h3><button type="button" onClick={() => copy(variant.content, undefined, promptCopyOptions(selected))}>Copy</button></div><pre>{variant.content}</pre></section>)}</div>
       : <div className="pl-inspector-empty-state"><p>No saved variants.</p><small>Enhance a prompt to create alternate candidates.</small></div>;
   }
 
   if (inspectorTab === 'notes') {
     return selected.notes?.trim()
-      ? <div className="pl-saved-notes"><pre>{selected.notes}</pre><button type="button" onClick={() => copy(selected.notes)}>Copy notes</button></div>
+      ? <div className="pl-saved-notes"><pre>{selected.notes}</pre><button type="button" onClick={() => copy(selected.notes, undefined, promptCopyOptions(selected))}>Copy notes</button></div>
       : <div className="pl-inspector-empty-state"><p>No saved notes.</p><small>Notes can be added while saving from the Editor.</small></div>;
   }
 
@@ -769,7 +773,7 @@ export default function LibraryWorkspace({
                 <button type="button" aria-label={`Move ${entry.title} up`} title="Move up" disabled={index === 0} onClick={() => lib.moveLibraryEntryByOffset(entry.id, -1, entries)}><Ic n="ChevronUp" size={13} /></button>
                 <button type="button" aria-label={`Move ${entry.title} down`} title="Move down" disabled={index === entries.length - 1} onClick={() => lib.moveLibraryEntryByOffset(entry.id, 1, entries)}><Ic n="ChevronDown" size={13} /></button>
               </>}
-              {smartView === 'trash' ? <><button type="button" onClick={() => lib.restoreDeleted(entry.id)}>Restore</button><button type="button" onClick={() => lib.permanentlyDelete(entry.id)} aria-label={`Permanently delete ${entry.title}`} title="Delete forever"><Ic n="Trash2" size={13} /></button></> : <><button type="button" onClick={() => loadEntry(entry)}>Editor</button><button type="button" onClick={() => copy(entryText(entry))} aria-label={`Copy ${entry.title}`} title="Copy prompt"><Ic n="Copy" size={13} /></button><button type="button" onClick={() => lib.setFavorite(entry.id)} aria-label={`${entry.favorite ? 'Unfavorite' : 'Favorite'} ${entry.title}`} aria-pressed={Boolean(entry.favorite)} title={entry.favorite ? 'Remove from favorites' : 'Add to favorites'}><Ic n="Star" size={13} /></button></>}
+              {smartView === 'trash' ? <><button type="button" onClick={() => lib.restoreDeleted(entry.id)}>Restore</button><button type="button" onClick={() => lib.permanentlyDelete(entry.id)} aria-label={`Permanently delete ${entry.title}`} title="Delete forever"><Ic n="Trash2" size={13} /></button></> : <><button type="button" onClick={() => loadEntry(entry)}>Editor</button><button type="button" onClick={() => copy(entryText(entry), undefined, promptCopyOptions(entry))} aria-label={`Copy ${entry.title}`} title="Copy prompt"><Ic n="Copy" size={13} /></button><button type="button" onClick={() => lib.setFavorite(entry.id)} aria-label={`${entry.favorite ? 'Unfavorite' : 'Favorite'} ${entry.title}`} aria-pressed={Boolean(entry.favorite)} title={entry.favorite ? 'Remove from favorites' : 'Add to favorites'}><Ic n="Star" size={13} /></button></>}
             </div>
             </article>;
           })}
@@ -834,7 +838,7 @@ export default function LibraryWorkspace({
             <button type="button" className="pl-primary-button" onClick={() => loadEntry(selected)}>Open in Editor</button>
             <button type="button" className="pl-secondary-button" onClick={() => addToComposer?.(selected)}>Composer</button>
             <button type="button" className="pl-secondary-button" onClick={() => sendToABTest?.(selected)}>Compare{compareLocked && <ProBadge />}</button>
-            <button type="button" className="pl-secondary-button" onClick={() => copy(entryText(selected))}>Copy</button>
+            <button type="button" className="pl-secondary-button" onClick={() => copy(entryText(selected), undefined, promptCopyOptions(selected))}>Copy</button>
             <button type="button" className="pl-icon-button" onClick={() => lib.setFavorite(selected.id)} aria-label={`${selected.favorite ? 'Unfavorite' : 'Favorite'} prompt`} aria-pressed={Boolean(selected.favorite)} title={selected.favorite ? 'Remove from favorites' : 'Add to favorites'}><Ic n="Star" size={14} /></button>
             <button type="button" className="pl-icon-button" onClick={() => lib.duplicateEntry(selected.id)} aria-label="Duplicate prompt" title="Duplicate prompt"><Ic n="CopyPlus" size={14} /></button>
             <button type="button" className="pl-icon-button" onClick={() => { const deleted = lib.del(selected.id); if (deleted !== false) setSelectedId(null); }} aria-label="Move prompt to Recently Deleted" title="Move to Recently Deleted"><Ic n="Trash2" size={14} /></button>

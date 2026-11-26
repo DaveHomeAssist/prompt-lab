@@ -431,7 +431,7 @@ const LibraryPanel = memo(function LibraryPanel({
                   </button>
                   <button
                     type="button"
-                    onClick={() => { copy(entry.enhanced); lib.bumpUse(entry.id); }}
+                    onClick={() => { copy(entry.enhanced, undefined, entry.id ? { promptKey: `id:${entry.id}` } : undefined); lib.bumpUse(entry.id); }}
                     className={`ui-control px-2.5 py-1 rounded ${m.btn} ${m.textAlt} text-xs font-semibold hover:text-orange-300 transition-colors`}
                   >
                     Copy
