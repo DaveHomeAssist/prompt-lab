@@ -130,6 +130,54 @@ describe('sync transport and engine', () => {
     expect(calls[0].url).toBe('https://abc.supabase.co/rest/v1/rpc/sync_pull');
     expect(calls[0].init.headers).toMatchObject({ apikey: 'sb_publishable_x', Authorization: 'Bearer clerk-token' });
   });
+  it('does not apply a newer remote row when the unsynced local edit cannot be queued', async () => {
+    const storage = memory();
+    const local = { id: 'a', title: 'local edit', original: 'mine', updatedAt: '2026-11-26T12:00:00.000Z' };
+    storage.setItem('pl2-library', JSON.stringify([local]));
+    storage.setItem(OWNER_KEY, 'user_1');
+    storage.setItem('pl2-sync-state:user_1', JSON.stringify({
+      initialized: true,
+      cursor: 1,
+      clock: 1,
+      lastManifestAt: Date.now(),
+      shadow: { 'prompt:a': { version: 1, hash: 'previous-sync' } },
+      oversize: {},
+      lost: {},
+    }));
+    const write = storage.setItem.bind(storage);
+    storage.setItem = (key, value) => {
+      if (key === 'pl2-sync-queue:user_1') {
+        const error = new Error('quota');
+        error.name = 'QuotaExceededError';
+        throw error;
+      }
+      write(key, value);
+    };
+    const calls = [];
+    const transport = {
+      pull: async () => {
+        calls.push('pull');
+        return [{
+          kind: 'prompt',
+          item_id: 'a',
+          version: 2,
+          change_seq: 2,
+          deleted: false,
+          lamport: 2,
+          payload: { state: 'active', entry: { id: 'a', title: 'remote', original: 'theirs', updatedAt: '2026-11-26T13:00:00.000Z' } },
+        }];
+      },
+      push: async () => { calls.push('push'); return []; },
+      manifest: async () => [],
+      fetchItems: async () => [],
+    };
+    const result = await createSyncEngine({ storage, transport, userId: 'user_1', deviceId: 'd' }).syncOnce();
+    expect(calls).toEqual(['pull']);
+    expect(result.status).toBe('error');
+    expect(result.error).toBe('Pending changes could not be saved');
+    expect(JSON.parse(storage.getItem('pl2-library'))).toEqual([local]);
+  });
+
   it('does not discard a corrupt outbox when a sync runs', async () => {
     const storage = memory();
     const raw = '{"prompt:a":';

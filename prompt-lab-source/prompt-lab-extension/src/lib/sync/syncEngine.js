@@ -140,16 +140,19 @@ export function createSyncEngine({ storage, transport, userId, deviceId = getDev
   const tick = () => { state.clock += 1; return state.clock; };
   const seen = (lamport) => { state.clock = Math.max(state.clock, Number(lamport) || 0); };
 
+  // Keys whose local change could not be written to the outbox. A missing
+  // queue entry must not be treated as "nothing local to keep".
+  const uncaptured = new Set();
   const enqueue = ({ key, kind, item_id, payload, deleted = false, baseVersion, lamport }) => {
     if (!deleted && jsonbTextBytes(payload) > MAX_ITEM_BYTES) {
       state.oversize = { ...(state.oversize || {}), [key]: true };
-      return;
+      return true;
     }
     if (state.oversize?.[key]) { const { [key]: dropped, ...rest } = state.oversize; state.oversize = rest; }
     const previous = queue.get(key);
     const hash = deleted ? null : hashValue(payload);
-    if (previous && previous.hash === hash && previous.deleted === deleted) return;
-    queue.put({
+    if (previous && previous.hash === hash && previous.deleted === deleted) return true;
+    const saved = queue.put({
       key, kind, item_id, payload: deleted ? null : payload, deleted, hash,
       // Keep the version the first pending edit was based on, so a concurrent
       // remote edit is detected as a conflict instead of being overwritten.
@@ -157,6 +160,17 @@ export function createSyncEngine({ storage, transport, userId, deviceId = getDev
       lamport: lamport ?? tick(),
       client_updated_at: new Date(now()).toISOString(),
     });
+    if (saved === false) {
+      uncaptured.add(key);
+      return false;
+    }
+    return true;
+  };
+  const captureFailed = () => {
+    if (!uncaptured.size) return;
+    const error = new Error('Pending changes could not be saved');
+    error.syncStatus = 'error';
+    throw error;
   };
 
   // R-11 / #285 Codex P1: a push that lost a conflict leaves a pending record
@@ -230,10 +244,13 @@ export function createSyncEngine({ storage, transport, userId, deviceId = getDev
     for (const row of fresh) {
       const key = itemKey(row.kind, row.item_id);
       if (row.kind === 'prompt' && !row.deleted && deletedIds.has(row.item_id)) {
-        if (!queue.get(key)) enqueue({ key, kind: 'prompt', item_id: row.item_id, payload: null, deleted: true, baseVersion: Number(row.version) });
-      } else if (queue.get(key)) deferred.set(key, row);
+        if (!queue.get(key) && !uncaptured.has(key)) enqueue({ key, kind: 'prompt', item_id: row.item_id, payload: null, deleted: true, baseVersion: Number(row.version) });
+      } else if (queue.get(key) || uncaptured.has(key)) deferred.set(key, row);
       else applyNow.push(row);
     }
+    // A failed outbox write leaves no queue entry. Do not apply that prompt's
+    // remote row on top of the unsynced local edit, and do not report success.
+    captureFailed();
     if (applyNow.length >= BULK_APPLY_SNAPSHOT) takeLocalSnapshot(storage, userId, { reason: 'bulk-apply', at: now() });
     return { pulled: applyNow.length, written: applyRows(applyNow), deferred };
   }
@@ -524,7 +541,7 @@ export function createSyncEngine({ storage, transport, userId, deviceId = getDev
       saveState();
       // Any failure before the push still backs the outbox off.
       if (!error?.queueBackedOff) queue.fail(queue.due(now()).map((entry) => entry.key), error?.message, now(), random);
-      summary.status = statusForError(error);
+      summary.status = error?.syncStatus || statusForError(error);
       summary.error = String(error?.message || error).slice(0, 200);
     }
     summary.pending = queue.size();
