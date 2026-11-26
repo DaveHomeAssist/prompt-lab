@@ -757,7 +757,10 @@ final class PromptLabTests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: storeURL), original)
 
         let exported = try StorageRecovery.exportStore(at: storeURL, to: directory.appendingPathComponent("copy", isDirectory: true))
-        XCTAssertEqual(exported.map(\.lastPathComponent).sorted(), ["Library.store", "Library.store-wal"])
+        let names = Set(exported.map(\.lastPathComponent))
+        // A failed open can also leave a shared-memory sidecar beside the store and its write-ahead log.
+        XCTAssertTrue(names.isSuperset(of: ["Library.store", "Library.store-wal"]))
+        XCTAssertTrue(names.isSubset(of: ["Library.store", "Library.store-wal", "Library.store-shm"]))
         let storeCopy = try XCTUnwrap(exported.first { $0.lastPathComponent == "Library.store" })
         XCTAssertEqual(try Data(contentsOf: storeCopy), original)
 
