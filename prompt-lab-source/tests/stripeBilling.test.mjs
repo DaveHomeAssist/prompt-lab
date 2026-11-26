@@ -601,3 +601,66 @@ test('checkout proceeds when only canceled, incomplete or non-Prompt Lab subscri
   assert.equal(payload.url, 'https://checkout.stripe.com/c/pay/cs_test_new');
   assert.equal(sessionPosts.length, 1);
 });
+
+// REVIEW-2026-11-25 High: two checkouts for one customer and price in the same
+// window share one Checkout Session instead of creating two subscriptions.
+test('parallel checkouts for one customer and price send one idempotency key and replay one session', async () => {
+  const lib = await import(
+    `${pathToFileURL(path.join(sourceDir, 'api', '_lib', 'stripeBilling.js')).href}?t=${Date.now()}-dup`
+  );
+  const sessionsByKey = new Map();
+  const keys = [];
+  globalThis.fetch = async (url, init = {}) => {
+    const text = String(url);
+    if (text.includes('/customers/search')) {
+      return stripeJson({ data: [{ id: 'cus_dup', email: 'user@example.com', metadata: { clerkUserId: 'user_123' } }] });
+    }
+    if (text.includes('/subscriptions?')) return stripeJson({ data: [] });
+    if (text.endsWith('/checkout/sessions') && init.method === 'POST') {
+      const key = init.headers['Idempotency-Key'];
+      keys.push(key);
+      if (!sessionsByKey.has(key)) {
+        const id = `cs_${sessionsByKey.size + 1}`;
+        sessionsByKey.set(key, { id, url: `https://checkout.stripe.com/c/pay/${id}` });
+      }
+      return stripeJson(sessionsByKey.get(key));
+    }
+    throw new Error(`Unexpected Stripe request: ${text}`);
+  };
+  const config = {
+    secretKey: 'sk_test_123', monthlyPriceId: 'price_monthly', yearlyPriceId: 'price_yearly',
+    successUrl: 'https://promptlab.tools/ok', cancelUrl: 'https://promptlab.tools/cancel',
+  };
+  const args = { period: 'monthly', email: 'user@example.com', clerkUserId: 'user_123' };
+  const [first, second] = await Promise.all([lib.createCheckout(config, args), lib.createCheckout(config, args)]);
+  assert.equal(first.checkoutSessionId, second.checkoutSessionId);
+  assert.equal(new Set(keys).size, 1);
+  assert.match(keys[0], /^promptlab-checkout:cus_dup:price_monthly:\d+$/);
+  assert.notEqual(lib.checkoutIdempotencyKey('cus_dup', 'price_monthly', 0), lib.checkoutIdempotencyKey('cus_dup', 'price_yearly', 0));
+  assert.notEqual(lib.checkoutIdempotencyKey('cus_dup', 'price_monthly', 0), lib.checkoutIdempotencyKey('cus_dup', 'price_monthly', 10 * 60 * 1000));
+});
+
+test('a checkout whose key was used with other parameters answers checkout_in_progress', async () => {
+  const lib = await import(
+    `${pathToFileURL(path.join(sourceDir, 'api', '_lib', 'stripeBilling.js')).href}?t=${Date.now()}-conflict`
+  );
+  globalThis.fetch = async (url, init = {}) => {
+    const text = String(url);
+    if (text.includes('/customers/search')) {
+      return stripeJson({ data: [{ id: 'cus_dup', email: 'user@example.com', metadata: { clerkUserId: 'user_123' } }] });
+    }
+    if (text.includes('/subscriptions?')) return stripeJson({ data: [] });
+    if (text.endsWith('/checkout/sessions') && init.method === 'POST') {
+      return stripeJson({ error: { type: 'idempotency_error', message: 'Keys for idempotent requests can only be used with the same parameters.' } }, 400);
+    }
+    throw new Error(`Unexpected Stripe request: ${text}`);
+  };
+  const config = {
+    secretKey: 'sk_test_123', monthlyPriceId: 'price_monthly', yearlyPriceId: 'price_yearly',
+    successUrl: 'https://promptlab.tools/ok', cancelUrl: 'https://promptlab.tools/cancel',
+  };
+  await assert.rejects(
+    lib.createCheckout(config, { period: 'monthly', email: 'user@example.com', clerkUserId: 'user_123', source: 'web' }),
+    (error) => error.code === 'checkout_in_progress' && error.status === 409,
+  );
+});

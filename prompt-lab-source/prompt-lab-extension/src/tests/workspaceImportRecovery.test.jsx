@@ -234,3 +234,36 @@ it('preserves authored destination packs when an older export omitted its regist
   expect(tab.result.current.importPreview).toBeNull();
   expect(JSON.parse(localStorage.getItem('pl2-packs'))).toEqual(registry);
 });
+
+// REVIEW-2026-11-25 High: importing a workspace with Scratch notes must keep
+// the notes already on this device.
+it('merges imported Scratch notes by id instead of replacing the notes on this device', async () => {
+  localStorage.setItem('pl2-pads', JSON.stringify({
+    pads: [
+      { id: 'local-only', name: 'Mine', content: 'Keep me', updatedAt: 1000 },
+      { id: 'shared', name: 'Shared', content: 'Newer local edit', updatedAt: 5000 },
+    ],
+    activePadId: 'local-only',
+    revision: 3,
+    tombstones: {},
+  }));
+  localStorage.setItem('pl2-pads-schema-version', '4');
+  const notify = vi.fn();
+  const tab = renderHook(() => usePromptLibrary(notify));
+  await waitFor(() => expect(tab.result.current.libReady).toBe(true));
+  await openPreview(tab, {
+    library: [{ ...prompt('new'), enhanced: 'Different body' }],
+    scratch: { pads: [
+      { id: 'imported', name: 'From backup', content: 'Imported note', updatedAt: 2000 },
+      { id: 'shared', name: 'Shared', content: 'Older backup copy', updatedAt: 4000 },
+    ], activePadId: 'imported' },
+  });
+  await act(async () => tab.result.current.confirmImport());
+  expect(tab.result.current.pendingImport).toBe(false);
+  const stored = JSON.parse(localStorage.getItem('pl2-pads'));
+  const byId = Object.fromEntries(stored.pads.map((pad) => [pad.id, pad.content]));
+  expect(byId).toEqual({ 'local-only': 'Keep me', shared: 'Newer local edit', imported: 'Imported note' });
+  expect(stored.activePadId).toBe('local-only');
+  expect(stored.revision).toBe(4);
+  expect(localStorage.getItem('pl2-pads-schema-version')).toBe('4');
+});

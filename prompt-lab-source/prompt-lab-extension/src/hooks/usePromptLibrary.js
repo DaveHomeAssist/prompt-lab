@@ -15,6 +15,7 @@ import { loadJson, saveJson, removeKey, storageKeys, getAnticipation, setAnticip
 import { loadProjectProfiles, mergeProfileLists, writeProjectProfiles } from '../lib/projectProfiles.js';
 import { commitLibrarySave } from '../lib/libraryJournal.js';
 import { assertScratchJournalReady, commitScratchSave } from '../lib/scratchJournal.js';
+import { mergeImportedScratchPayload, readScratchPayload, SCRATCH_SCHEMA_VERSION } from '../lib/scratchSchema.js';
 import { ensureString } from '../lib/utils.js';
 import { normalizeTagList } from '../lib/tagSchema.js';
 import {
@@ -1284,7 +1285,13 @@ export default function usePromptLibrary(notify) {
       });
       if (plan.scratch) await stage('Scratch', async () => {
         assertScratchJournalReady();
-        localStorage.setItem(storageKeys.scratch, JSON.stringify(plan.scratch));
+        // REVIEW-2026-11-25 High: merge imported notes by id; the old code
+        // replaced the whole store and lost this device's notes.
+        const next = mergeImportedScratchPayload(readScratchPayload(localStorage), plan.scratch);
+        if (next) {
+          if (!saveJson(storageKeys.scratch, next)) throw new Error('Scratch storage write failed.');
+          localStorage.setItem(storageKeys.scratchSchemaVersion, SCRATCH_SCHEMA_VERSION);
+        }
         const durable = commitScratchSave(); if (durable) await durable;
       });
       if (plan.parsed.packs) await stage('Packs', () => {

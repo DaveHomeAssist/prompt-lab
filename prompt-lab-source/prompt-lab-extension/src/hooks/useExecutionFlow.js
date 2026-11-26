@@ -81,12 +81,27 @@ export default function useExecutionFlow({ ui, lib, editor, persistence, profile
   const continuationRef = useRef(null);
   // Synchronous guard prevents duplicate sends before React updates loading.
   const enhanceInFlightRef = useRef(false);
-  const ownerKey = JSON.stringify([raw, editingId, enhMode, generationOptions]);
+  // REVIEW-2026-11-25 High: typing during generation must not cancel it, so
+  // the editor text is not part of the owner. A run belongs to the prompt,
+  // mode and options it started with; switching any of those still aborts.
+  // When the draft changes mid-run, the result is applied and marked stale.
+  const ownerKey = JSON.stringify([editingId, enhMode, generationOptions]);
   const ownerRef = useRef(ownerKey);
   ownerRef.current = ownerKey;
+  // A sensitive-data approval covers the exact draft it reviewed, so an edit
+  // still revokes a pending approval.
+  const draftKey = JSON.stringify([raw, ownerKey]);
+  const draftRef = useRef(draftKey);
+  draftRef.current = draftKey;
+  const rawRef = useRef(raw);
+  rawRef.current = raw;
+  const [resultStale, setResultStale] = useState(false);
 
   useEffect(() => {
     preflight.invalidate();
+  }, [draftKey]);
+
+  useEffect(() => {
     return () => {
       enhanceReqRef.current += 1;
       enhanceInFlightRef.current = false;
@@ -236,7 +251,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence, profile
     const sentSource = ensureString(meta?.evaluatedSource) || ensureString(payloadSource) || ensureString(raw);
     const reviewed = preflight.review({
       payload, scope: 'enhance', label: `Enhance (${enhanceModeId})`,
-      isCurrent: () => ownerRef.current === ownerKey,
+      isCurrent: () => draftRef.current === draftKey,
       resume: approvedPayload => executeEnhance(approvedPayload, enhanceModeId, options, sentSource),
     });
     if (!reviewed.payload) {
@@ -260,6 +275,8 @@ export default function useExecutionFlow({ ui, lib, editor, persistence, profile
       || ensureString(payload?.messages?.find(message => message?.role === 'user')?.content)
       || ensureString(raw);
     enhanceInFlightRef.current = true;
+    const draftAtSend = raw;
+    setResultStale(false);
     const reqId = enhanceReqRef.current + 1;
     enhanceReqRef.current = reqId;
     const startedAt = nowMs();
@@ -426,6 +443,10 @@ export default function useExecutionFlow({ ui, lib, editor, persistence, profile
       setOptimisticSaveVisible(false);
       setStreamPreview('');
       setStreaming(false);
+      if (rawRef.current !== draftAtSend) {
+        setResultStale(true);
+        notify('Draft changed since this run. The result is from the earlier draft; run again to include your edits.');
+      }
     } catch (caught) {
       if (caught?.name === 'AbortError' || abortController?.signal?.aborted) {
         saveEvalRun({
@@ -564,10 +585,11 @@ export default function useExecutionFlow({ ui, lib, editor, persistence, profile
     setOptimisticSaveVisible(false);
     setBatchProgress({ active: false, completed: 0, total: 0, currentLabel: '' });
     setResultMeta?.(null);
+    setResultStale(false);
   };
   const currentTestCases = editingId ? (testCasesHook.testCasesByPrompt[editingId] || []) : [];
   return {
-    loading, error, piiWarning: preflight.piiWarning, streamPreview, streaming, optimisticSaveVisible, batchProgress,
+    loading, error, resultStale, piiWarning: preflight.piiWarning, streamPreview, streaming, optimisticSaveVisible, batchProgress,
     piiSendAnyway: preflight.piiSendAnyway, piiRedactAndSend: preflight.piiRedactAndSend, piiCancel: preflight.piiCancel,
     buildEnhancePayloadFor, buildEnhancePayload, enhance, enhanceWithMode,
     evalRuns: evalRunsHook.evalRuns, showEvalHistory: evalRunsHook.showEvalHistory,

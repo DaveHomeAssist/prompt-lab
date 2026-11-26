@@ -267,3 +267,23 @@ export function persistScratchState(nextState, {
     return { ok: false, state: nextState, error };
   }
 }
+
+// REVIEW-2026-11-25 High: a workspace import adds its Scratch notes to the
+// ones on this device instead of replacing the store. Notes are merged by id
+// (the newer edit wins on a shared id), this device keeps its active note,
+// and the revision moves forward so an open Scratch view merges the import
+// instead of saving over it. Returns null when nothing would change, which
+// keeps a retried import stage from writing again.
+export function mergeImportedScratchPayload(current, imported) {
+  // An imported note with no timestamp counts as oldest, so it never beats a
+  // local edit and a retry normalizes it to the same value.
+  const incoming = normalizeScratchPayload(imported, 0);
+  if (!incoming) return null;
+  // Nothing on this device to lose: store the backup exactly as exported.
+  if (!current) return imported;
+  const merged = mergeScratchPayloads(current, incoming);
+  const same = JSON.stringify([merged.pads, merged.activePadId, merged.tombstones])
+    === JSON.stringify([current.pads, current.activePadId, current.tombstones]);
+  if (same) return null;
+  return { ...merged, revision: (current.revision || 0) + 1 };
+}

@@ -111,6 +111,22 @@ The production webhook endpoint must be subscribed to `charge.dispute.created`
 for this to run. Adding that event is a Stripe configuration change and needs
 explicit owner approval.
 
+### Duplicate subscriptions are canceled
+
+Checkout sends a Stripe idempotency key built from the customer, the price and
+a 10-minute window, so two tabs that open checkout together get the same
+Checkout Session. If a second live Prompt Lab subscription still appears (for
+example, checkouts on either side of a window boundary), the webhook cancels
+the newer one immediately on `customer.subscription.created` or
+`customer.subscription.updated` and keeps the oldest. The duplicate's first
+payment is a billing error: refund it from the Stripe Dashboard. The webhook
+does not refund by itself.
+
+The production webhook endpoint must be subscribed to
+`customer.subscription.created` and `customer.subscription.updated` for this
+to run. Adding those events is a Stripe configuration change and needs
+explicit owner approval.
+
 ### Where the behavior lives
 
 | Policy point | Implementation |
@@ -118,6 +134,7 @@ explicit owner approval.
 | Pro while active, trialing or past due; Free when unpaid, canceled or incomplete | `api/_lib/stripeBilling.js` `ACTIVE_SUBSCRIPTION_STATUSES`, `normalizeBillingRecord()` |
 | Live entitlement lookup per license check (customer search plus subscription list) | `api/_lib/stripeBilling.js` `lookupBillingForClerk()`, `api/billing/license.js` |
 | Dispute cancels subscriptions | `api/_lib/stripeBilling.js` `applyWebhookAccessPolicy()`, `api/billing/webhook.js` |
+| Duplicate subscriptions canceled, checkout idempotency | `api/_lib/stripeBilling.js` `cancelDuplicateSubscription()`, `checkoutIdempotencyKey()` |
 | Revalidation window, offline grace and tab re-check interval | `prompt-lab-extension/src/lib/billingPolicy.js` |
 | Cache, re-check and offline grace behavior | `prompt-lab-extension/src/hooks/useBillingState.js` `applyFailedValidation()` |
 | In-app renewal and refund disclosure | `prompt-lab-extension/src/modals/BillingModal.jsx` |

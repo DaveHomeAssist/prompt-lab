@@ -781,14 +781,39 @@ describe('useExecutionFlow', () => {
     localStorage.removeItem('pl2-provider-settings');
   });
 
-  it('aborts old editor work, discards late success, and releases the dispatch guard', async () => {
+  // REVIEW-2026-11-25 High: typing during generation used to cancel it.
+  it('keeps an enhance running while the draft is edited and marks the result stale', async () => {
+    const pending = createDeferred();
+    callModel.mockReturnValueOnce(pending.promise);
+    const { result, notify } = renderExecutionFlow();
+    let request;
+    act(() => { request = result.current.enhance(); });
+    const signal = callModel.mock.calls[0][1].signal;
+    act(() => result.current.setRaw('Draft prompt, edited while it runs'));
+    expect(signal.aborted).toBe(false);
+    expect(result.current.loading).toBe(true);
+    await act(async () => {
+      pending.resolve({ text: 'Draft prompt rewritten with a specific objective and a structured output format.' });
+      await request;
+    });
+    expect(result.current.enhanced).toBe('Draft prompt rewritten with a specific objective and a structured output format.');
+    expect(result.current.resultStale).toBe(true);
+    expect(result.current.loading).toBe(false);
+    expect(notify).toHaveBeenCalledWith(expect.stringMatching(/^Draft changed since this run/));
+    expect(saveEvalRun).toHaveBeenCalledWith(expect.objectContaining({ input: 'Draft prompt' }));
+    callModel.mockResolvedValue({ text: 'New prompt with a specific objective and a structured output format.' });
+    await act(async () => result.current.enhance());
+    expect(result.current.resultStale).toBe(false);
+  });
+
+  it('aborts old work when the prompt being edited changes, discards late success, and releases the dispatch guard', async () => {
     const pending = createDeferred();
     callModel.mockReturnValueOnce(pending.promise);
     const { result } = renderExecutionFlow();
     let request;
     act(() => { request = result.current.enhance(); });
     const signal = callModel.mock.calls[0][1].signal;
-    act(() => result.current.setRaw('A different prompt'));
+    act(() => result.current.setEditingId('entry-2'));
     expect(signal.aborted).toBe(true);
     expect(result.current.loading).toBe(false);
     await act(async () => { pending.resolve({ text: 'Old result' }); await request; });
@@ -798,5 +823,6 @@ describe('useExecutionFlow', () => {
     await act(async () => result.current.enhance());
     expect(callModel.mock.calls.length).toBeGreaterThan(1);
   });
+
 
 });
