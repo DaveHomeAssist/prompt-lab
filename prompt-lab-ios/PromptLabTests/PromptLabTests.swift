@@ -736,6 +736,87 @@ final class PromptLabTests: XCTestCase {
     }
 
     @MainActor
+    func testSensitivePromptIsNotSentUntilTheUserRedactsIt() async throws {
+        let provider = RecordingProviderClient()
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let store = WorkbenchStore(provider: provider, keychain: MemoryAPIKeyStore())
+        let original = "use sk-ant-api03-FAKEFAKEFAKEFAKEFAKE please"
+        store.draft = original
+
+        await store.enhance(modelContext: context)
+
+        let review = try XCTUnwrap(store.sensitiveReview)
+        XCTAssertEqual(store.state, .idle)
+        XCTAssertTrue(provider.prompts.isEmpty)
+        XCTAssertFalse(review.redacted.contains("sk-ant-"))
+        XCTAssertEqual(review.redacted, "use [API_KEY] please")
+        XCTAssertEqual(review.matches.map(\.type), ["api_key"])
+
+        await store.confirmEnhance(redact: true, modelContext: context)
+
+        XCTAssertNil(store.sensitiveReview)
+        XCTAssertEqual(store.state, .completed)
+        XCTAssertEqual(provider.prompts, ["use [API_KEY] please"])
+        XCTAssertEqual(store.draft, original)
+        XCTAssertEqual(store.redactionNotice, "Redacted before sending: [API_KEY].")
+        let runs = try context.fetch(FetchDescriptor<RunRecord>())
+        XCTAssertEqual(runs.first?.input, original)
+    }
+
+    @MainActor
+    func testSendAnywayKeepsTheOriginalPrompt() async throws {
+        let provider = RecordingProviderClient()
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let store = WorkbenchStore(provider: provider, keychain: MemoryAPIKeyStore())
+        let original = "mail ada@example.com please"
+        store.draft = original
+
+        await store.enhance(modelContext: context)
+        XCTAssertNotNil(store.sensitiveReview)
+        await store.confirmEnhance(redact: false, modelContext: context)
+
+        XCTAssertEqual(provider.prompts, [original])
+        XCTAssertNil(store.redactionNotice)
+        XCTAssertEqual(store.state, .completed)
+    }
+
+    @MainActor
+    func testCancelSensitiveReviewDoesNotCallTheProvider() async throws {
+        let provider = RecordingProviderClient()
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let store = WorkbenchStore(provider: provider, keychain: MemoryAPIKeyStore())
+        store.draft = "token: abcdefghijklmnop"
+
+        await store.enhance(modelContext: context)
+        XCTAssertNotNil(store.sensitiveReview)
+        store.cancelSensitiveReview()
+
+        XCTAssertNil(store.sensitiveReview)
+        XCTAssertTrue(provider.prompts.isEmpty)
+        XCTAssertEqual(try context.fetchCount(FetchDescriptor<RunRecord>()), 0)
+        XCTAssertEqual(store.state, .idle)
+    }
+
+    @MainActor
+    func testEditingTheDraftDropsTheReview() async throws {
+        let provider = RecordingProviderClient()
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let store = WorkbenchStore(provider: provider, keychain: MemoryAPIKeyStore())
+        store.draft = "secret: abcdefghijklmnop"
+
+        await store.enhance(modelContext: context)
+        XCTAssertNotNil(store.sensitiveReview)
+        store.draft = "A prompt with nothing sensitive in it."
+
+        XCTAssertNil(store.sensitiveReview)
+        XCTAssertTrue(provider.prompts.isEmpty)
+    }
+
+    @MainActor
     private func makeInMemoryContainer() throws -> ModelContainer {
         try ModelContainer(
             for: appSchema,
@@ -911,87 +992,6 @@ final class PiiRedactorTests: XCTestCase {
             let expected = item.findings.map { "\($0.type):\($0.start):\($0.end):\($0.placeholder)" }
             XCTAssertEqual(findings, expected, item.name)
         }
-    }
-
-    @MainActor
-    func testSensitivePromptIsNotSentUntilTheUserRedactsIt() async throws {
-        let provider = RecordingProviderClient()
-        let container = try makeInMemoryContainer()
-        let context = ModelContext(container)
-        let store = WorkbenchStore(provider: provider, keychain: MemoryAPIKeyStore())
-        let original = "use sk-ant-api03-FAKEFAKEFAKEFAKEFAKE please"
-        store.draft = original
-
-        await store.enhance(modelContext: context)
-
-        let review = try XCTUnwrap(store.sensitiveReview)
-        XCTAssertEqual(store.state, .idle)
-        XCTAssertTrue(provider.prompts.isEmpty)
-        XCTAssertFalse(review.redacted.contains("sk-ant-"))
-        XCTAssertEqual(review.redacted, "use [API_KEY] please")
-        XCTAssertEqual(review.matches.map(\.type), ["api_key"])
-
-        await store.confirmEnhance(redact: true, modelContext: context)
-
-        XCTAssertNil(store.sensitiveReview)
-        XCTAssertEqual(store.state, .completed)
-        XCTAssertEqual(provider.prompts, ["use [API_KEY] please"])
-        XCTAssertEqual(store.draft, original)
-        XCTAssertEqual(store.redactionNotice, "Redacted before sending: [API_KEY].")
-        let runs = try context.fetch(FetchDescriptor<RunRecord>())
-        XCTAssertEqual(runs.first?.input, original)
-    }
-
-    @MainActor
-    func testSendAnywayKeepsTheOriginalPrompt() async throws {
-        let provider = RecordingProviderClient()
-        let container = try makeInMemoryContainer()
-        let context = ModelContext(container)
-        let store = WorkbenchStore(provider: provider, keychain: MemoryAPIKeyStore())
-        let original = "mail ada@example.com please"
-        store.draft = original
-
-        await store.enhance(modelContext: context)
-        XCTAssertNotNil(store.sensitiveReview)
-        await store.confirmEnhance(redact: false, modelContext: context)
-
-        XCTAssertEqual(provider.prompts, [original])
-        XCTAssertNil(store.redactionNotice)
-        XCTAssertEqual(store.state, .completed)
-    }
-
-    @MainActor
-    func testCancelSensitiveReviewDoesNotCallTheProvider() async throws {
-        let provider = RecordingProviderClient()
-        let container = try makeInMemoryContainer()
-        let context = ModelContext(container)
-        let store = WorkbenchStore(provider: provider, keychain: MemoryAPIKeyStore())
-        store.draft = "token: abcdefghijklmnop"
-
-        await store.enhance(modelContext: context)
-        XCTAssertNotNil(store.sensitiveReview)
-        store.cancelSensitiveReview()
-
-        XCTAssertNil(store.sensitiveReview)
-        XCTAssertTrue(provider.prompts.isEmpty)
-        XCTAssertEqual(try context.fetchCount(FetchDescriptor<RunRecord>()), 0)
-        XCTAssertEqual(store.state, .idle)
-    }
-
-    @MainActor
-    func testEditingTheDraftDropsTheReview() async throws {
-        let provider = RecordingProviderClient()
-        let container = try makeInMemoryContainer()
-        let context = ModelContext(container)
-        let store = WorkbenchStore(provider: provider, keychain: MemoryAPIKeyStore())
-        store.draft = "secret: abcdefghijklmnop"
-
-        await store.enhance(modelContext: context)
-        XCTAssertNotNil(store.sensitiveReview)
-        store.draft = "A prompt with nothing sensitive in it."
-
-        XCTAssertNil(store.sensitiveReview)
-        XCTAssertTrue(provider.prompts.isEmpty)
     }
 }
 
