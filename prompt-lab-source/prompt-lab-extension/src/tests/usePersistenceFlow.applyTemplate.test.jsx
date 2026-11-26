@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import usePersistenceFlow from '../hooks/usePersistenceFlow.js';
 import PostEnhanceResults from '../PostEnhanceResults.jsx';
@@ -37,7 +37,7 @@ function makeTemplate() {
   };
 }
 
-function Harness({ library, flowRef }) {
+function Harness({ library, flowRef, savedPayloads = [] }) {
   const [raw, setRaw] = useState('');
   const [enhanced, setEnhanced] = useState('');
   const [resultMeta, setResultMeta] = useState(null);
@@ -50,6 +50,7 @@ function Harness({ library, flowRef }) {
       bumpUse: vi.fn(),
       trackRecentAccess: vi.fn(),
       doSave: (payload) => {
+        savedPayloads.push(payload);
         if (payload.editingId) {
           const target = library.find((entry) => entry.id === payload.editingId);
           if (target) {
@@ -140,5 +141,44 @@ describe('Apply Template display', () => {
       original: filled,
       enhanced: filled,
     });
+  });
+
+  it('fills revert spans and does not reparent the template experiment', async () => {
+    const template = makeTemplate();
+    template.original = 'Address {{customer_name}} formally.';
+    template.enhanced = 'Address {{customer_name}} formally.';
+    template.resultMeta = {
+      runId: 'run-template',
+      selectedCandidateId: 'improved',
+      candidates: [{ id: 'improved', label: 'Improved', content: 'Address {{customer_name}} formally.' }],
+      assumptions: [{ id: 'a1', text: 'The greeting names the customer.', addedText: '{{customer_name}}', candidateId: 'improved' }],
+      reversibleEdits: [{
+        id: 'edit-address', label: 'Formal address', operation: 'replace', candidateId: 'improved', reverted: false,
+        before: 'Hello {{customer_name}}', after: 'Address {{customer_name}} formally.',
+      }],
+    };
+    const library = [template];
+    const flowRef = { current: null };
+    const savedPayloads = [];
+    render(<Harness library={library} flowRef={flowRef} savedPayloads={savedPayloads} />);
+
+    await act(async () => { await flowRef.current.loadEntry(template); });
+    act(() => {
+      flowRef.current.setVarVals({ customer_name: 'Maya', company: 'Acme', product: 'Prompt Lab' });
+      flowRef.current.applyTemplate();
+    });
+
+    expect(screen.getByTestId('output-textarea')).toHaveValue('Address Maya formally.');
+    const assumptions = screen.getByRole('heading', { name: 'Review what the model inferred' }).closest('section');
+    expect(within(assumptions).getByRole('button', { name: 'Managed below' })).toBeInTheDocument();
+    const edit = screen.getByText('Formal address').closest('.pl-reversible-row');
+    fireEvent.click(within(edit).getByRole('button', { name: 'Revert' }));
+    expect(screen.getByTestId('output-textarea')).toHaveValue('Hello Maya');
+
+    await act(async () => { await flowRef.current.doSave(); });
+    expect(savedPayloads.at(-1).resultMeta.runId).toBe('');
+    expect(template.resultMeta.runId).toBe('run-template');
+    expect(template.resultMeta.reversibleEdits[0].after).toBe('Address {{customer_name}} formally.');
+    expect(template.enhanced).toBe('Address {{customer_name}} formally.');
   });
 });

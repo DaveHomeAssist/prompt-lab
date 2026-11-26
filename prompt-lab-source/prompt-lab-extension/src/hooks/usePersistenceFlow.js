@@ -300,15 +300,35 @@ export default function usePersistenceFlow({ ui, lib, editor, profileSendRef }) 
       ...variant,
       content: fill(variant?.content || ''),
     }));
-    const resultMeta = normalized.resultMeta && Array.isArray(normalized.resultMeta.candidates)
+    // Revert matches these spans exactly against the candidate. Leaving the
+    // placeholders here makes Accept/Revert miss the filled text, and reapply
+    // can put the placeholder back into the draft.
+    const sourceMeta = normalized.resultMeta && typeof normalized.resultMeta === 'object' ? normalized.resultMeta : null;
+    const resultMeta = sourceMeta
       ? {
-        ...normalized.resultMeta,
-        candidates: normalized.resultMeta.candidates.map((candidate) => ({
-          ...candidate,
-          content: fill(candidate?.content || ''),
-        })),
+        ...sourceMeta,
+        ...(Array.isArray(sourceMeta.candidates) ? {
+          candidates: sourceMeta.candidates.map((candidate) => ({
+            ...candidate,
+            content: fill(candidate?.content || ''),
+          })),
+        } : {}),
+        ...(Array.isArray(sourceMeta.reversibleEdits) ? {
+          reversibleEdits: sourceMeta.reversibleEdits.map((edit) => (
+            edit && typeof edit === 'object'
+              ? { ...edit, before: fill(edit.before || ''), after: fill(edit.after || '') }
+              : edit
+          )),
+        } : {}),
+        ...(Array.isArray(sourceMeta.assumptions) ? {
+          assumptions: sourceMeta.assumptions.map((assumption) => (
+            assumption && typeof assumption === 'object'
+              ? { ...assumption, addedText: fill(assumption.addedText || '') }
+              : assumption
+          )),
+        } : {}),
       }
-      : normalized.resultMeta;
+      : sourceMeta;
     return {
       ...normalized,
       original: fill(normalized.original),
@@ -338,6 +358,11 @@ export default function usePersistenceFlow({ ui, lib, editor, profileSendRef }) 
   const applyTemplateWithVals = (entry, values, target = 'editor') => {
     const resolved = buildResolvedEntry(entry, values);
     if (!resolved) return;
+    if (target === 'editor' && resolved.resultMeta && typeof resolved.resultMeta === 'object') {
+      // The template's experiment stays on the template. A filled draft that
+      // kept runId would reassign that run to the new prompt on save.
+      resolved.resultMeta = { ...resolved.resultMeta, runId: '' };
+    }
     routeResolvedEntry(resolved, target);
     if (target === 'editor') detachFilledDraft();
   };
