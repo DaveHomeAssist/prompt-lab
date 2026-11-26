@@ -732,6 +732,44 @@ final class PromptLabTests: XCTestCase {
         )
     }
 
+    @MainActor
+    func testCorruptStoreShowsRecoveryInsteadOfReplacingTheFile() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("StorageRecovery-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let storeURL = directory.appendingPathComponent("Library.store")
+        let original = Data("not a database".utf8)
+        try original.write(to: storeURL)
+        let sidecar = URL(fileURLWithPath: storeURL.path + "-wal")
+        try Data("wal".utf8).write(to: sidecar)
+        let schema = Schema(versionedSchema: PromptLabSchemaV2.self)
+        let configuration = ModelConfiguration(
+            "StorageRecovery",
+            schema: schema,
+            url: storeURL,
+            cloudKitDatabase: .none
+        )
+
+        let failed = StorageLaunch.open(configuration)
+        XCTAssertNil(failed.container)
+        XCTAssertFalse(failed.message?.isEmpty ?? true)
+        XCTAssertEqual(try Data(contentsOf: storeURL), original)
+
+        let exported = try StorageRecovery.exportStore(at: storeURL, to: directory.appendingPathComponent("copy", isDirectory: true))
+        XCTAssertEqual(exported.map(\.lastPathComponent).sorted(), ["Library.store", "Library.store-wal"])
+        let storeCopy = try XCTUnwrap(exported.first { $0.lastPathComponent == "Library.store" })
+        XCTAssertEqual(try Data(contentsOf: storeCopy), original)
+
+        try StorageRecovery.resetStore(at: storeURL)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: storeURL.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: sidecar.path))
+
+        let recovered = StorageLaunch.open(configuration)
+        XCTAssertNotNil(recovered.container)
+        XCTAssertNil(recovered.message)
+    }
+
     private var appSchema: Schema {
         Schema([PromptEntry.self, Pad.self, RunRecord.self, LibraryMetadata.self])
     }
