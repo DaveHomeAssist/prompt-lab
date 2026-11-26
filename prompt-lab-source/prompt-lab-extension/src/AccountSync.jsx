@@ -20,6 +20,9 @@ const ago = (at, now = Date.now()) => {
 export function describeSyncStatus(sync, now = Date.now()) {
   const pending = Number(sync?.pending) || 0;
   const queued = pending ? ` ${pending} ${pending === 1 ? 'change' : 'changes'} waiting.` : '';
+  if (sync?.queueCorrupt) {
+    return { tone: 'blocked', label: 'Sync hit a problem', detail: 'Pending changes could not be read' };
+  }
   switch (sync?.status) {
     case 'signed-out':
       return sync.needsReopen
