@@ -54,9 +54,11 @@ let sendMessage;
 
 function loadOptionsScript({ chips = [] } = {}) {
   document.body.innerHTML = ELEMENT_IDS
-    .map((id) => (id.endsWith('Btn')
-      ? `<button id="${id}"></button>`
-      : `<input id="${id}" value="" />`))
+    .map((id) => {
+      if (id.endsWith('Btn')) return `<button id="${id}"></button>`;
+      if (id === 'ollamaModel') return `<select id="${id}"></select>`;
+      return `<input id="${id}" value="" />`;
+    })
     .join('') + chips
     .map((provider) => `<button class="provider-chip" data-provider="${provider}"></button>`)
     .join('');
@@ -240,6 +242,36 @@ describe('options Ollama probe', () => {
     expect(ollamaProbeCount()).toBe(1);
     expect(document.getElementById('ollamaStatus').textContent).toBe('offline');
     expect(document.getElementById('status').textContent).toBe('Ollama: Failed to fetch');
+  });
+
+  it('inserts Ollama model names as text, so markup in a name is not parsed', async () => {
+    const hostile = '"><img src=x onerror=alert(1)>';
+    sendMessage.mockClear();
+    sendMessage.mockImplementation((message, callback) => {
+      if (message?.type === 'OLLAMA_LIST_MODELS') {
+        setTimeout(() => callback({
+          models: [
+            { name: hostile, paramSize: '7B' },
+            { name: 'llama3.2', paramSize: '' },
+          ],
+        }), 50);
+        return;
+      }
+      setTimeout(() => callback({ data: { content: [{ text: 'ok' }] } }), 50);
+    });
+    globalThis.chrome.storage.local.get = vi.fn((_keys, callback) => callback({ provider: 'ollama' }));
+    loadOptionsScript();
+    await vi.advanceTimersByTimeAsync(200);
+
+    const select = document.getElementById('ollamaModel');
+    const option = select.options[0];
+    expect(select.querySelector('img')).toBeNull();
+    expect(option.childNodes).toHaveLength(1);
+    expect(option.childNodes[0].nodeType).toBe(Node.TEXT_NODE);
+    expect(option.text).toBe(`${hostile} (7B)`);
+    expect(option.value).toBe(hostile);
+    expect(select.options[1].value).toBe('llama3.2');
+    expect(select.options[1].text).toBe('llama3.2');
   });
 
   it('probes when the user switches to Ollama and drops a stale error after switching away', async () => {

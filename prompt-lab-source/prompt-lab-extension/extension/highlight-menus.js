@@ -58,15 +58,29 @@ async function inject(tabId, frameId) {
   });
 }
 
-async function deliverToWrite(tab, text, notice) {
+// sidePanel.open only succeeds inside the context-menu click turn. Callers
+// that still have that gesture pass the promise from a synchronous open.
+function openSidePanel(tabId) {
+  try {
+    return Promise.resolve(chrome.sidePanel.open({ tabId })).then(() => true, () => false);
+  } catch {
+    return Promise.resolve(false);
+  }
+}
+
+async function deliverToWrite(tab, text, notice, panelOpen) {
   await chrome.storage.session.set({
     [HIGHLIGHT_DRAFT_KEY]: { text, notice: notice || '', at: Date.now() },
   });
-  try {
-    await chrome.sidePanel.open({ tabId: tab.id });
-  } catch {
-    await chrome.tabs.create({ url: chrome.runtime.getURL('panel.html') });
+  if (panelOpen) {
+    if (await panelOpen) return;
+  } else {
+    try {
+      await chrome.sidePanel.open({ tabId: tab.id });
+      return;
+    } catch { /* The click gesture is already gone. */ }
   }
+  await chrome.tabs.create({ url: chrome.runtime.getURL('panel.html') });
 }
 
 async function syncMenus() {
@@ -148,7 +162,7 @@ async function showNotice(tab, frameId, theme, message) {
   }
 }
 
-async function onSend(tab, info) {
+async function onSend(tab, info, panelOpen) {
   const captured = await capturedText(tab, info);
   if (captured.blocked === 'password' || captured.blocked === 'secret' || captured.reason === 'password' || captured.reason === 'secret') {
     const themeStore = await storageGet(HIGHLIGHT_THEME_KEY);
@@ -166,7 +180,7 @@ async function onSend(tab, info) {
     }
     return;
   }
-  await deliverToWrite(tab, text, 'Selection loaded in Write');
+  await deliverToWrite(tab, text, 'Selection loaded in Write', panelOpen);
 }
 
 async function onEnhance(tab, info) {
@@ -191,6 +205,7 @@ async function onEnhance(tab, info) {
     });
   }
   const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  aborts.get(tab.id)?.controller?.abort();
   aborts.set(tab.id, { token, controller });
   try {
     const result = await enhanceSelection(text, themeStore, themeStore[HIGHLIGHT_GENERATION_KEY], controller?.signal);
@@ -252,7 +267,11 @@ export function installHighlightMenus() {
 
   chrome.contextMenus.onClicked.addListener((info, tab) => {
     if (!tab?.id) return;
-    if (info.menuItemId === SEND_MENU_ID) void onSend(tab, info);
+    if (info.menuItemId === SEND_MENU_ID) {
+      // Open before any await. Send then writes the draft the panel reads.
+      const panelOpen = openSidePanel(tab.id);
+      void onSend(tab, info, panelOpen);
+    }
     if (info.menuItemId === ENHANCE_MENU_ID) void onEnhance(tab, info);
   });
 
