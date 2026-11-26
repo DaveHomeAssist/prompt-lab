@@ -824,6 +824,75 @@ final class PromptLabTests: XCTestCase {
         )
     }
 
+    func testRecoveryExportArchiveIncludesWriteAheadFiles() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("StorageArchive-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let storeURL = directory.appendingPathComponent("Library.store")
+        let store = Data("database-bytes".utf8)
+        let wal = Data("wal-bytes".utf8)
+        let shared = Data("shm-bytes".utf8)
+        try store.write(to: storeURL)
+        try wal.write(to: URL(fileURLWithPath: storeURL.path + "-wal"))
+        try shared.write(to: URL(fileURLWithPath: storeURL.path + "-shm"))
+
+        let archived = StorageRecovery.readStoredZip(try StorageRecovery.exportDocumentData(at: storeURL))
+        XCTAssertEqual(archived["Library.store"], store)
+        XCTAssertEqual(archived["Library.store-wal"], wal)
+        XCTAssertEqual(archived["Library.store-shm"], shared)
+    }
+
+    @MainActor
+    func testCorruptStoreShowsRecoveryInsteadOfReplacingTheFile() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("StorageRecovery-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let storeURL = directory.appendingPathComponent("Library.store")
+        let original = Data("not a database".utf8)
+        try original.write(to: storeURL)
+        let sidecar = URL(fileURLWithPath: storeURL.path + "-wal")
+        try Data("wal".utf8).write(to: sidecar)
+        let schema = Schema(versionedSchema: PromptLabSchemaV2.self)
+        let configuration = ModelConfiguration(
+            "StorageRecovery",
+            schema: schema,
+            url: storeURL,
+            cloudKitDatabase: .none
+        )
+
+        let failed = StorageLaunch.open(configuration)
+        XCTAssertNil(failed.container)
+        XCTAssertFalse(failed.message?.isEmpty ?? true)
+        XCTAssertEqual(try Data(contentsOf: storeURL), original)
+
+        let exported = try StorageRecovery.exportStore(at: storeURL, to: directory.appendingPathComponent("copy", isDirectory: true))
+        let names = Set(exported.map(\.lastPathComponent))
+        // A failed open can also leave a shared-memory sidecar beside the store and its write-ahead log.
+        XCTAssertTrue(names.isSuperset(of: ["Library.store", "Library.store-wal"]))
+        XCTAssertTrue(names.isSubset(of: ["Library.store", "Library.store-wal", "Library.store-shm"]))
+        let storeCopy = try XCTUnwrap(exported.first { $0.lastPathComponent == "Library.store" })
+        XCTAssertEqual(try Data(contentsOf: storeCopy), original)
+        let archived = StorageRecovery.readStoredZip(try StorageRecovery.exportDocumentData(at: storeURL))
+        XCTAssertEqual(archived["Library.store"], original)
+        if FileManager.default.fileExists(atPath: sidecar.path) {
+            XCTAssertEqual(archived["Library.store-wal"], try Data(contentsOf: sidecar))
+        }
+        let sharedMemory = URL(fileURLWithPath: storeURL.path + "-shm")
+        if FileManager.default.fileExists(atPath: sharedMemory.path) {
+            XCTAssertEqual(archived["Library.store-shm"], try Data(contentsOf: sharedMemory))
+        }
+
+        try StorageRecovery.resetStore(at: storeURL)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: storeURL.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: sidecar.path))
+
+        let recovered = StorageLaunch.open(configuration)
+        XCTAssertNotNil(recovered.container)
+        XCTAssertNil(recovered.message)
+    }
+
     private var appSchema: Schema {
         Schema([PromptEntry.self, Pad.self, RunRecord.self, LibraryMetadata.self])
     }
