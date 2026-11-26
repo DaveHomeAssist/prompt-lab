@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createRateLimiter, desktopTokenHandler, RATE_LIMITS } from '../api/sync/desktop-token.js';
+import { mock } from 'node:test';
+import { createRateLimiter, CLERK_FETCH_TIMEOUT_MS, desktopTokenHandler, RATE_LIMITS } from '../api/sync/desktop-token.js';
+import { ExternalFetchTimeoutError } from '../api/_lib/runtimeSafety.js';
 
 const CLIENT_ID = 'desktop_client_placeholder';
 const env = { PL_ACCOUNT_SYNC_DESKTOP: 'on', CLERK_SECRET_KEY: 'clerk-secret-placeholder', PL_DESKTOP_OAUTH_CLIENT_ID: CLIENT_ID };
@@ -102,6 +104,53 @@ test('other origins refused, missing tokens refused, Clerk outage is retryable, 
   const response = await desktopTokenHandler(req({ Authorization: 'Bearer x' }), { env, fetchImpl: down.fetchImpl, rateLimit: freshLimiter() });
   assert.equal(response.status, 502);
   assert.doesNotMatch(await response.text(), /clerk-secret-placeholder/);
+});
+
+test('a Clerk timeout is 504 on verify and on ticket creation', async () => {
+  const timedOut = async () => { throw new ExternalFetchTimeoutError('Clerk', CLERK_FETCH_TIMEOUT_MS); };
+  const verify = await desktopTokenHandler(req({ Authorization: 'Bearer x' }), { env, fetchImpl: timedOut, rateLimit: freshLimiter() });
+  assert.equal(verify.status, 504);
+  assert.equal((await verify.json()).retryable, true);
+  const { fetchImpl } = fakeClerk();
+  const ticket = await desktopTokenHandler(req({ Authorization: 'Bearer x' }), {
+    env,
+    fetchImpl: async (url, init) => {
+      if (String(url).endsWith('/sign_in_tokens')) throw new ExternalFetchTimeoutError('Clerk', CLERK_FETCH_TIMEOUT_MS);
+      return fetchImpl(url, init);
+    },
+    rateLimit: freshLimiter(),
+  });
+  assert.equal(ticket.status, 504);
+  const down = await desktopTokenHandler(req({ Authorization: 'Bearer x' }), {
+    env,
+    fetchImpl: async () => { throw new Error('network down'); },
+    rateLimit: freshLimiter(),
+  });
+  assert.equal(down.status, 502);
+});
+
+test('the default Clerk fetch aborts at the Clerk timeout', async () => {
+  mock.timers.enable({ apis: ['setTimeout'] });
+  const original = globalThis.fetch;
+  let signal;
+  globalThis.fetch = (_url, init) => {
+    signal = init?.signal;
+    return new Promise(() => {});
+  };
+  try {
+    const pending = desktopTokenHandler(req({ Authorization: 'Bearer oat' }), { env, rateLimit: freshLimiter() });
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.equal(signal?.aborted, false);
+    mock.timers.tick(CLERK_FETCH_TIMEOUT_MS);
+    const response = await pending;
+    assert.equal(response.status, 504);
+    assert.equal(signal.aborted, true);
+    assert.equal((await response.json()).error, 'Sign-in service timed out.');
+  } finally {
+    globalThis.fetch = original;
+    mock.timers.reset();
+  }
 });
 
 test('R-02 low: a KV outage answers 503 (retryable) before any Clerk call', async () => {
