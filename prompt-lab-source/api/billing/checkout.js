@@ -106,6 +106,13 @@ async function checkoutHandler(request) {
         retryable: false,
       }, 409, {}, request);
     }
+    if (error?.code === 'checkout_in_progress') {
+      return jsonResponse({
+        error: error.message,
+        code: 'checkout_in_progress',
+        retryable: true,
+      }, 409, {}, request);
+    }
     return jsonResponse(
       { error: clientErrorMessage(error, 'Could not create checkout.') },
       isExternalFetchTimeout(error) ? 504 : 500,

@@ -626,22 +626,65 @@ fn platform_cursor() -> Option<(f64, f64)> {
     Some((point.x as f64, point.y as f64))
 }
 
+// REVIEW-2026-11-25 High: the default Ctrl+Alt+E shortcut fires on Pressed,
+// while the user still holds Alt. Sending Ctrl+C on top of that reaches many
+// apps as Ctrl+Alt+C, which copies nothing. Release every extra modifier that
+// is down first. A tap of the unassigned key 0xE8 goes before the releases so
+// that letting go of Alt or Win does not open the app's menu bar or Start
+// (the same mask AutoHotkey uses). Linux gets this from --clearmodifiers and
+// macOS from CGEventSetFlags.
+#[cfg(any(target_os = "windows", test))]
+const WIN_RELEASE_FIRST: [(u16, bool); 6] = [
+    (0xA0, false), // VK_LSHIFT
+    (0xA1, false), // VK_RSHIFT
+    (0xA4, false), // VK_LMENU
+    (0xA5, true),  // VK_RMENU (extended)
+    (0x5B, true),  // VK_LWIN (extended)
+    (0x5C, true),  // VK_RWIN (extended)
+];
+#[cfg(any(target_os = "windows", test))]
+const WIN_MENU_MASK_KEY: u16 = 0xE8;
+#[cfg(any(target_os = "windows", test))]
+const WIN_VK_CONTROL: u16 = 0x11;
+
+/// Keystrokes for Ctrl+`vk` given which modifiers are held: (virtual key, key up, extended).
+#[cfg(any(target_os = "windows", test))]
+fn windows_chord_sequence(vk: u16, is_down: impl Fn(u16) -> bool) -> Vec<(u16, bool, bool)> {
+    let held: Vec<(u16, bool)> = WIN_RELEASE_FIRST.iter().copied().filter(|(key, _)| is_down(*key)).collect();
+    let mut sequence = Vec::with_capacity(held.len() + 6);
+    if held.iter().any(|(key, _)| matches!(key, 0xA4 | 0xA5 | 0x5B | 0x5C)) {
+        sequence.push((WIN_MENU_MASK_KEY, false, false));
+        sequence.push((WIN_MENU_MASK_KEY, true, false));
+    }
+    for (key, extended) in held { sequence.push((key, true, extended)); }
+    sequence.push((WIN_VK_CONTROL, false, false));
+    sequence.push((vk, false, false));
+    sequence.push((vk, true, false));
+    sequence.push((WIN_VK_CONTROL, true, false));
+    sequence
+}
+
 #[cfg(target_os = "windows")]
 fn press_chord(vk: u16) -> Result<(), String> {
     use std::mem::size_of;
-    use windows_sys::Win32::UI::Input::KeyboardAndMouse::{SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP, VK_CONTROL};
-    fn key(vk: u16, flags: u32) -> INPUT {
+    use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
+        GetAsyncKeyState, SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_EXTENDEDKEY, KEYEVENTF_KEYUP,
+    };
+    fn key(vk: u16, up: bool, extended: bool) -> INPUT {
+        let mut flags = 0;
+        if up { flags |= KEYEVENTF_KEYUP; }
+        if extended { flags |= KEYEVENTF_EXTENDEDKEY; }
         INPUT {
             r#type: INPUT_KEYBOARD,
             Anonymous: INPUT_0 { ki: KEYBDINPUT { wVk: vk, wScan: 0, dwFlags: flags, time: 0, dwExtraInfo: 0 } },
         }
     }
-    let inputs = [
-        key(VK_CONTROL, 0),
-        key(vk, 0),
-        key(vk, KEYEVENTF_KEYUP),
-        key(VK_CONTROL, KEYEVENTF_KEYUP),
-    ];
+    // The high bit of GetAsyncKeyState is set while the key is physically down.
+    let is_down = |vk: u16| unsafe { (GetAsyncKeyState(vk as i32) as u16) & 0x8000 != 0 };
+    let inputs: Vec<INPUT> = windows_chord_sequence(vk, is_down)
+        .into_iter()
+        .map(|(vk, up, extended)| key(vk, up, extended))
+        .collect();
     let sent = unsafe { SendInput(inputs.len() as u32, inputs.as_ptr(), size_of::<INPUT>() as i32) };
     if sent == inputs.len() as u32 { Ok(()) } else { Err("Couldn't send the keystroke.".into()) }
 }
@@ -680,6 +723,30 @@ fn press_paste() -> Result<(), String> { press_keys("ctrl+v") }
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn windows_copy_releases_held_alt_before_ctrl_c() {
+        // Ctrl+Alt+E held: Alt (left) is still down when the copy fires.
+        let sequence = windows_chord_sequence(0x43, |vk| vk == 0xA4);
+        assert_eq!(sequence, vec![
+            (0xE8, false, false), (0xE8, true, false),
+            (0xA4, true, false),
+            (0x11, false, false), (0x43, false, false), (0x43, true, false), (0x11, true, false),
+        ]);
+        let ctrl_down = sequence.iter().position(|step| *step == (0x11, false, false)).unwrap();
+        let alt_up = sequence.iter().position(|step| *step == (0xA4, true, false)).unwrap();
+        assert!(alt_up < ctrl_down);
+    }
+
+    #[test]
+    fn windows_copy_releases_shift_and_win_and_skips_mask_without_alt_or_win() {
+        let with_win = windows_chord_sequence(0x43, |vk| vk == 0xA1 || vk == 0x5B);
+        assert_eq!(&with_win[..4], &[(0xE8, false, false), (0xE8, true, false), (0xA1, true, false), (0x5B, true, true)]);
+        let shift_only = windows_chord_sequence(0x56, |vk| vk == 0xA0);
+        assert_eq!(shift_only, vec![(0xA0, true, false), (0x11, false, false), (0x56, false, false), (0x56, true, false), (0x11, true, false)]);
+        let none = windows_chord_sequence(0x43, |_| false);
+        assert_eq!(none, vec![(0x11, false, false), (0x43, false, false), (0x43, true, false), (0x11, true, false)]);
+    }
 
     struct MemoryClipboard { value: String }
 

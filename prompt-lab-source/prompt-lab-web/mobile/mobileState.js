@@ -143,22 +143,29 @@ function extractSection(text, heading) {
   return text.match(pattern)?.[1]?.trim() || '';
 }
 
-function parseBullets(value) {
+function parseBullets(value, { limit = 3 } = {}) {
   return String(value || '')
     .split('\n')
     .map((line) => line.replace(/^\s*[-*]\s*/, '').trim())
     .filter(Boolean)
-    .slice(0, 3);
+    .slice(0, limit);
 }
 
-export function parsePromptIntent(text) {
+// REVIEW-2026-11-25 High: the short form (150 characters, 3 bullets) is for
+// display only. Generation asks for { full: true }, which keeps the whole
+// task and every requirement, because the old truncated text was what the
+// provider received.
+export function parsePromptIntent(text, { full = false } = {}) {
   const source = String(text || '').trim();
   const taskSection = extractSection(source, 'Task');
-  const requirements = parseBullets(extractSection(source, 'Requirements'));
-  const task = compact(taskSection || source.replace(/^You are helping produce a high-quality result\.\s*/i, ''));
+  const requirements = parseBullets(extractSection(source, 'Requirements'), { limit: full ? Infinity : 3 });
+  const taskSource = taskSection || source.replace(/^You are helping produce a high-quality result\.\s*/i, '');
 
+  if (full) {
+    return { task: taskSource.trim(), requirements, hasSections: Boolean(taskSection) };
+  }
   return {
-    task: shortText(task, 150),
+    task: shortText(compact(taskSource), 150),
     requirements,
   };
 }

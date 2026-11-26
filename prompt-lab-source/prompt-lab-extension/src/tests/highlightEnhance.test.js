@@ -145,6 +145,49 @@ describe('selection capture and replace', () => {
   });
 });
 
+// REVIEW-2026-11-25 High: Accept must not splice into offsets the user has
+// since edited.
+describe('replace refuses a selection that changed while the result was pending', () => {
+  it('refuses a textarea whose captured span was edited and leaves the text alone', () => {
+    const field = document.createElement('textarea');
+    field.value = 'hello world';
+    document.body.append(field);
+    field.focus();
+    field.setSelectionRange(6, 11);
+    const captured = captureSelection(document);
+    expect(captured.text).toBe('world');
+    field.value = 'oh hello world';
+    expect(captured.replace('WORLD')).toEqual({ ok: false, reason: 'changed' });
+    expect(field.value).toBe('oh hello world');
+  });
+
+  it('still replaces a textarea when the captured span is unchanged', () => {
+    const field = document.createElement('textarea');
+    field.value = 'hello world';
+    document.body.append(field);
+    field.focus();
+    field.setSelectionRange(6, 11);
+    const captured = captureSelection(document);
+    field.value = 'hello world';
+    expect(captured.replace('WORLD')).toMatchObject({ ok: true });
+    expect(field.value).toBe('hello WORLD');
+    expect(replaceTextControl(field, 'x', 0, 5, 'nope')).toEqual({ ok: false, reason: 'changed' });
+  });
+
+  it('refuses a contenteditable selection whose text was edited', async () => {
+    const host = document.createElement('div');
+    host.contentEditable = 'true';
+    host.textContent = 'hello world';
+    document.body.append(host);
+    selectText(host.firstChild, 0, 5);
+    const captured = captureSelection(document);
+    host.firstChild.insertData(2, 'XX');
+    const result = await confirmReplace(captured.replace, 'HELLO', async () => {});
+    expect(result).toEqual({ ok: false, reason: 'changed' });
+    expect(host.textContent).toBe('heXXllo world');
+  });
+});
+
 describe('fail closed when the field cannot be classified', () => {
   it('refuses password fields, secret autocomplete, and a password shadow host', () => {
     const password = document.createElement('input');

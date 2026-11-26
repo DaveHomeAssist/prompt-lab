@@ -242,6 +242,87 @@ test('a failed dispute cancellation answers 5xx so Stripe redelivers the event',
   assert.match(body.error, /Stripe is unavailable/);
 });
 
+// REVIEW-2026-11-25 High: parallel checkouts must not leave two live Prompt
+// Lab subscriptions on one customer.
+function subscriptionEvent(type, object) {
+  return { id: `evt_${type}_${object.id}`, type, data: { object: { customer: 'cus_dup', ...object } } };
+}
+
+function duplicateFake(subscriptions) {
+  const calls = [];
+  const fetch = async (url, init = {}) => {
+    const parsed = new URL(String(url));
+    calls.push({ method: init.method || 'GET', path: parsed.pathname, search: parsed.search });
+    if (parsed.pathname === '/v1/subscriptions' && (init.method || 'GET') === 'GET') {
+      assert.equal(parsed.searchParams.get('customer'), 'cus_dup');
+      return Response.json({ data: subscriptions });
+    }
+    if (init.method === 'DELETE' && parsed.pathname.startsWith('/v1/subscriptions/')) {
+      return Response.json({ id: parsed.pathname.split('/').pop(), status: 'canceled' });
+    }
+    throw new Error(`Unexpected Stripe request ${init.method || 'GET'} ${parsed.pathname}`);
+  };
+  return { calls, fetch };
+}
+
+async function runSubscriptionEvent(fake, event) {
+  globalThis.fetch = fake.fetch;
+  const webhook = await loadWebhook();
+  const response = await webhook(signedRequest(event));
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  const cancels = fake.calls.filter((call) => call.method === 'DELETE').map((call) => call.path);
+  return { body, cancels };
+}
+
+test('a second live Prompt Lab subscription on one customer is canceled and the oldest kept', async () => {
+  configureEnv();
+  const older = subscription('sub_first', 'price_monthly', 'active', DISPUTE_CREATED);
+  const newer = subscription('sub_second', 'price_monthly', 'active', DISPUTE_CREATED + 5);
+  const fake = duplicateFake([newer, older]);
+  const { body, cancels } = await runSubscriptionEvent(fake, subscriptionEvent('customer.subscription.created', newer));
+  assert.equal(body.access, 'canceled');
+  assert.deepEqual(cancels, ['/v1/subscriptions/sub_second']);
+  assert.match(new URLSearchParams(fake.calls.find((call) => call.method === 'DELETE').search).get('cancellation_details[comment]'), /duplicate subscription \(kept sub_first\)/);
+});
+
+test('the oldest live subscription is never canceled, even when its own event arrives late', async () => {
+  configureEnv();
+  const older = subscription('sub_first', 'price_monthly', 'active', DISPUTE_CREATED);
+  const newer = subscription('sub_second', 'price_yearly', 'trialing', DISPUTE_CREATED + 5);
+  const fake = duplicateFake([older, newer]);
+  const { body, cancels } = await runSubscriptionEvent(fake, subscriptionEvent('customer.subscription.created', older));
+  assert.equal(body.access, 'none');
+  assert.deepEqual(cancels, []);
+});
+
+test('a duplicate that becomes live through an update is canceled', async () => {
+  configureEnv();
+  const older = subscription('sub_first', 'price_monthly', 'active', DISPUTE_CREATED);
+  const newer = subscription('sub_second', 'price_monthly', 'active', DISPUTE_CREATED + 60);
+  const fake = duplicateFake([older, newer]);
+  const { cancels } = await runSubscriptionEvent(fake, subscriptionEvent('customer.subscription.updated', newer));
+  assert.deepEqual(cancels, ['/v1/subscriptions/sub_second']);
+});
+
+test('a single subscription, a resubscription after cancel, or another product changes nothing', async () => {
+  configureEnv();
+  const canceled = subscription('sub_old', 'price_monthly', 'canceled', DISPUTE_CREATED);
+  const fresh = subscription('sub_new', 'price_monthly', 'active', DISPUTE_CREATED + 86_400);
+  const other = subscription('sub_other', 'price_other_product', 'active', DISPUTE_CREATED + 90_000);
+  const incomplete = subscription('sub_pending', 'price_monthly', 'incomplete', DISPUTE_CREATED + 90_001);
+  for (const event of [
+    subscriptionEvent('customer.subscription.created', fresh),
+    subscriptionEvent('customer.subscription.created', other),
+    subscriptionEvent('customer.subscription.created', incomplete),
+  ]) {
+    const fake = duplicateFake([canceled, fresh, other, incomplete]);
+    const { body, cancels } = await runSubscriptionEvent(fake, event);
+    assert.equal(body.access, 'none', event.data.object.id);
+    assert.deepEqual(cancels, [], event.data.object.id);
+  }
+});
+
 test('refunds and other lifecycle events are recorded without changing access', async () => {
   configureEnv();
   globalThis.fetch = async (url) => { throw new Error(`Unexpected request ${url}`); };

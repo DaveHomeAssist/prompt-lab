@@ -17,10 +17,10 @@ if (!globalThis.__promptLabHighlight) {
     await navigator.clipboard.writeText(text);
   };
 
-  const fallbackCopy = async (text) => {
+  const fallbackCopy = async (text, message = 'Copied, paste to replace') => {
     try {
       await copyText(text);
-      return { ok: true, fallback: true, message: 'Copied, paste to replace' };
+      return { ok: true, fallback: true, message };
     } catch (error) {
       return {
         ok: false,
@@ -39,6 +39,7 @@ if (!globalThis.__promptLabHighlight) {
         if (!session?.replace) return fallbackCopy(value);
         const result = await confirmReplace(session.replace, value);
         if (result?.ok) return { ok: true, message: 'Replaced the selection.' };
+        if (result?.reason === 'changed') return fallbackCopy(value, 'The text changed since you selected it. Copied, paste to replace');
         return fallbackCopy(value);
       },
       onCopy: copyText,

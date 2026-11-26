@@ -102,10 +102,17 @@ function selectControlRange(element, start, end) {
   }
 }
 
-export function replaceTextControl(element, text, start, end) {
+export function replaceTextControl(element, text, start, end, expectedOriginal) {
   const before = String(element.value ?? '');
   if (!Number.isInteger(start) || !Number.isInteger(end) || start < 0 || end > before.length || start >= end) {
     return { ok: false, reason: 'no-selection' };
+  }
+  // REVIEW-2026-11-25 High: the offsets were captured when the menu was
+  // clicked. If the field was edited while the result was pending, they no
+  // longer point at the selected words, so refuse instead of overwriting
+  // the wrong span. The caller copies the result instead.
+  if (typeof expectedOriginal === 'string' && before.slice(start, end) !== expectedOriginal) {
+    return { ok: false, reason: 'changed' };
   }
   const expected = before.slice(0, start) + text + before.slice(end);
   const doc = element.ownerDocument;
@@ -152,8 +159,16 @@ function restoreNodes(host, nodes) {
  * before the next one, and the result is accepted only when the host text
  * matches the edit exactly.
  */
-export function replaceContentEditable(host, range, text) {
+export function replaceContentEditable(host, range, text, expectedOriginal) {
   const doc = host.ownerDocument;
+  // REVIEW-2026-11-25 High: the live range moves with edits around it, but an
+  // edit inside it changes its text. Refuse rather than replace what the user
+  // typed since the capture.
+  if (typeof expectedOriginal === 'string') {
+    let current = null;
+    try { current = range.toString(); } catch { current = null; }
+    if (current !== expectedOriginal) return { ok: false, reason: 'changed' };
+  }
   const snapshot = snapshotNodes(host);
   const before = editableText(host);
   const start = boundaryOffset(host, range.startContainer, range.startOffset);
@@ -225,7 +240,7 @@ export function captureSelection(doc = document) {
           text,
           kind: active.tagName === 'TEXTAREA' ? 'textarea' : 'input',
           rect: rectOf(active),
-          replace: (next) => replaceTextControl(active, next, start, end),
+          replace: (next) => replaceTextControl(active, next, start, end, text),
         };
       }
     }
@@ -248,11 +263,12 @@ export function captureSelection(doc = document) {
       replace: () => ({ ok: false, reason: 'not-editable' }),
     };
   }
+  const rangeText = range.toString();
   return {
     text,
     kind: 'contenteditable',
     rect: rectOfRange(range, host),
-    replace: (next) => replaceContentEditable(host, range, next),
+    replace: (next) => replaceContentEditable(host, range, next, rangeText),
   };
 }
 

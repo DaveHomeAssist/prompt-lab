@@ -28,10 +28,14 @@ Output format
 - [format instruction]`;
 
 export function buildCopyReadyPromptPayload(sourceText) {
-  const { task, requirements } = parsePromptIntent(sourceText);
+  const source = String(sourceText || '').trim();
+  const { task, requirements, hasSections } = parsePromptIntent(source, { full: true });
   const requirementText = requirements.length
     ? requirements.map((item) => `- ${item}`).join('\n')
     : '- Ask only for missing context that blocks the work.\n- Return a structured answer with concise headings.\n- Include assumptions, risks, and concrete next actions.';
+  // When the task came from a "Task:" section, other sections (Context,
+  // Constraints, Output) would otherwise be dropped, so the full source goes too.
+  const fullSource = hasSections ? ['', 'Full source:', source] : [];
 
   return {
     model: DEFAULTS.anthropicModel,
@@ -45,10 +49,11 @@ export function buildCopyReadyPromptPayload(sourceText) {
           'Create a copy-ready prompt from this source.',
           '',
           'Task:',
-          task || sourceText,
+          task || source,
           '',
           'Requirements:',
           requirementText,
+          ...fullSource,
         ].join('\n'),
       },
     ],

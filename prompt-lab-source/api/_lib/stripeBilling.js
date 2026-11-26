@@ -247,6 +247,7 @@ async function stripeRequest(config, path, { method = 'GET', body = null, idempo
   if (!response.ok) {
     const error = new Error(extractStripeError(payload, 'Stripe request failed.'));
     error.status = response.status;
+    if (typeof payload?.error?.type === 'string') error.type = payload.error.type;
     // SEC-A10: routes show a generic message for upstream failures instead of
     // Stripe's own text (see clientErrorMessage).
     error.upstream = 'stripe';
@@ -279,6 +280,12 @@ export function findCheckoutBlockingSubscription(subscriptions, config) {
     .filter(Boolean)
     .sort((left, right) => rankSubscriptionStatus(left.status) - rankSubscriptionStatus(right.status))
     .find((candidate) => CHECKOUT_BLOCKING_STATUSES.has(candidate.status)) || null;
+}
+
+const CHECKOUT_IDEMPOTENCY_WINDOW_MS = 10 * 60 * 1000;
+
+export function checkoutIdempotencyKey(customerId, priceId, now = Date.now()) {
+  return `promptlab-checkout:${customerId}:${priceId}:${Math.floor(now / CHECKOUT_IDEMPOTENCY_WINDOW_MS)}`;
 }
 
 export async function createCheckout(config, {
@@ -339,10 +346,40 @@ export async function createCheckout(config, {
     params.set(`subscription_data[metadata][${key}]`, value);
   }
 
-  const payload = await stripeRequest(config, 'checkout/sessions', {
-    method: 'POST',
-    body: params,
-  });
+  // REVIEW-2026-11-25 High: two tabs or devices that both pass the blocking
+  // check above must not each get their own Checkout Session. The same
+  // customer and price inside one 10-minute window replays the first session
+  // (Stripe answers an idempotency error if the parameters differ), and the
+  // webhook policy below cancels any duplicate that still gets through, for
+  // example across a window boundary.
+  const idempotencyKey = checkoutIdempotencyKey(customer.id, priceId);
+  let payload;
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      payload = await stripeRequest(config, 'checkout/sessions', {
+        method: 'POST',
+        body: params,
+        idempotencyKey,
+      });
+      break;
+    } catch (error) {
+      // 409: the same key is still in flight in another tab; a retry replays
+      // its session once it finishes.
+      if (error?.status === 409 && attempt < CUSTOMER_CREATE_RETRY_DELAYS_MS.length) {
+        await new Promise((resolve) => setTimeout(resolve, CUSTOMER_CREATE_RETRY_DELAYS_MS[attempt]));
+        continue;
+      }
+      // Same key, different parameters (another surface opened checkout in
+      // this window): send this one to the checkout that is already open.
+      if (error?.type === 'idempotency_error' || error?.status === 409) {
+        throw new BillingConflictError(
+          'A checkout is already open for this account. Finish it in the other window, or try again in a few minutes.',
+          { code: 'checkout_in_progress' },
+        );
+      }
+      throw error;
+    }
+  }
 
   return {
     checkoutUrl: payload?.url || '',
@@ -780,6 +817,59 @@ async function resolveDisputedPayment(config, dispute) {
   return { charge, invoice };
 }
 
+// REVIEW-2026-11-25 High: one Prompt Lab subscription per customer. When a
+// subscription is created (or becomes live through an update) while the
+// customer already has an older live Prompt Lab subscription, the newer one is
+// a duplicate from parallel checkouts and is canceled immediately. Only the
+// subscription named by the event is ever canceled, and the oldest live one
+// always survives, so redelivered or out-of-order events agree. A charge the
+// duplicate already took is a billing error under docs/billing-policy.md and
+// is refunded by the operator; this code does not move money.
+async function cancelDuplicateSubscription(payload, config) {
+  const subscription = payload?.data?.object || {};
+  const subscriptionId = objectId(subscription);
+  const customerId = objectId(subscription?.customer);
+  if (!subscriptionId || !customerId) return { action: 'none', reason: 'subscription has no id or customer' };
+
+  const allowedPriceMap = getAllowedPriceMap(config);
+  const eventCandidate = buildSubscriptionCandidate(subscription, allowedPriceMap);
+  if (!eventCandidate) return { action: 'none', reason: 'not a Prompt Lab subscription', customerId };
+  if (!CHECKOUT_BLOCKING_STATUSES.has(eventCandidate.status)) {
+    return { action: 'none', reason: 'subscription is not live', customerId };
+  }
+
+  const live = (await listSubscriptions(config, customerId)).filter((item) => {
+    const candidate = buildSubscriptionCandidate(item, allowedPriceMap);
+    return candidate && CHECKOUT_BLOCKING_STATUSES.has(candidate.status);
+  });
+  if (!live.some((item) => objectId(item) === subscriptionId)) live.push(subscription);
+  if (live.length < 2) return { action: 'none', customerId };
+
+  const created = (item) => (Number.isFinite(Number(item?.created)) ? Number(item.created) : Number.MAX_SAFE_INTEGER);
+  const [keeper] = [...live].sort((left, right) => (created(left) - created(right))
+    || objectId(left).localeCompare(objectId(right)));
+  if (objectId(keeper) === subscriptionId) {
+    return { action: 'none', reason: 'oldest live subscription is kept', customerId };
+  }
+
+  const params = new URLSearchParams();
+  params.set('cancellation_details[comment]', `prompt-lab billing policy: duplicate subscription (kept ${objectId(keeper)})`);
+  try {
+    await stripeRequest(config, `subscriptions/${encodeURIComponent(subscriptionId)}?${params.toString()}`, {
+      method: 'DELETE',
+    });
+  } catch (error) {
+    if (!isAlreadyCanceledError(error)) throw error;
+  }
+  return {
+    action: 'canceled',
+    reason: 'duplicate subscription',
+    customerId,
+    subscriptionIds: [subscriptionId],
+    keptSubscriptionId: objectId(keeper),
+  };
+}
+
 // Billing policy (docs/billing-policy.md): when a customer opens a card dispute
 // (chargeback or inquiry) on a Prompt Lab subscription payment, that Prompt Lab
 // subscription is canceled immediately, which ends Pro on the next license check
@@ -788,9 +878,13 @@ async function resolveDisputedPayment(config, dispute) {
 // the same Stripe customer change nothing. Only subscriptions that existed when
 // the dispute was opened are touched, so a later resubscription survives a
 // delayed or retried delivery of the same event. All other events are recorded
-// only; refunds do not change access by themselves.
+// only; refunds do not change access by themselves. Subscription created and
+// updated events run the duplicate check above instead.
 export async function applyWebhookAccessPolicy(payload = {}, config = buildStripeConfig()) {
   const eventType = String(payload?.type || '').trim().toLowerCase();
+  if (eventType === 'customer.subscription.created' || eventType === 'customer.subscription.updated') {
+    return cancelDuplicateSubscription(payload, config);
+  }
   if (eventType !== 'charge.dispute.created') return { action: 'none' };
 
   const dispute = payload?.data?.object || {};
