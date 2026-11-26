@@ -13,9 +13,34 @@ installHighlightMenus();
 // terminate the underlying provider fetch, not just the UI's promise.
 const activeModelRequests = new Map();
 
+// Content scripts share this extension's id but run inside pages the user
+// visits. They may send only highlight control messages. Provider calls,
+// arbitrary Ollama fetches and tab capture stay with extension pages.
+const CONTENT_SCRIPT_MESSAGE_TYPES = new Set(['PL_HIGHLIGHT_CANCEL', 'HIGHLIGHT_STATUS']);
+
+function senderIsExtensionPage(sender) {
+  try {
+    return new URL(sender?.url || '').protocol === 'chrome-extension:';
+  } catch {
+    return false;
+  }
+}
+
+function acceptsRuntimeMessage(msg, sender) {
+  // Unit tests omit runtime.id. In the browser it is always this extension.
+  if (sender?.id !== chrome.runtime.id) return false;
+  // A side panel can be associated with a tab and still be an extension page.
+  // Content scripts cannot set a chrome-extension sender URL.
+  if (senderIsExtensionPage(sender)) return true;
+  if (sender?.tab && !CONTENT_SCRIPT_MESSAGE_TYPES.has(msg?.type)) return false;
+  return true;
+}
+
 // ── Message listener ────────────────────────────────────────────────────────
 
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (!acceptsRuntimeMessage(msg, sender)) return;
+
   // Ollama model discovery — returns list of installed models
   if (msg?.type === 'OLLAMA_LIST_MODELS') {
     (async () => {

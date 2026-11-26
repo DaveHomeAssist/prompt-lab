@@ -114,6 +114,7 @@ async function createJwksHarness() {
     const payload = {
       sub: userId,
       iss: issuer,
+      azp: 'https://promptlab.tools',
       email_verified: true,
       ...claims,
     };
@@ -520,6 +521,24 @@ for (const [name, options] of [
     });
   }
 }
+
+test('billing rejects a token with no authorized party', async () => {
+  const jwks = await createJwksHarness();
+  const calls = [];
+  installStripeFetchMock(calls);
+  try {
+    const handler = await loadHandler(licenseUrl);
+    const response = await handler(new Request('https://promptlab.tools/api/billing/license', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${jwks.tokenFor({ claims: { azp: undefined } })}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'validate' }),
+    }));
+    assert.equal(response.status, 401);
+    assert.equal(calls.length, 0);
+  } finally {
+    await jwks.close();
+  }
+});
 
 for (const azp of ['https://promptlab.tools', 'https://untrusted.example']) {
   test(`billing validates the signed token authorized party: ${azp}`, async () => {
