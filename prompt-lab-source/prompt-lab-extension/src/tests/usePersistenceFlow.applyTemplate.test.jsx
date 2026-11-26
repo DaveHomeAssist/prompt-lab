@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import usePersistenceFlow from '../hooks/usePersistenceFlow.js';
 import PostEnhanceResults from '../PostEnhanceResults.jsx';
+import { getEvalRunById, saveEvalRun } from '../experimentStore.js';
 
 vi.mock('../lib/platform.js', () => ({
   sessionGet: vi.fn((_key, cb) => cb(null)),
@@ -147,6 +148,12 @@ describe('Apply Template display', () => {
     const template = makeTemplate();
     template.original = 'Address {{customer_name}} formally.';
     template.enhanced = 'Address {{customer_name}} formally.';
+    template.sourceNoteId = 'note-template';
+    template.metadata = {
+      followUpOrigin: {
+        version: 1, sourceKind: 'enhanced-prompt', sourcePromptId: 'parent-prompt', sourceRunId: 'run-parent',
+      },
+    };
     template.resultMeta = {
       runId: 'run-template',
       selectedCandidateId: 'improved',
@@ -157,6 +164,19 @@ describe('Apply Template display', () => {
         before: 'Hello {{customer_name}}', after: 'Address {{customer_name}} formally.',
       }],
     };
+    localStorage.setItem('pl2-pads', JSON.stringify({
+      revision: 1,
+      pads: [{ id: 'note-template', name: 'Source', content: 'scratch', linkedPromptId: 'followup' }],
+    }));
+    await saveEvalRun({
+      id: 'run-template',
+      promptId: 'followup',
+      promptVersionId: 'followup-v1',
+      promptTitle: 'Customer follow-up email',
+      mode: 'enhance',
+      input: template.original,
+      output: template.enhanced,
+    });
     const library = [template];
     const flowRef = { current: null };
     const savedPayloads = [];
@@ -176,7 +196,15 @@ describe('Apply Template display', () => {
     expect(screen.getByTestId('output-textarea')).toHaveValue('Hello Maya');
 
     await act(async () => { await flowRef.current.doSave(); });
-    expect(savedPayloads.at(-1).resultMeta.runId).toBe('');
+    const saved = savedPayloads.at(-1);
+    expect(saved.resultMeta.runId).toBe('');
+    expect(saved.sourceNoteId).toBe('');
+    expect(saved.metadata?.followUpOrigin).toBeUndefined();
+    expect(saved.editingId).toBeFalsy();
+    const linkedRun = await getEvalRunById('run-template');
+    expect(linkedRun.promptId).toBe('followup');
+    expect(linkedRun.promptVersionId).toBe('followup-v1');
+    expect(JSON.parse(localStorage.getItem('pl2-pads')).pads[0].linkedPromptId).toBe('followup');
     expect(template.resultMeta.runId).toBe('run-template');
     expect(template.resultMeta.reversibleEdits[0].after).toBe('Address {{customer_name}} formally.');
     expect(template.enhanced).toBe('Address {{customer_name}} formally.');

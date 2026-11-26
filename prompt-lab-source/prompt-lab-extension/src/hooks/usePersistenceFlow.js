@@ -342,10 +342,11 @@ export default function usePersistenceFlow({ ui, lib, editor, profileSendRef }) 
     routeResolvedEntry(entry, 'editor');
   };
 
-  const detachFilledDraft = () => {
+  const detachFilledDraft = (resolved) => {
     // The filled text is a new unsaved draft. Clearing the source id (and the
     // snapshot save would copy versions from) makes Save create a new prompt.
-    // Skip still opens the template itself and keeps its version history.
+    // The template keeps its experiment, scratch note, and follow-up origin:
+    // a surviving runId would reassign that eval run to the new prompt.
     activeEntryRef.current = null;
     setEditingId(null);
     setEditingVersionId(null);
@@ -353,18 +354,17 @@ export default function usePersistenceFlow({ ui, lib, editor, profileSendRef }) 
     setSaveSourceEntry(null);
     setSourceNoteId('');
     setFollowUpOrigin(null);
+    const meta = resolved?.resultMeta;
+    if (meta && typeof meta === 'object') {
+      setResultMeta?.({ ...meta, runId: '' });
+    }
   };
 
   const applyTemplateWithVals = (entry, values, target = 'editor') => {
     const resolved = buildResolvedEntry(entry, values);
     if (!resolved) return;
-    if (target === 'editor' && resolved.resultMeta && typeof resolved.resultMeta === 'object') {
-      // The template's experiment stays on the template. A filled draft that
-      // kept runId would reassign that run to the new prompt on save.
-      resolved.resultMeta = { ...resolved.resultMeta, runId: '' };
-    }
     routeResolvedEntry(resolved, target);
-    if (target === 'editor') detachFilledDraft();
+    if (target === 'editor') detachFilledDraft(resolved);
   };
 
   const resolveEntryForTarget = async (entry, target = 'editor') => {
