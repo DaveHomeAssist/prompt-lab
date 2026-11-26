@@ -3,7 +3,7 @@
 // Storage and transport, so the same code runs in the web app, the extension
 // and the Tauri webview, and in tests against a real Postgres.
 // Protocol: docs/ACCOUNT_SYNC_DESIGN.md.
-import { createSyncQueue } from './syncQueue.js';
+import { createSyncQueue, QUEUE_CORRUPT_ERROR } from './syncQueue.js';
 import { hashValue } from './syncHash.js';
 import { STRUCTURE_ID, applyRemoteRows, duplicateKey, itemKey, mergeStructure, readLocalItems } from './syncModel.js';
 import { LIBRARY_DELETED_BATCH_PREFIX, readLibraryDeletionState } from '../libraryDeletion.js';
@@ -453,6 +453,19 @@ export function createSyncEngine({ storage, transport, userId, deviceId = getDev
   }
 
   async function runSync({ allowOwnerChange = false } = {}) {
+    if (queue.isCorrupt()) {
+      return {
+        status: 'error',
+        queueCorrupt: true,
+        error: QUEUE_CORRUPT_ERROR,
+        pending: 0,
+        pulled: 0,
+        pushed: 0,
+        conflicts: 0,
+        dropped: 0,
+        written: [],
+      };
+    }
     const owner = storage.getItem(OWNER_KEY);
     if (owner && owner !== userId && !allowOwnerChange) {
       return { status: 'owner-mismatch', pending: queue.size() };

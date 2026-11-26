@@ -12,20 +12,43 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
-function renderInline(text) {
+function emphasize(text) {
   return text
-    .replace(/`([^`]+)`/g, '<code>$1</code>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/__(.+?)__/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/_(.+?)_/g, '<em>$1</em>')
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, label, href) => {
-      const url = href.trim();
-      if (/^(https?:\/\/|mailto:|#)/i.test(url)) {
-        return `<a href="${url}" rel="noopener">${label}</a>`;
-      }
-      return label;
-    });
+    .replace(/\*\*(.+?)\*\*/g, (_match, body) => `<strong>${body}</strong>`)
+    .replace(/__(.+?)__/g, (_match, body) => `<strong>${body}</strong>`)
+    .replace(/\*(.+?)\*/g, (_match, body) => `<em>${body}</em>`)
+    .replace(/(^|\W)_(\S.*?\S|\S)_(?=\W|$)/g, (_match, prefix, body) => `${prefix}<em>${body}</em>`);
+}
+
+// Code spans and links are held out of the emphasis pass. Otherwise `_` and
+// `*` inside them become tags, including inside an href.
+function renderInline(text) {
+  const slots = [];
+  const hold = (html) => {
+    const token = `\u0000md${slots.length}\u0000`;
+    slots.push(html);
+    return token;
+  };
+  const restore = (value) => {
+    let current = value;
+    for (let pass = 0; pass <= slots.length; pass += 1) {
+      const next = current.replace(/\u0000md(\d+)\u0000/g, (_match, index) => slots[Number(index)] ?? '');
+      if (next === current) return current;
+      current = next;
+    }
+    return current;
+  };
+
+  let working = text.replace(/`([^`]+)`/g, (_match, code) => hold(`<code>${code}</code>`));
+  working = working.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, label, href) => {
+    const url = href.trim();
+    const renderedLabel = emphasize(label);
+    if (/^(https?:\/\/|mailto:|#)/i.test(url)) {
+      return hold(`<a href="${url}" rel="noopener">${renderedLabel}</a>`);
+    }
+    return renderedLabel;
+  });
+  return restore(emphasize(working));
 }
 
 function renderCodeBlock(lines, language = '') {
