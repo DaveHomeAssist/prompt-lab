@@ -80,6 +80,12 @@ function setOllamaStatus(text, type = '') {
   els.ollamaStatus.style.color = type === 'ok' ? 'var(--green)' : type === 'err' ? 'var(--red)' : 'var(--text-muted)';
 }
 
+// Model names come from a user-configured server. Build options with the DOM
+// so a name cannot be parsed as HTML on the page that holds API keys.
+function setOllamaModelChoices(choices) {
+  els.ollamaModel.replaceChildren(...choices.map((choice) => new Option(choice.label, choice.value)));
+}
+
 function fetchOllamaModels(selectModel) {
   const baseUrl = getOllamaBaseUrl();
   setOllamaStatus('checking…');
@@ -93,7 +99,7 @@ function fetchOllamaModels(selectModel) {
       if (chrome.runtime.lastError || resp?.error) {
         const errMsg = resp?.error || chrome.runtime.lastError?.message || 'Cannot reach Ollama';
         setOllamaStatus('offline', 'err');
-        els.ollamaModel.innerHTML = '<option value="">— Ollama not reachable —</option>';
+        setOllamaModelChoices([{ label: '— Ollama not reachable —', value: '' }]);
         // The user may have switched to another provider while this was pending.
         if (currentProvider === 'ollama') setStatus(`Ollama: ${errMsg}`, 'err');
         return;
@@ -102,18 +108,17 @@ function fetchOllamaModels(selectModel) {
       const models = resp.models || [];
       if (models.length === 0) {
         setOllamaStatus('no models', 'err');
-        els.ollamaModel.innerHTML = '<option value="">— no models installed —</option>';
+        setOllamaModelChoices([{ label: '— no models installed —', value: '' }]);
         return;
       }
 
       setOllamaStatus(`${models.length} model${models.length > 1 ? 's' : ''}`, 'ok');
       ollamaModelsLoaded = true;
 
-      // Build dropdown options
-      els.ollamaModel.innerHTML = models.map(m => {
-        const sizeLabel = m.paramSize ? ` (${m.paramSize})` : '';
-        return `<option value="${m.name}">${m.name}${sizeLabel}</option>`;
-      }).join('');
+      setOllamaModelChoices(models.map((model) => {
+        const sizeLabel = model.paramSize ? ` (${model.paramSize})` : '';
+        return { label: `${model.name}${sizeLabel}`, value: model.name };
+      }));
 
       // Select the right model
       const target = selectModel || DEFAULTS.ollamaModel;

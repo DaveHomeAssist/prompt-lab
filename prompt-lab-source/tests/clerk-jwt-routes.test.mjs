@@ -359,6 +359,27 @@ test('proxy keeps a future iat and rejects an exp 3s in the past', async () => {
   assert.equal(await access({ exp: now - 3 }), 'standard');
 });
 
+test('billing manual mode uses the issuer public JWKS when no override or secret is set', async () => {
+  useBillingEnv('manual');
+  delete process.env.CLERK_JWKS_URL;
+  delete process.env.CLERK_SECRET_KEY;
+  delete process.env.CLERK_JWT_KEY;
+  const result = await callBilling(ROUTES[0], billingToken());
+  assert.equal(result.status, 200, JSON.stringify(result.body));
+  assert.ok(result.calls.includes(`${ISSUER}/.well-known/jwks.json`));
+  assert.equal(result.calls.includes('https://api.clerk.com/v1/jwks'), false);
+});
+
+test('billing rejects a token that omits the authorized party', async () => {
+  for (const mode of ['manual', 'sdk']) {
+    useBillingEnv(mode);
+    const result = await callBilling(ROUTES[0], billingToken({ azp: undefined }));
+    assert.equal(result.status, 401, mode);
+    assert.equal(result.body.error, 'Invalid or expired Clerk authorization.');
+    assert.equal(result.calls.some((url) => url.includes('api.stripe.com')), false);
+  }
+});
+
 test('billing accepts a foreign issuer when CLERK_JWT_ISSUER is unset, and accepts azp equal to the request origin', async () => {
   useBillingEnv('manual');
   delete process.env.CLERK_JWT_ISSUER;

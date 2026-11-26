@@ -28,6 +28,10 @@ describe('account sync UI', () => {
     expect(screen.getByText('Synced just now')).toBeTruthy();
     expect(screen.getByTestId('sync-conflicts-link').textContent).toBe('2 conflict copies');
     expect(describeSyncStatus({ status: 'offline', pending: 3 }).detail).toMatch(/3 changes waiting/);
+    expect(describeSyncStatus({ status: 'error', queueCorrupt: true })).toMatchObject({
+      tone: 'blocked',
+      detail: 'Pending changes could not be read',
+    });
   });
 
   it('blocks a different account on this device and uploads nothing', async () => {

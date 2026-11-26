@@ -303,8 +303,11 @@ pub fn complete(pending: &Pending, code: &str, store: &dyn SecretStore) -> Resul
         ("redirect_uri", pending.redirect_uri.as_str()),
     ])
     .map_err(|error| match error { TokenError::Rejected => "sign-in was refused".to_string(), TokenError::Failed(message) => message })?;
-    if let Some(refresh) = tokens.refresh_token.as_deref() {
-        store.set(refresh)?;
+    // A sign-in that omits a refresh token must not keep the previous
+    // account's token. The next refresh would otherwise mint for that account.
+    match tokens.refresh_token.as_deref() {
+        Some(refresh) => store.set(refresh)?,
+        None => store.delete()?,
     }
     Ok(AccessToken { access_token: tokens.access_token, expires_in: tokens.expires_in })
 }
@@ -484,6 +487,19 @@ mod tests {
         let request = server.join().unwrap();
         assert!(request.contains("grant_type=authorization_code"));
         assert!(request.contains(&format!("code_verifier={}", pending.verifier)));
+    }
+
+    #[test]
+    fn sign_in_without_a_refresh_token_clears_the_previous_account() {
+        let (url, server) = token_server(200, r#"{"access_token":"at-new","expires_in":60,"token_type":"Bearer"}"#);
+        let (mut pending, _) = begin("https://clerk.example.test", "client_1").unwrap();
+        pending.token_url = url;
+        let store = MemoryStore(RefCell::new(Some("rt-previous".into())));
+        let token = complete(&pending, "the-code", &store).unwrap();
+        assert_eq!(token.access_token, "at-new");
+        assert_eq!(token.expires_in, 60);
+        assert_eq!(store.get().unwrap(), None);
+        server.join().unwrap();
     }
 
     #[test]

@@ -80,6 +80,7 @@ async function createJwksHarness() {
       email: 'user@example.com',
       email_address: 'user@example.com',
       email_verified: true,
+      azp: 'https://promptlab.tools',
       iss: issuer,
     }, privateKey, {
       algorithm: 'RS256',

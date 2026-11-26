@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { readSyncConfig } from '../lib/sync/syncConfig.js';
 import { hashValue, stableStringify } from '../lib/sync/syncHash.js';
-import { backoffDelay, createSyncQueue, MAX_DELAY_MS } from '../lib/sync/syncQueue.js';
+import { backoffDelay, createSyncQueue, MAX_DELAY_MS, QUEUE_CORRUPT_ERROR } from '../lib/sync/syncQueue.js';
 import { applyRemoteRows, duplicateKey, mergeStructure, readLocalItems } from '../lib/sync/syncModel.js';
 import { createSupabaseTransport, downloadAccountExport, exportAccountData } from '../lib/sync/supabaseTransport.js';
 import { areUploadsSuspended, createSyncEngine, isKeptSeparate, KEPT_SEPARATE_KEY, OWNER_KEY, rememberKeptSeparate, rememberUploadsSuspended, UPLOADS_SUSPENDED_KEY } from '../lib/sync/syncEngine.js';
@@ -52,6 +52,36 @@ describe('sync queue', () => {
     expect(queue.acknowledge('prompt:a', 2)).toBe(true);
     expect(queue.size()).toBe(0);
   });
+
+  it('keeps a corrupt outbox, stores a backup, and does not replace it on the next write', () => {
+    const storage = memory();
+    const raw = '{"prompt:a":';
+    storage.setItem('q', raw);
+    const queue = createSyncQueue(storage, 'q', { now: () => 1700000000000 });
+    expect(queue.isCorrupt()).toBe(true);
+    expect(queue.entries()).toEqual([]);
+    expect(queue.put({ key: 'prompt:b', lamport: 2 })).toBe(false);
+    expect(queue.acknowledge('prompt:a', 1)).toBe(false);
+    expect(storage.getItem('q')).toBe(raw);
+    expect(storage.getItem('q:corrupt:1700000000000')).toBe(raw);
+    expect(queue.isCorrupt()).toBe(true);
+    expect(storage.getItem('q:corrupt:1700000000000')).toBe(raw);
+  });
+
+  it('returns false when the outbox write hits quota instead of throwing', () => {
+    const storage = memory();
+    const queue = createSyncQueue(storage, 'q');
+    queue.put({ key: 'prompt:a', lamport: 1 });
+    storage.setItem = (key) => {
+      if (key === 'q') {
+        const error = new Error('quota');
+        error.name = 'QuotaExceededError';
+        throw error;
+      }
+    };
+    expect(queue.put({ key: 'prompt:a', lamport: 2 })).toBe(false);
+    expect(storage.getItem('q')).toContain('"lamport":1');
+  });
 });
 
 describe('sync model', () => {
@@ -100,6 +130,72 @@ describe('sync transport and engine', () => {
     expect(calls[0].url).toBe('https://abc.supabase.co/rest/v1/rpc/sync_pull');
     expect(calls[0].init.headers).toMatchObject({ apikey: 'sb_publishable_x', Authorization: 'Bearer clerk-token' });
   });
+  it('does not apply a newer remote row when the unsynced local edit cannot be queued', async () => {
+    const storage = memory();
+    const local = { id: 'a', title: 'local edit', original: 'mine', updatedAt: '2026-11-26T12:00:00.000Z' };
+    storage.setItem('pl2-library', JSON.stringify([local]));
+    storage.setItem(OWNER_KEY, 'user_1');
+    storage.setItem('pl2-sync-state:user_1', JSON.stringify({
+      initialized: true,
+      cursor: 1,
+      clock: 1,
+      lastManifestAt: Date.now(),
+      shadow: { 'prompt:a': { version: 1, hash: 'previous-sync' } },
+      oversize: {},
+      lost: {},
+    }));
+    const write = storage.setItem.bind(storage);
+    storage.setItem = (key, value) => {
+      if (key === 'pl2-sync-queue:user_1') {
+        const error = new Error('quota');
+        error.name = 'QuotaExceededError';
+        throw error;
+      }
+      write(key, value);
+    };
+    const calls = [];
+    const transport = {
+      pull: async () => {
+        calls.push('pull');
+        return [{
+          kind: 'prompt',
+          item_id: 'a',
+          version: 2,
+          change_seq: 2,
+          deleted: false,
+          lamport: 2,
+          payload: { state: 'active', entry: { id: 'a', title: 'remote', original: 'theirs', updatedAt: '2026-11-26T13:00:00.000Z' } },
+        }];
+      },
+      push: async () => { calls.push('push'); return []; },
+      manifest: async () => [],
+      fetchItems: async () => [],
+    };
+    const result = await createSyncEngine({ storage, transport, userId: 'user_1', deviceId: 'd' }).syncOnce();
+    expect(calls).toEqual(['pull']);
+    expect(result.status).toBe('error');
+    expect(result.error).toBe('Pending changes could not be saved');
+    expect(JSON.parse(storage.getItem('pl2-library'))).toEqual([local]);
+  });
+
+  it('does not discard a corrupt outbox when a sync runs', async () => {
+    const storage = memory();
+    const raw = '{"prompt:a":';
+    storage.setItem('pl2-sync-queue:user_1', raw);
+    const transport = createSupabaseTransport({
+      url: 'https://abc.supabase.co',
+      publishableKey: 'k',
+      getToken: async () => 'token',
+      fetchImpl: async () => { throw new Error('should not fetch'); },
+    });
+    const result = await createSyncEngine({ storage, transport, userId: 'user_1', deviceId: 'd' }).syncOnce();
+    expect(result).toMatchObject({ status: 'error', queueCorrupt: true, error: QUEUE_CORRUPT_ERROR, pending: 0 });
+    expect(storage.getItem('pl2-sync-queue:user_1')).toBe(raw);
+    const backupKey = Array.from({ length: storage.length }, (_, index) => storage.key(index))
+      .find((key) => key.startsWith('pl2-sync-queue:user_1:corrupt:'));
+    expect(storage.getItem(backupKey)).toBe(raw);
+  });
+
   it('reports signed-out status without a token and leaves local data alone', async () => {
     const storage = memory();
     storage.setItem('pl2-library', JSON.stringify([{ id: 'a', title: 'A' }]));
