@@ -40,6 +40,12 @@ test('extension: cookies plus exact Clerk and Supabase host permissions, nothing
   assert.match(runHtml(accountSyncExtensionEntry(ON), '<head></head>'), /extensionAccountAuth\.js/);
 });
 
+test('desktop CSP allows local Ollama only on loopback', () => {
+  const connect = tauri.app.security.csp.split('; ').find((directive) => directive.startsWith('connect-src')).split(/\s+/).slice(1);
+  const httpSources = connect.filter((source) => source.startsWith('http:'));
+  assert.deepEqual(httpSources, ['http://localhost:11434', 'http://127.0.0.1:11434']);
+});
+
 test('desktop: connect-src adds Clerk, Supabase and the bridge origin; shell open adds only the Clerk authorize URL', () => {
   const overlay = desktopSyncOverlay(tauri, ON);
   assert.equal(overlay.app.security.csp, addCspSources(tauri.app.security.csp, 'connect-src', ['https://clerk.promptlab.tools', 'https://abcd.supabase.co', 'https://promptlab.tools']));
