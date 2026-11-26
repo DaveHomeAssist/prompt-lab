@@ -17,6 +17,13 @@
 // different client_id) is refused, so it cannot be traded for a session.
 // CORS: only the Tauri webview origins.
 import { createNodeCompatibleHandler } from '../_lib/nodeHandler.js';
+import { fetchWithTimeout, isExternalFetchTimeout } from '../_lib/runtimeSafety.js';
+
+export const CLERK_FETCH_TIMEOUT_MS = 5000;
+
+export function clerkFetch(url, init) {
+  return fetchWithTimeout(url, init, { service: 'Clerk', timeoutMs: CLERK_FETCH_TIMEOUT_MS });
+}
 
 const CLERK_API = 'https://api.clerk.com/v1';
 const TAURI_ORIGINS = new Set(['tauri://localhost', 'http://tauri.localhost', 'https://tauri.localhost']);
@@ -74,7 +81,14 @@ function clientIp(request) {
   return String(request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || 'unknown').slice(0, 64);
 }
 
-export async function desktopTokenHandler(request, { env = process.env, fetchImpl = fetch, rateLimit = defaultLimiter } = {}) {
+function clerkOutage(request, error) {
+  if (isExternalFetchTimeout(error)) {
+    return respond(request, { error: 'Sign-in service timed out.', retryable: true }, 504);
+  }
+  return respond(request, { error: 'Sign-in service unavailable.', retryable: true }, 502);
+}
+
+export async function desktopTokenHandler(request, { env = process.env, fetchImpl = clerkFetch, rateLimit = defaultLimiter } = {}) {
   const origin = request.headers.get('Origin');
   if (origin && !TAURI_ORIGINS.has(origin)) return respond(request, { error: 'Origin is not allowed.' }, 403);
   if (request.method === 'OPTIONS') return respond(request, null, 204);
@@ -102,8 +116,8 @@ export async function desktopTokenHandler(request, { env = process.env, fetchImp
     if (verified.status >= 500) return respond(request, { error: 'Sign-in service unavailable.', retryable: true }, 502);
     if (!verified.ok) return respond(request, { error: 'Sign in again.' }, 401);
     token = await verified.json();
-  } catch {
-    return respond(request, { error: 'Sign-in service unavailable.', retryable: true }, 502);
+  } catch (error) {
+    return clerkOutage(request, error);
   }
   const userId = String(token?.subject || '');
   const scopes = Array.isArray(token?.scopes) ? token.scopes : String(token?.scopes || '').split(/\s+/);
@@ -129,8 +143,8 @@ export async function desktopTokenHandler(request, { env = process.env, fetchImp
     const { token: ticket } = await created.json();
     if (!ticket) return respond(request, { error: 'Could not start a sync session.', retryable: true }, 502);
     return respond(request, { ticket });
-  } catch {
-    return respond(request, { error: 'Sign-in service unavailable.', retryable: true }, 502);
+  } catch (error) {
+    return clerkOutage(request, error);
   }
 }
 

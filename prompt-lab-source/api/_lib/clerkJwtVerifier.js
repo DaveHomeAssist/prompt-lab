@@ -9,8 +9,9 @@
 //
 // The route-facing results are unchanged. Proxy still fails closed to "not an
 // owner". Billing still answers 401 with the same error strings. Issuer,
-// audience, azp and clock rules stay on the profile that had them; they are
-// not the same profile, and this module does not make them the same.
+// audience and clock rules stay on the profile that had them. Both profiles
+// require azp to name an allowed origin. They are not the same profile, and
+// this module does not make the remaining rules the same.
 
 import {
   compactVerify,
@@ -27,7 +28,7 @@ import { readListEnv } from './runtimeSafety.js';
 
 const PROXY_DEFAULT_ISSUER = 'https://clerk.promptlab.tools';
 const DEFAULT_AUTHORIZED_PARTIES = ['https://promptlab.tools'];
-const MANUAL_JWKS_URL = 'https://api.clerk.com/v1/jwks';
+// Backend API JWKS. Used only with CLERK_SECRET_KEY (Authorization required).
 const CLERK_BACKEND_JWKS_URL = 'https://api.clerk.com/v1/jwks';
 // Matches SUPPORTED_BAPI_VERSION in @clerk/backend 3.8.4, the SDK this path replaced.
 const CLERK_BACKEND_API_VERSION = '2026-05-12';
@@ -87,6 +88,13 @@ function readProxySessionToken(request) {
 
 function proxyIssuer() {
   return (process.env.CLERK_JWT_ISSUER || PROXY_DEFAULT_ISSUER).trim().replace(/\/$/, '');
+}
+
+// Manual billing verification has no secret key, so it cannot call the
+// Backend API. Use the instance's public JWKS, the same document the proxy
+// profile fetches. CLERK_JWKS_URL remains an explicit override.
+function manualJwksUrl() {
+  return readStringEnv('CLERK_JWKS_URL') || `${proxyIssuer()}/.well-known/jwks.json`;
 }
 
 function splitCsv(value) {
@@ -187,7 +195,7 @@ async function fetchJson(url, { headers = {}, timeoutMs = 0 } = {}) {
 }
 
 async function getManualJwks() {
-  const jwksUri = readStringEnv('CLERK_JWKS_URL') || MANUAL_JWKS_URL;
+  const jwksUri = manualJwksUrl();
   const cached = manualJwksCache.get(jwksUri);
   if (cached && (Date.now() - cached.fetchedAt) < MANUAL_JWKS_CACHE_MS) return cached.keys;
   const payload = await fetchJson(jwksUri, { timeoutMs: MANUAL_JWKS_TIMEOUT_MS });
@@ -311,7 +319,7 @@ async function verifyBillingSessionToken(token, request) {
   const claims = decodeJwt(token);
   if (!manual) assertSdkIssuedAt(claims);
   assertBillingClaims(claims);
-  if (claims.azp && !billingAuthorizedParties(request).includes(claims.azp)) {
+  if (!claims.azp || !billingAuthorizedParties(request).includes(claims.azp)) {
     throw new Error('Clerk token authorized party is invalid.');
   }
   return claims;
