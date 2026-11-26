@@ -732,6 +732,25 @@ final class PromptLabTests: XCTestCase {
         )
     }
 
+    func testRecoveryExportArchiveIncludesWriteAheadFiles() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("StorageArchive-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let storeURL = directory.appendingPathComponent("Library.store")
+        let store = Data("database-bytes".utf8)
+        let wal = Data("wal-bytes".utf8)
+        let shared = Data("shm-bytes".utf8)
+        try store.write(to: storeURL)
+        try wal.write(to: URL(fileURLWithPath: storeURL.path + "-wal"))
+        try shared.write(to: URL(fileURLWithPath: storeURL.path + "-shm"))
+
+        let archived = StorageRecovery.readStoredZip(try StorageRecovery.exportDocumentData(at: storeURL))
+        XCTAssertEqual(archived["Library.store"], store)
+        XCTAssertEqual(archived["Library.store-wal"], wal)
+        XCTAssertEqual(archived["Library.store-shm"], shared)
+    }
+
     @MainActor
     func testCorruptStoreShowsRecoveryInsteadOfReplacingTheFile() throws {
         let directory = FileManager.default.temporaryDirectory
@@ -763,6 +782,15 @@ final class PromptLabTests: XCTestCase {
         XCTAssertTrue(names.isSubset(of: ["Library.store", "Library.store-wal", "Library.store-shm"]))
         let storeCopy = try XCTUnwrap(exported.first { $0.lastPathComponent == "Library.store" })
         XCTAssertEqual(try Data(contentsOf: storeCopy), original)
+        let archived = StorageRecovery.readStoredZip(try StorageRecovery.exportDocumentData(at: storeURL))
+        XCTAssertEqual(archived["Library.store"], original)
+        if FileManager.default.fileExists(atPath: sidecar.path) {
+            XCTAssertEqual(archived["Library.store-wal"], try Data(contentsOf: sidecar))
+        }
+        let sharedMemory = URL(fileURLWithPath: storeURL.path + "-shm")
+        if FileManager.default.fileExists(atPath: sharedMemory.path) {
+            XCTAssertEqual(archived["Library.store-shm"], try Data(contentsOf: sharedMemory))
+        }
 
         try StorageRecovery.resetStore(at: storeURL)
         XCTAssertFalse(FileManager.default.fileExists(atPath: storeURL.path))
