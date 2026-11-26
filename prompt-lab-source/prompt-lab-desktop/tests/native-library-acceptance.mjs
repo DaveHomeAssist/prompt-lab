@@ -64,6 +64,9 @@ export async function checkLibraryPersisted({ readLibrary, execute, click, fill,
   assert.equal(await execute('return getComputedStyle(document.querySelector(`button[aria-label="Settings"]`)).appearance;'), 'none');
   assert.equal(await execute('return getComputedStyle(document.querySelector(`button[aria-label="Settings"]`)).getPropertyValue("-webkit-appearance");'), 'none');
   const darkSettingsAppearance = await settingsAppearance('dark');
+  // Phones opened the Filters sheet to read the selects; close it so the
+  // next scenario can reach the navigation it covers.
+  if (await execute('return Boolean(document.querySelector("#library-filters-sheet"));')) await click('button[aria-label="Close filters"]');
   await screenshot('library-restored');
   recordDiagnostic?.('settingsButtonAppearance', { light: lightSettingsAppearance, dark: darkSettingsAppearance });
 }
