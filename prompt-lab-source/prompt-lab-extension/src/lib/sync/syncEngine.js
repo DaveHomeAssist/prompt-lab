@@ -151,7 +151,10 @@ export function createSyncEngine({ storage, transport, userId, deviceId = getDev
     if (state.oversize?.[key]) { const { [key]: dropped, ...rest } = state.oversize; state.oversize = rest; }
     const previous = queue.get(key);
     const hash = deleted ? null : hashValue(payload);
-    if (previous && previous.hash === hash && previous.deleted === deleted) return true;
+    if (previous && previous.hash === hash && previous.deleted === deleted) {
+      uncaptured.delete(key);
+      return true;
+    }
     const saved = queue.put({
       key, kind, item_id, payload: deleted ? null : payload, deleted, hash,
       // Keep the version the first pending edit was based on, so a concurrent
@@ -164,6 +167,7 @@ export function createSyncEngine({ storage, transport, userId, deviceId = getDev
       uncaptured.add(key);
       return false;
     }
+    uncaptured.delete(key);
     return true;
   };
   const captureFailed = () => {
@@ -365,7 +369,11 @@ export function createSyncEngine({ storage, transport, userId, deviceId = getDev
         // Only an edit made after the push answered is queued again and kept
         // locally; everything else takes the winner's content.
         captureLocal();
-        outcome.written.push(...applyRows([...known.filter(Boolean), ...fetched].filter((row) => !queue.get(itemKey(row.kind, row.item_id)))));
+        const winners = [...known.filter(Boolean), ...fetched].filter((row) => {
+          const key = itemKey(row.kind, row.item_id);
+          return !queue.get(key) && !uncaptured.has(key);
+        });
+        outcome.written.push(...applyRows(winners));
       }
       saveState();
     }
@@ -377,9 +385,10 @@ export function createSyncEngine({ storage, transport, userId, deviceId = getDev
     rows.forEach((row) => seen(row.lamport));
     const remote = new Map(rows.map((row) => [itemKey(row.kind, row.item_id), row]));
     const local = readLocalItems(storage);
-    // Safety net before anything destructive. Without it, keep every local
-    // prompt (duplicates are uploaded rather than dropped).
-    const snapshot = takeLocalSnapshot(storage, userId, { reason: 'first-sync', at: now() });
+    // An empty account has no rows to merge. Skip the snapshot on a pure
+    // upload so the outbox and a second Library copy don't compete for space.
+    // On a merge, a snapshot is required before dropping duplicates.
+    const snapshot = rows.length ? takeLocalSnapshot(storage, userId, { reason: 'first-sync', at: now() }) : null;
     const remoteDuplicates = new Set(rows.filter((row) => row.kind === 'prompt' && !row.deleted && row.payload?.entry).map((row) => duplicateKey(row.payload.entry)));
     const toApply = []; const dropped = [];
     let conflicts = 0;
@@ -406,6 +415,15 @@ export function createSyncEngine({ storage, transport, userId, deviceId = getDev
       if (!row.deleted && deletedIds.has(row.item_id)) enqueue({ key, kind: 'prompt', item_id: row.item_id, payload: null, deleted: true, baseVersion: Number(row.version) });
       else toApply.push(row);
     }
+    const structureKey = itemKey('structure', STRUCTURE_ID);
+    const remoteStructure = remote.get(structureKey);
+    const structureVersion = remoteStructure ? Number(remoteStructure.version) : 0;
+    const merged = mergeStructure(local.get(structureKey)?.payload, remoteStructure?.deleted ? {} : remoteStructure?.payload);
+    enqueue({ key: structureKey, kind: 'structure', item_id: STRUCTURE_ID, payload: merged, baseVersion: structureVersion });
+    // Keep first-run local data and the cursor intact if an edit could not
+    // be queued. In particular, a remote winner must not erase that edit.
+    captureFailed();
+
     if (dropped.length) {
       // Exact duplicates of prompts already in the account (for example the same
       // starter pack on two devices) are removed here, never uploaded. The
@@ -420,12 +438,8 @@ export function createSyncEngine({ storage, transport, userId, deviceId = getDev
     }
     // Pending local edits keep their local copy; the account copy waits for the push result.
     const written = applyRows(toApply.filter((row) => !queue.get(itemKey(row.kind, row.item_id)) || queue.get(itemKey(row.kind, row.item_id)).lamport === 0));
-    const structureKey = itemKey('structure', STRUCTURE_ID);
-    const remoteStructure = remote.get(structureKey);
-    const merged = mergeStructure(local.get(structureKey)?.payload, remoteStructure?.deleted ? {} : remoteStructure?.payload);
-    written.push(...applyRows([{ kind: 'structure', item_id: STRUCTURE_ID, payload: merged, deleted: false, version: remoteStructure ? Number(remoteStructure.version) : 0 }]));
+    written.push(...applyRows([{ kind: 'structure', item_id: STRUCTURE_ID, payload: merged, deleted: false, version: structureVersion }]));
     if (!remoteStructure) delete state.shadow[structureKey];
-    enqueue({ key: structureKey, kind: 'structure', item_id: STRUCTURE_ID, payload: merged, baseVersion: remoteStructure ? Number(remoteStructure.version) : 0 });
     Object.assign(state, { initialized: true, cursor, lastManifestAt: now() });
     storage.setItem(OWNER_KEY, userId);
     saveState();
@@ -491,6 +505,7 @@ export function createSyncEngine({ storage, transport, userId, deviceId = getDev
     // device was between syncs must not rebuild the account from local rows.
     if (areUploadsSuspended(storage, userId)) return suspendedResult();
     state = loadState();
+    uncaptured.clear();
     const written = new Set();
     const add = (keys) => keys.forEach((key) => written.add(key));
     const summary = { status: 'synced', pulled: 0, pushed: 0, conflicts: 0, dropped: 0 };
@@ -537,6 +552,7 @@ export function createSyncEngine({ storage, transport, userId, deviceId = getDev
       add(pushed.written);
       summary.pushed = pushed.pushed; summary.conflicts += pushed.conflicts;
       if (summary.pushed) add((await pullAndApply(state.cursor)).written);
+      captureFailed();
     } catch (error) {
       saveState();
       // Any failure before the push still backs the outbox off.

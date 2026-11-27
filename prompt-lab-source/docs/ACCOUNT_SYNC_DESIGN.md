@@ -1,6 +1,6 @@
 # Account sync design (hosted, Supabase + Clerk)
 
-Status: on `main` behind `VITE_PL_ACCOUNT_SYNC`, which is off by default. Supabase project `promptlab-sync` (ref `djoboqvwuojhpqnubnpc`, us-east-1, Free, $0/month) was created and the migration applied on Sun Nov 1 2026 (R1, R2). Sync UI built and `test:sync` runs in CI. Remaining rollout steps need Dave's Clerk and Vercel dashboards (R3 to R9). Updated Nov 1 2026, ET.
+Status: staged on `main` behind `VITE_PL_ACCOUNT_SYNC`. Production account sync was disabled at the November 27, 2026 checkpoint. The [rollout](#14-rollout) distinguishes merged work, the original database setup, and the remaining hosted acceptance checks.
 
 Request: Dave, relayed 6:09 AM ET: real sync for every user. That is, every promptlab.tools user signs in on web, the extension and desktop, their Library follows them across devices automatically, and clearing site data loses nothing.
 
@@ -246,23 +246,35 @@ Worth reusing from #248:
 - the strict-durability IndexedDB outbox idea, if the localStorage queue proves too small;
 - the pack and import fixtures for first-run de-duplication tests.
 
-## 14. Rollout (each step needs Dave)
+## 14. Rollout
 
-1. **R1.** Done Nov 1 2026: `promptlab-sync`, ref `djoboqvwuojhpqnubnpc`, us-east-1, Free org, `get_cost` $0/month.
-2. **R2.** Done Nov 1 2026: migration applied. Advisors: security lint 0029 (7 WARN) lists the seven client RPCs, which are the intended API (definer functions with caller checks, see section 10); performance: 2 INFO unused-index notices on the empty tables. Confirm in the dashboard that `sync` is not in the exposed schemas.
+### November 27, 2026 checkpoint
+
+Production ran [`7d558b28`](https://github.com/DaveHomeAssist/prompt-lab/commit/7d558b289984fb21499e6c71f4389dbfcc71fa47), which contains the sync engine and database migrations, the [safe pull cursor](https://github.com/DaveHomeAssist/prompt-lab/commit/777cec92), the preflight and Library controls from [#334](https://github.com/DaveHomeAssist/prompt-lab/pull/334), and the outbox recovery changes from [#342](https://github.com/DaveHomeAssist/prompt-lab/pull/342). The Vercel production environment has Clerk sign-in settings. The Supabase sync settings and build flag are absent. The original project's API hostname did not resolve, and the connected Supabase account could not inspect the project. Its provider state, migration inventory, and contents need live verification.
+
+### Provider setup and release order
+
+1. **R1.** Restore access to the original `promptlab-sync` project or select its replacement in the intended Supabase organization. The original project was created November 1, 2026 in `us-east-1` on Free (ref `djoboqvwuojhpqnubnpc`). Record the verified owner, region, and cost for the active project. Confirm its contents and migration history before using it.
+2. **R2.** The base migration was applied to the original project on November 1. Verify every migration in [`supabase/migrations`](../supabase/migrations) against the active target, including the safe pull cursor. Apply missing migrations in order. Verify forced RLS, client RPC grants, and that `sync` is outside the exposed schemas. Review provider advisors against the documented RPC design in section 10.
 3. **R3.** Supabase Auth: turn off "Allow new users to sign up" and anonymous sign-ins. Leave Realtime off.
 4. **R4.** Clerk: open "Connect with Supabase", which adds `role: authenticated` to session tokens. In Supabase, add the Clerk third-party provider with domain `clerk.promptlab.tools`. Production instance only. Do not use a JWT template.
 5. **R5.** Clerk: confirm bot protection and email verification for sign-up.
 6. **R6.** Vercel env:
    - `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` (public).
    - `SUPABASE_URL`, `SUPABASE_SECRET_KEY` and `CLERK_WEBHOOK_SIGNING_SECRET` (Sensitive, production only).
-   - `VITE_PL_ACCOUNT_SYNC=on` last.
+   - Keep `VITE_PL_ACCOUNT_SYNC` off in production through the preflight and isolated web acceptance. Set it as part of R12.
 7. **R7.** Clerk webhook endpoint `https://promptlab.tools/api/sync/clerk-webhook` for `user.deleted`.
 8. **R8.** Desktop: a Clerk OAuth application (public client, PKCE, loopback redirect), the Native API setting, then Vercel env `PL_DESKTOP_OAUTH_CLIENT_ID` (that app's client id) and `PL_ACCOUNT_SYNC_DESKTOP=on`, then build the session step. Optional: `PL_DESKTOP_OAUTH_SCOPES`.
 9. **R9.** Extension: add the published extension id to Clerk `allowed_origins`; CWS permission justification for `cookies` and the new hosts; then a sync build.
 10. **R10.** Approve the privacy and terms additions in [ACCOUNT_SYNC_PRIVACY_NOTE.md](ACCOUNT_SYNC_PRIVACY_NOTE.md); they are not on the live pages.
 11. **R11.** Backups: set up the weekly export in [ACCOUNT_SYNC_BACKUP_RUNBOOK.md](ACCOUNT_SYNC_BACKUP_RUNBOOK.md).
-12. **R12.** Flip the flag for web first, then the extension, then desktop.
+12. **R12.** Enable web first after the provider, backup, and policy checks pass. Require the web acceptance below before enabling the extension or desktop. Record the launch policy separately from deployment. D-016 records optional hosted storage, and the draft for automatic sync on every sign-in still needs a recorded decision.
+
+### Web acceptance
+
+1. Run `npm run test:sync` on the candidate revision. Run `npm run sync:preflight` with scoped provider access and verify R1 through R7 directly in the active dashboards. Repeat the backup and restore run against a scratch database with the same provider role and pooler configuration.
+2. On an isolated web deployment, use disposable signed-in accounts and a synthetic Library with more than 500 prompts, collections, folders, profiles, and a trash entry. Verify the upload count and content hashes with the account export. Sign into an empty browser profile and compare the restored entries and structure with that export. Verify a second account has its own empty Library and cannot see the first one's prompts.
+3. After production activation, repeat the signed-in restore with the owner's backed-up Library. Compare counts, IDs, and content hashes, confirm the import preview adds only missing entries, and retain the private backup through acceptance. Record production deployment revision, provider preflight and signed-in restore results. Verify the extension and desktop independently before their respective releases.
 
 Rollback: kill switch (`enabled = off`) for an immediate server pause; unset `VITE_PL_ACCOUNT_SYNC` and redeploy to remove the client. Local data is never deleted by either.
 
