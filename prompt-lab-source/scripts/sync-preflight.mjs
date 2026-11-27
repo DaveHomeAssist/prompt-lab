@@ -1,11 +1,7 @@
 #!/usr/bin/env node
 // Read-only rollout check for account Library sync (docs/ACCOUNT_SYNC_DESIGN.md
-// steps R3–R7). Prints a pass/fail checklist. Env values are never printed.
-// The only network calls are GETs, plus one SELECT through the Supabase
-// management query API when SUPABASE_ACCESS_TOKEN is set. Nothing is written.
-//
-// A paused or unreachable Supabase project prints "project unreachable or paused"
-// and does not fail the process by itself.
+// steps R2–R7). Prints automated results and the remaining dashboard checks.
+// Uses GETs and read-only catalog SELECTs. Env values are never printed.
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -14,31 +10,16 @@ export const UNREACHABLE = 'project unreachable or paused';
 export const CLERK_DOMAIN = 'clerk.promptlab.tools';
 export const CLERK_ISSUER = `https://${CLERK_DOMAIN}`;
 const APP_ORIGIN = 'https://promptlab.tools';
-export const WEBHOOK_URL = APP_ORIGIN + '/api/sync/clerk-webhook';
 const PROJECT_URL = /^https:\/\/([a-z0-9-]+)\.supabase\.co$/;
 const PROBE_MS = 8000;
 
-// Documented R6 names, plus the older anon-key spellings Supabase still accepts.
-export const URL_ENV_NAMES = Object.freeze(['VITE_SUPABASE_URL', 'SUPABASE_URL']);
-export const ANON_KEY_ENV_NAMES = Object.freeze([
-  'VITE_SUPABASE_PUBLISHABLE_KEY',
-  'VITE_SUPABASE_ANON_KEY',
-  'SUPABASE_ANON_KEY',
-]);
-export const R6_SERVER_ENV = Object.freeze(['SUPABASE_URL', 'SUPABASE_SECRET_KEY', 'CLERK_WEBHOOK_SIGNING_SECRET']);
-// Clerk "Connect with Supabase" is a dashboard control. These are the env names
-// this repo can check for that connection. Presence only.
-export const CLERK_THIRD_PARTY_ENV = Object.freeze(['CLERK_SECRET_KEY']);
+const URL_ENV_NAMES = ['VITE_SUPABASE_URL', 'SUPABASE_URL'];
+const PUBLISHABLE_KEY_ENV = 'VITE_SUPABASE_PUBLISHABLE_KEY';
 
 const MUTATING = /\b(insert|update|delete|drop|alter|create|grant|revoke|truncate|copy|call|execute|merge|vacuum|reindex|cluster|lock|refresh|comment|do)\b/i;
 
 export function present(env, name) {
   return typeof env?.[name] === 'string' && env[name].trim() !== '';
-}
-
-export function configuredValue(env, names) {
-  for (const name of names) if (present(env, name)) return { name, value: env[name].trim() };
-  return { name: names[0], value: '' };
 }
 
 /** One SELECT, nothing else. Rejects every other statement before it is sent. */
@@ -73,7 +54,14 @@ export function expectedSyncSchema(sqlText) {
 export function readMigrationSchema(migrationsDir) {
   const directory = migrationsDir instanceof URL ? fileURLToPath(migrationsDir) : migrationsDir;
   const files = readdirSync(directory).filter((name) => name.endsWith('.sql')).sort();
-  return expectedSyncSchema(files.map((name) => readFileSync(join(directory, name), 'utf8')).join('\n'));
+  const versions = files.map((name) => name.match(/^(\d+)(?:_.+)?\.sql$/)?.[1]);
+  if (!versions.length || versions.some((version) => !version) || new Set(versions).size !== versions.length) {
+    throw new Error('migration filenames must have unique versions');
+  }
+  return {
+    ...expectedSyncSchema(files.map((name) => readFileSync(join(directory, name), 'utf8')).join('\n')),
+    versions,
+  };
 }
 
 export function isUnreachable(error, response, body = '') {
@@ -118,36 +106,14 @@ async function request(url, { method = 'GET', headers, body, fetchImpl, timeoutM
   }
 }
 
-function authSettingsView(json) {
-  const signupOff = json?.disable_signup === true;
-  const anonymousOff = json?.external?.anonymous_users === false;
-  return { signupOff, anonymousOff };
+function responseJson(text) {
+  try { return JSON.parse(text); } catch { return null; }
 }
 
-function webhookMatches(payload) {
-  const rows = Array.isArray(payload) ? payload : payload?.data || payload?.endpoints || [];
-  if (!Array.isArray(rows)) return false;
-  return rows.some((row) => {
-    const url = String(row?.url || row?.endpoint || '');
-    const events = row?.events || row?.filter_types || row?.event_types || [];
-    const list = Array.isArray(events) ? events.map(String) : [];
-    return url === WEBHOOK_URL && (list.includes('user.deleted') || list.includes('*'));
-  });
-}
-
-function jwtTemplateUsed(payload) {
-  const rows = Array.isArray(payload) ? payload : payload?.data || [];
-  if (!Array.isArray(rows)) return false;
-  return rows.some((row) => /supabase/i.test(String(row?.name || '')));
-}
-
-function tableProbeResult(response, text) {
-  let code = '';
-  try { code = JSON.parse(text)?.code || ''; } catch { /* not json */ }
-  if (response.status === 404 || code === 'PGRST205' || /could not find the table/i.test(text)) return 'missing';
-  if (response.status === 200) return 'readable';
-  if (response.status === 401 || response.status === 403 || code === '42501' || /permission denied/i.test(text)) return 'present';
-  return 'unexpected';
+function catalogRows(result) {
+  const payload = result?.response.ok ? responseJson(result.text) : null;
+  const rows = Array.isArray(payload) ? payload : payload?.result;
+  return Array.isArray(rows) ? rows : null;
 }
 
 export async function runSyncPreflight({
@@ -155,6 +121,7 @@ export async function runSyncPreflight({
   fetchImpl = globalThis.fetch,
   migrationsDir,
   timeoutMs = PROBE_MS,
+  expectEnabled = false,
 } = {}) {
   const schema = readMigrationSchema(migrationsDir);
   const secrets = Object.values(env).filter((value) => typeof value === 'string' && value.length >= 4);
@@ -172,178 +139,163 @@ export async function runSyncPreflight({
     return row;
   };
 
-  const urlConfig = configuredValue(env, URL_ENV_NAMES);
-  const keyConfig = configuredValue(env, ANON_KEY_ENV_NAMES);
-  const urlOk = PROJECT_URL.test(urlConfig.value);
-  const bothUrls = URL_ENV_NAMES.filter((name) => present(env, name)).map((name) => env[name].trim().replace(/\/+$/, ''));
-  const urlsDiffer = bothUrls.length === 2 && bothUrls[0] !== bothUrls[1];
-
-  for (const name of URL_ENV_NAMES) {
-    note(present(env, name) ? 'PASS' : 'FAIL', `R6  ${name}`, present(env, name) ? 'present' : 'absent');
-  }
-  note(
-    keyConfig.value ? 'PASS' : 'FAIL',
-    'R6  anon key',
-    keyConfig.value ? `present as ${keyConfig.name}` : `${ANON_KEY_ENV_NAMES.join(', ')} absent`,
-  );
-  for (const name of R6_SERVER_ENV) {
-    if (name === 'SUPABASE_URL') continue;
-    note(present(env, name) ? 'PASS' : 'FAIL', `R6  ${name}`, present(env, name) ? 'present' : 'absent');
-  }
+  const [browserUrl, serverUrl] = URL_ENV_NAMES.map((name) => String(env[name] || '').replace(/\/+$/, ''));
+  const projectRef = PROJECT_URL.exec(browserUrl)?.[1];
+  const matchingUrls = Boolean(projectRef && browserUrl === serverUrl);
+  const keyPresent = present(env, PUBLISHABLE_KEY_ENV);
   const flagOn = String(env.VITE_PL_ACCOUNT_SYNC || '').toLowerCase() === 'on';
-  note(flagOn ? 'PASS' : 'FAIL', 'R6  VITE_PL_ACCOUNT_SYNC=on', flagOn ? 'on' : 'not on');
 
-  for (const name of CLERK_THIRD_PARTY_ENV) {
-    note(present(env, name) ? 'PASS' : 'FAIL', `R4  ${name}`, present(env, name) ? 'present' : 'absent');
+  for (const name of [...URL_ENV_NAMES, PUBLISHABLE_KEY_ENV, 'SUPABASE_SECRET_KEY', 'CLERK_WEBHOOK_SIGNING_SECRET']) {
+    note(present(env, name) ? 'PASS' : 'FAIL', `R6  ${name}`, present(env, name) ? 'present' : 'absent');
   }
-  if (urlsDiffer) note('FAIL', 'R6  project url', 'VITE_SUPABASE_URL and SUPABASE_URL differ');
-  else if (urlConfig.value && !urlOk) note('FAIL', 'R6  project url', `${urlConfig.name} is not a project url`);
+  const flagDetail = expectEnabled
+    ? (flagOn ? 'enabled for acceptance' : 'must be on for acceptance')
+    : (flagOn ? 'must stay off until activation' : 'disabled for preactivation');
+  note(flagOn === expectEnabled ? 'PASS' : 'FAIL', 'R6  VITE_PL_ACCOUNT_SYNC', flagDetail);
+  note(matchingUrls ? 'PASS' : 'FAIL', 'R6  project url', matchingUrls ? 'browser and server target the same project' : 'matching Supabase project URLs required');
 
-  const remote = [];
-  const skipRemote = (status, detail) => {
-    for (const id of remote) if (!results.some((row) => row.id === id)) note(status, id, detail);
-  };
-  const expectRemote = (id) => { remote.push(id); };
+  const clerkKeyPresent = present(env, 'CLERK_SECRET_KEY');
+  note(clerkKeyPresent ? 'PASS' : 'FAIL', 'R4  CLERK_SECRET_KEY', clerkKeyPresent ? 'present' : 'absent');
 
-  [
+  const publicTables = schema.tables.filter((name) => name.startsWith('public.'));
+  const supabaseChecks = [
+    'R2  migration history',
     'R3  sign-ups off',
     'R3  anonymous sign-ins off',
     'R3  Realtime off',
     'R4  provider domain',
-    'R4  no JWT template',
-    'R7  user.deleted endpoint',
-  ].forEach(expectRemote);
-  for (const table of schema.tables) expectRemote(`schema  ${table}`);
-  for (const policy of schema.policies) expectRemote(`schema  policy ${policy.name}`);
-  for (const table of schema.forcedRls) expectRemote(`schema  forced RLS ${table}`);
-
+    'R6  publishable key accepted',
+    ...publicTables.map((name) => `schema  anon access ${name}`),
+    ...schema.tables.map((name) => `schema  ${name}`),
+    ...schema.policies.map(({ name }) => `schema  policy ${name}`),
+    ...schema.forcedRls.map((name) => `schema  forced RLS ${name}`),
+  ];
   let unreachable = false;
-  const markUnreachable = () => {
-    unreachable = true;
-    for (const id of remote) {
-      const existing = results.find((row) => row.id === id);
-      if (!existing) note('SKIP', id, UNREACHABLE);
-      else if (existing.status !== 'PASS' && existing.status !== 'FAIL') existing.detail = UNREACHABLE;
-    }
-  };
-
   const probe = async (url, options) => {
+    if (unreachable) return null;
     try {
       const result = await request(url, { ...options, fetchImpl, timeoutMs });
-      if (isUnreachable(null, result.response, result.text)) {
-        markUnreachable();
-        return null;
-      }
-      return result;
+      unreachable = isUnreachable(null, result.response, result.text);
+      return unreachable ? null : result;
     } catch (error) {
-      if (isUnreachable(error)) { markUnreachable(); return null; }
-      throw error;
+      if (!isUnreachable(error)) throw error;
+      unreachable = true;
+      return null;
     }
   };
 
-  if (urlOk && keyConfig.value && !urlsDiffer) {
-    const origin = urlConfig.value.replace(/\/+$/, '');
-    const ref = origin.match(PROJECT_URL)[1];
-    const auth = await probe(`${origin}/auth/v1/settings`, { headers: { apikey: keyConfig.value, Accept: 'application/json' } });
-    if (auth && !unreachable) {
-      let settings = null;
-      try { settings = JSON.parse(auth.text); } catch { settings = null; }
-      if (!auth.response.ok || !settings) {
-        note('FAIL', 'R3  sign-ups off', `auth settings HTTP ${auth.response.status}`);
-        note('FAIL', 'R3  anonymous sign-ins off', `auth settings HTTP ${auth.response.status}`);
+  if (matchingUrls && keyPresent) {
+    const headers = { apikey: env[PUBLISHABLE_KEY_ENV], Accept: 'application/json' };
+    const auth = await probe(browserUrl + '/auth/v1/settings', { headers });
+    if (auth) {
+      const settings = responseJson(auth.text);
+      const accepted = auth.response.ok && settings !== null && typeof settings === 'object' && !Array.isArray(settings);
+      note(accepted ? 'PASS' : 'FAIL', 'R6  publishable key accepted', accepted ? 'accepted by the project' : `Auth settings HTTP ${auth.response.status} or invalid response`);
+    }
+    for (const name of publicTables) {
+      const rel = name.slice('public.'.length);
+      const checked = await probe(`${browserUrl}/rest/v1/${rel}?select=user_id&limit=0`, { headers });
+      if (!checked) break;
+      const { response, text } = checked;
+      const code = responseJson(text)?.code;
+      const denied = ([401, 403].includes(response.status) && code === '42501')
+        || (response.status === 404 && code === 'PGRST205');
+      note(denied ? 'PASS' : 'FAIL', `schema  anon access ${name}`, denied ? 'anon select refused' : `anon select denial not confirmed (HTTP ${response.status})`);
+    }
+  }
+
+  const managementToken = present(env, 'SUPABASE_ACCESS_TOKEN');
+  if (matchingUrls && managementToken && !unreachable) {
+    const management = `https://api.supabase.com/v1/projects/${projectRef}`;
+    const headers = { Authorization: `Bearer ${env.SUPABASE_ACCESS_TOKEN.trim()}`, Accept: 'application/json' };
+    const get = (path) => probe(management + path, { headers });
+    const check = (result, id, ok, success, failure) => {
+      if (!result) return;
+      if (!result.response.ok) {
+        note('FAIL', id, `management API HTTP ${result.response.status}`);
+        return;
+      }
+      const confirmed = ok(responseJson(result.text));
+      note(confirmed ? 'PASS' : 'FAIL', id, confirmed ? success : failure);
+    };
+
+    const history = await get('/database/migrations');
+    if (history?.response.ok) {
+      const rows = responseJson(history.text);
+      if (Array.isArray(rows) && rows.every((entry) => typeof entry?.version === 'string')) {
+        const applied = new Set(rows.map(({ version }) => version));
+        const expected = new Set(schema.versions);
+        const missing = schema.versions.filter((version) => !applied.has(version));
+        const extra = [...applied].filter((version) => !expected.has(version));
+        const matches = missing.length === 0 && extra.length === 0;
+        const detail = matches
+          ? `all ${expected.size} repository versions recorded`
+          : `missing versions: ${missing.join(', ') || 'none'}. Unexpected version count: ${extra.length}`;
+        note(matches ? 'PASS' : 'FAIL', 'R2  migration history', detail);
       } else {
-        const view = authSettingsView(settings);
-        note(view.signupOff ? 'PASS' : 'FAIL', 'R3  sign-ups off', view.signupOff ? 'disable_signup is true' : 'disable_signup is not true');
-        note(view.anonymousOff ? 'PASS' : 'FAIL', 'R3  anonymous sign-ins off', view.anonymousOff ? 'anonymous sign-ins are off' : 'anonymous sign-ins are not off');
+        note('FAIL', 'R2  migration history', 'invalid migration history response');
       }
-      const realtime = await probe(`${origin}/realtime/v1/`, { headers: { apikey: keyConfig.value, Accept: 'application/json' } });
-      if (realtime && !unreachable) {
-        const off = realtime.response.status === 404;
-        note(off ? 'PASS' : 'FAIL', 'R3  Realtime off', off ? 'realtime endpoint is absent' : `realtime endpoint answered HTTP ${realtime.response.status}`);
-      }
+    } else if (history) {
+      note('FAIL', 'R2  migration history', `management API HTTP ${history.response.status}`);
     }
 
-    if (!unreachable) {
-      for (const table of schema.tables.filter((name) => name.startsWith('public.'))) {
-        const rel = table.slice('public.'.length);
-        const probed = await probe(`${origin}/rest/v1/${rel}?select=user_id&limit=0`, {
-          headers: { apikey: keyConfig.value, Accept: 'application/json' },
-        });
-        if (!probed || unreachable) break;
-        const kind = tableProbeResult(probed.response, probed.text);
-        if (kind === 'present') note('PASS', `schema  ${table}`, 'present; anon select refused');
-        else if (kind === 'missing') note('FAIL', `schema  ${table}`, 'not in the API schema');
-        else if (kind === 'readable') note('FAIL', `schema  ${table}`, 'anon key can read the table');
-        else note('FAIL', `schema  ${table}`, `unexpected HTTP ${probed.response.status}`);
-      }
-    }
+    const auth = await get('/config/auth');
+    check(auth, 'R3  sign-ups off', (data) => data?.disable_signup === true, 'sign-ups disabled', 'sign-ups not confirmed disabled');
+    check(auth, 'R3  anonymous sign-ins off', (data) => data?.external_anonymous_users_enabled === false, 'anonymous sign-ins disabled', 'anonymous sign-ins not confirmed disabled');
+    check(await get('/config/realtime'), 'R3  Realtime off', (data) => data?.suspend === true, 'Realtime suspended', 'Realtime not confirmed suspended');
+    check(await get('/config/auth/third-party-auth'), 'R4  provider domain',
+      (data) => Array.isArray(data) && data.some((row) => [CLERK_ISSUER, `${CLERK_ISSUER}/`].includes(row?.oidc_issuer_url)),
+      'production Clerk issuer registered', 'production Clerk issuer not confirmed');
 
-    if (!unreachable && present(env, 'SUPABASE_ACCESS_TOKEN')) {
-      const sqlTables = assertReadOnlySelect(`
-        select n.nspname as schema, c.relname as name,
-               c.relrowsecurity as rls_enabled, c.relforcerowsecurity as rls_forced
-        from pg_class c
-        join pg_namespace n on n.oid = c.relnamespace
-        where c.relkind = 'r'
-          and ((n.nspname = 'public' and c.relname in ('sync_items', 'sync_conflicts'))
-            or (n.nspname = 'sync' and c.relname in ('settings', 'rate', 'egress', 'accounts')))
-      `);
-      const sqlPolicies = assertReadOnlySelect(`
-        select schemaname, tablename, policyname, roles::text as roles
-        from pg_policies
-        where schemaname = 'public' and tablename in ('sync_items', 'sync_conflicts')
-      `);
-      const query = async (queryText) => probe('https://api.supabase.com/v1/projects/' + ref + '/database/query', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${env.SUPABASE_ACCESS_TOKEN.trim()}`,
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        body: JSON.stringify({ query: queryText }),
-      });
-      const tablesResult = await query(sqlTables);
-      const policiesResult = !unreachable && tablesResult ? await query(sqlPolicies) : null;
-      if (tablesResult && policiesResult && !unreachable) {
-        let tableRows = [];
-        let policyRows = [];
-        try { tableRows = JSON.parse(tablesResult.text); } catch { tableRows = []; }
-        try { policyRows = JSON.parse(policiesResult.text); } catch { policyRows = []; }
-        const tables = Array.isArray(tableRows) ? tableRows : tableRows?.result || [];
-        const policies = Array.isArray(policyRows) ? policyRows : policyRows?.result || [];
-        const foundTable = (qualified) => tables.find((row) => `${row.schema}.${row.name}` === qualified);
-        for (const table of schema.tables) {
-          const row = foundTable(table);
-          if (!results.some((item) => item.id === `schema  ${table}` && item.status === 'PASS')) {
-            note(row ? 'PASS' : 'FAIL', `schema  ${table}`, row ? 'present' : 'missing');
-          } else if (!row) {
-            const existing = results.find((item) => item.id === `schema  ${table}`);
-            existing.status = 'FAIL';
-            existing.detail = 'missing from the catalog';
-          }
-        }
-        for (const table of schema.forcedRls) {
-          const row = foundTable(table);
-          const forced = row && (row.rls_enabled === true || row.rls_enabled === 't') && (row.rls_forced === true || row.rls_forced === 't');
-          note(forced ? 'PASS' : 'FAIL', `schema  forced RLS ${table}`, forced ? 'enabled and forced' : 'not enabled and forced');
-        }
-        for (const policy of schema.policies) {
-          const row = policies.find((item) => item.policyname === policy.name && `${item.schemaname}.${item.tablename}` === policy.table);
-          const ownerOnly = row && String(row.roles || '').includes('sync_owner') && !/anon|authenticated|public/i.test(String(row.roles || ''));
-          note(ownerOnly ? 'PASS' : 'FAIL', `schema  policy ${policy.name}`, ownerOnly ? `on ${policy.table} for sync_owner` : 'missing or not owner-only');
-        }
-      } else if (!unreachable) {
-        note('FAIL', 'schema  catalog', `catalog query HTTP ${tablesResult?.response?.status || policiesResult?.response?.status || 0}`);
+    const query = (sql) => probe(management + '/database/query', {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: assertReadOnlySelect(sql), read_only: true }),
+    });
+    const tableResponse = await query(`
+      select n.nspname as schema, c.relname as name,
+             c.relrowsecurity as rls_enabled, c.relforcerowsecurity as rls_forced
+      from pg_catalog.pg_class c
+      join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+      where c.relkind = 'r'
+        and ((n.nspname = 'public' and c.relname in ('sync_items', 'sync_conflicts'))
+          or (n.nspname = 'sync' and c.relname in ('settings', 'rate', 'egress', 'accounts')))
+    `);
+    const policyResponse = await query(`
+      select schemaname, tablename, policyname, roles::text as roles
+      from pg_catalog.pg_policies
+      where schemaname = 'public' and tablename in ('sync_items', 'sync_conflicts')
+    `);
+    const tables = catalogRows(tableResponse);
+    const policies = catalogRows(policyResponse);
+    if (tableResponse && !tables) note('FAIL', 'schema  table catalog', `catalog unavailable (HTTP ${tableResponse.response.status})`);
+    if (policyResponse && !policies) note('FAIL', 'schema  policy catalog', `catalog unavailable (HTTP ${policyResponse.response.status})`);
+    const foundTable = (qualified) => tables?.find((row) => `${row?.schema}.${row?.name}` === qualified);
+    if (tables) {
+      for (const table of schema.tables) {
+        const found = Boolean(foundTable(table));
+        note(found ? 'PASS' : 'FAIL', `schema  ${table}`, found ? 'present' : 'missing from the catalog');
       }
-    } else if (!unreachable) {
-      for (const table of schema.tables.filter((name) => name.startsWith('sync.'))) {
-        note('FAIL', `schema  ${table}`, 'not readable with the anon key; SUPABASE_ACCESS_TOKEN absent');
+      for (const table of schema.forcedRls) {
+        const row = foundTable(table);
+        const forced = row && (row.rls_enabled === true || row.rls_enabled === 't') && (row.rls_forced === true || row.rls_forced === 't');
+        note(forced ? 'PASS' : 'FAIL', `schema  forced RLS ${table}`, forced ? 'enabled and forced' : 'not enabled and forced');
       }
-      for (const policy of schema.policies) note('FAIL', `schema  policy ${policy.name}`, 'not queried; SUPABASE_ACCESS_TOKEN absent');
-      for (const table of schema.forcedRls) note('FAIL', `schema  forced RLS ${table}`, 'not queried; SUPABASE_ACCESS_TOKEN absent');
     }
-  } else if (!unreachable) {
-    skipRemote('FAIL', urlConfig.value ? 'project url was not queried' : 'project url absent');
+    if (policies) {
+      for (const policy of schema.policies) {
+        const row = policies.find((item) => item?.policyname === policy.name && `${item.schemaname}.${item.tablename}` === policy.table);
+        const ownerOnly = row?.roles === '{sync_owner}';
+        note(ownerOnly ? 'PASS' : 'FAIL', `schema  policy ${policy.name}`, ownerOnly ? `on ${policy.table} for sync_owner` : 'missing or not owner-only');
+      }
+    }
+  }
+  for (const id of supabaseChecks) {
+    if (results.some((row) => row.id === id)) continue;
+    const detail = !matchingUrls ? 'matching Supabase project URLs required'
+      : !keyPresent && (id.startsWith('R6') || id.startsWith('schema  anon access')) ? `${PUBLISHABLE_KEY_ENV} absent`
+      : !managementToken ? 'SUPABASE_ACCESS_TOKEN absent' : 'provider check incomplete';
+    note(unreachable ? 'SKIP' : 'FAIL', id, unreachable ? UNREACHABLE : detail);
   }
 
   // R5 belongs to the Clerk frontend instance. Its published configuration is
@@ -374,46 +326,31 @@ export async function runSyncPreflight({
   note(bot ? 'PASS' : 'FAIL', 'R5  bot protection', bot ? 'enabled' : clerkCheckDetail);
   note(email ? 'PASS' : 'FAIL', 'R5  email verification', email ? 'required at sign-up' : clerkCheckDetail);
 
-  if (present(env, 'CLERK_SECRET_KEY') && !unreachable) {
+  if (clerkKeyPresent) {
     const headers = { Authorization: `Bearer ${env.CLERK_SECRET_KEY.trim()}`, Accept: 'application/json' };
-    let templates = null;
-    let hooks = null;
-    try {
-      templates = await request('https://api.clerk.com/v1/jwt_templates', { headers, fetchImpl, timeoutMs });
-      hooks = await request('https://api.clerk.com/v1/webhooks', { headers, fetchImpl, timeoutMs });
-    } catch (error) {
+    const templates = await request('https://api.clerk.com/v1/jwt_templates', { headers, fetchImpl, timeoutMs }).catch((error) => {
       if (!isUnreachable(error)) throw error;
-      templates = hooks = null;
-    }
+      return null;
+    });
     if (!templates) {
-      note('FAIL', 'R4  no JWT template', 'Clerk API unreachable');
-      note('FAIL', 'R7  user.deleted endpoint', 'Clerk API unreachable');
+      note('SKIP', 'R4  no JWT template', 'Clerk Backend API unreachable');
+    } else if (!templates.response.ok) {
+      note('FAIL', 'R4  no JWT template', `Clerk JWT templates HTTP ${templates.response.status}`);
     } else {
-      let templateJson = null;
-      try { templateJson = JSON.parse(templates.text); } catch { templateJson = null; }
-      if (!templates.response.ok) note('FAIL', 'R4  no JWT template', `Clerk JWT templates HTTP ${templates.response.status}`);
-      else if (jwtTemplateUsed(templateJson)) note('FAIL', 'R4  no JWT template', 'a JWT template named for the database is present');
-      else note('PASS', 'R4  no JWT template', 'no database JWT template');
-
-      let hookJson = null;
-      try { hookJson = hooks && hooks.response.ok ? JSON.parse(hooks.text) : null; } catch { hookJson = null; }
-      if (!hooks?.response.ok) note('FAIL', 'R7  user.deleted endpoint', `Clerk webhooks HTTP ${hooks?.response?.status || 0}`);
-      else note(webhookMatches(hookJson) ? 'PASS' : 'FAIL', 'R7  user.deleted endpoint', webhookMatches(hookJson) ? 'endpoint subscribed to user.deleted' : 'endpoint not listed');
+      const payload = responseJson(templates.text);
+      const rows = Array.isArray(payload) ? payload : payload?.data;
+      if (!Array.isArray(rows) || !rows.every((row) => typeof row?.name === 'string')) {
+        note('FAIL', 'R4  no JWT template', 'invalid JWT template response');
+      } else {
+        const used = rows.some((row) => /supabase/i.test(row.name));
+        note(used ? 'FAIL' : 'PASS', 'R4  no JWT template', used ? 'a JWT template named for the database is present' : 'no database JWT template');
+      }
     }
-  } else if (!unreachable) {
+  } else {
     note('FAIL', 'R4  no JWT template', 'CLERK_SECRET_KEY absent');
-    note('FAIL', 'R7  user.deleted endpoint', 'CLERK_SECRET_KEY absent');
   }
-
-  if (!unreachable && !results.some((row) => row.id === 'R4  provider domain')) {
-    // The anon key's public auth settings do not list third-party providers.
-    // Config-var lines above are the pass/fail check; this step stays visible.
-    note('SKIP', 'R4  provider domain', `expected ${CLERK_DOMAIN}; not visible to the anon key`);
-  }
-
-  if (!unreachable) {
-    for (const id of remote) if (!results.some((row) => row.id === id)) note('FAIL', id, 'not checked');
-  }
+  note('MANUAL', 'R4  session role', 'confirm the authenticated role on a signed-in test session');
+  note('MANUAL', 'R7  user.deleted endpoint', 'confirm the endpoint and test delivery in the Clerk dashboard');
 
   // Issuer constant is part of the documented R4 domain. Comparing a configured
   // CLERK_JWT_ISSUER without printing it keeps a mismatched issuer visible.
@@ -425,34 +362,45 @@ export async function runSyncPreflight({
   if (present(env, 'CLERK_WEBHOOK_SIGNING_SECRET')) note('PASS', 'R7  CLERK_WEBHOOK_SIGNING_SECRET', 'present');
   else note('FAIL', 'R7  CLERK_WEBHOOK_SIGNING_SECRET', 'absent');
 
-  const failed = results.filter((row) => row.status === 'FAIL');
-  return { results, unreachable, exitCode: failed.length ? 1 : 0, schema };
+  const failed = results.some((row) => row.status === 'FAIL');
+  const incomplete = results.some((row) => row.status === 'SKIP');
+  return { results, unreachable, exitCode: failed ? 1 : incomplete ? 2 : 0, schema };
 }
 
 export function formatReport(report) {
   const lines = ['sync:preflight'];
   if (report.unreachable) lines.push(UNREACHABLE);
   for (const row of report.results) lines.push(`${row.status}  ${row.id}  ${row.detail}`);
-  lines.push(report.exitCode === 0 ? 'pass' : `${report.results.filter((row) => row.status === 'FAIL').length} failed`);
+  const failed = report.results.filter((row) => row.status === 'FAIL').length;
+  const skipped = report.results.filter((row) => row.status === 'SKIP').length;
+  const summary = report.exitCode === 0 ? 'Automated checks passed. Complete the manual checks before release.'
+    : `${failed} failed, ${skipped} incomplete`;
+  lines.push(summary);
   return lines.join('\n');
 }
 
-async function main() {
+async function main(args) {
+  const usage = 'Usage: npm run sync:preflight [-- --enabled]';
+  if (args.length === 1 && args[0] === '--help') {
+    console.log(usage);
+    return;
+  }
+  const expectEnabled = args.length === 1 && args[0] === '--enabled';
+  if (args.length && !expectEnabled) {
+    console.error(usage);
+    process.exitCode = 1;
+    return;
+  }
   const migrationsDir = resolve(dirname(fileURLToPath(import.meta.url)), '../supabase/migrations');
   try {
-    const report = await runSyncPreflight({ env: process.env, migrationsDir });
+    const report = await runSyncPreflight({ migrationsDir, expectEnabled });
     console.log(formatReport(report));
     process.exitCode = report.exitCode;
-  } catch (error) {
-    if (isUnreachable(error)) {
-      console.log(UNREACHABLE);
-      process.exitCode = 0;
-      return;
-    }
+  } catch {
     console.log('FAIL  preflight  stopped before the checklist finished');
     process.exitCode = 1;
   }
 }
 
 const invoked = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (invoked) await main();
+if (invoked) await main(process.argv.slice(2));
