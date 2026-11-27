@@ -114,7 +114,7 @@ function SignInShell({ pending = false }) {
         aria-labelledby="signin-context-heading"
         style={{ maxWidth: '400px', width: '100%', color: '#f0ede6', textAlign: 'center' }}
       >
-        <a href="/" style={{ color: '#fdba74', fontSize: '13px', textDecoration: 'underline' }}>
+        <a href="/?splash=1" style={{ color: '#fdba74', fontSize: '13px', textDecoration: 'underline' }}>
           &larr; Back to promptlab.tools
         </a>
         <h1 id="signin-context-heading" style={{ margin: '14px 0 8px', fontSize: '22px', lineHeight: 1.25 }}>
