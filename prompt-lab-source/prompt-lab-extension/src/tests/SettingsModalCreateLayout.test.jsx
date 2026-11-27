@@ -27,6 +27,12 @@ function renderSettings(overrides = {}) {
 }
 
 describe('SettingsModal two-pane Create toggle', () => {
+  it('shows the installed build under About', () => {
+    renderSettings();
+    expect(screen.getByRole('heading', { name: 'About' })).toBeInTheDocument();
+    expect(screen.getByTestId('app-build')).toHaveTextContent(/^Prompt Lab v1\.9\.0/);
+  });
+
   it('is absent when the surface does not offer the two-pane workspace', () => {
     renderSettings();
     expect(screen.queryByTestId('create-layout-toggle')).toBeNull();

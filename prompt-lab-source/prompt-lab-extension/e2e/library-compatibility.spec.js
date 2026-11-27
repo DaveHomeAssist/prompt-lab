@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium, expect, test } from '@playwright/test';
+import { closeLibraryFilters, showLibraryFilters } from '../../prompt-lab-web/tests/app/library-toolbar.js';
 
 const extensionPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'dist');
 const surfaces = [{ name: 'extension', url: null }];
@@ -81,21 +82,29 @@ for (const surface of surfaces) for (const width of [400, 480, 1180]) {
         expect(labelsFit, 'smart-view labels and counts must fit without overlapping').toBe(true);
       }
       await closeMobileDrawer(page, width);
+      await showLibraryFilters(page);
       await expect(page.getByRole('combobox', { name: 'Sort prompts', exact: true })).toHaveCSS('color-scheme', 'light');
+      await closeLibraryFilters(page);
       await expect(page.getByRole('button', { name: 'Settings', exact: true })).toHaveCSS('appearance', 'none');
       await expect(page.getByRole('button', { name: 'Settings', exact: true })).toHaveCSS('-webkit-appearance', 'none');
       await switchTheme(page, 'dark');
+      await showLibraryFilters(page);
       await expect(page.getByRole('combobox', { name: 'Sort prompts', exact: true })).toHaveCSS('color-scheme', 'dark');
+      await closeLibraryFilters(page);
       await expect(page.getByRole('button', { name: 'Settings', exact: true })).toHaveCSS('appearance', 'none');
       await expect(page.getByRole('button', { name: 'Settings', exact: true })).toHaveCSS('-webkit-appearance', 'none');
       await switchTheme(page, 'light');
+      await showLibraryFilters(page);
       await expect(page.getByRole('combobox', { name: 'Sort prompts', exact: true })).toHaveCSS('color-scheme', 'light');
+      await closeLibraryFilters(page);
       const list = page.getByRole('list', { name: 'Saved prompts' });
       await expect(list.getByRole('listitem').first()).toContainText('Beta starter');
       await showDrawer(page);
       await page.getByRole('button', { name: '#verification', exact: true }).click();
       await expect(list.getByRole('listitem')).toHaveCount(4);
+      await showLibraryFilters(page);
       await page.getByRole('combobox', { name: 'Filter by status', exact: true }).selectOption('active');
+      await closeLibraryFilters(page);
       await expect(list.getByRole('listitem')).toHaveCount(1);
       await expect(list).toContainText('Alpha prompt');
       await page.getByRole('button', { name: 'Clear all', exact: true }).click();
@@ -112,7 +121,9 @@ for (const surface of surfaces) for (const width of [400, 480, 1180]) {
       await page.getByTestId('library-search').fill('');
       await showDrawer(page);
       await page.getByRole('button', { name: /^Ops\s*2$/ }).click();
+      await showLibraryFilters(page);
       await page.getByRole('combobox', { name: /Sort/ }).selectOption('manual');
+      await closeLibraryFilters(page);
       await expect(list.getByRole('listitem')).toHaveCount(2);
       const move = page.getByRole('button', { name: 'Move Beta starter up' });
       await move.focus();

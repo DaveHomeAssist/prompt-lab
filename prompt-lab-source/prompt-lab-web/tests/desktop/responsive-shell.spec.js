@@ -164,14 +164,16 @@ for (const viewport of viewports) {
     await expectNoHorizontalOverflow(page);
 
     if (viewport.width === 1180) {
-      const shortcutTrigger = page.getByRole('button', { name: 'Keyboard shortcuts' });
+      const more = page.getByRole('button', { name: 'More actions', exact: true });
+      await more.click();
+      const shortcutTrigger = page.getByRole('button', { name: 'Keyboard shortcuts', exact: true });
       await shortcutTrigger.focus();
       await shortcutTrigger.click();
       const dialog = page.getByRole('dialog', { name: 'Keyboard Shortcuts' });
       await expect(dialog).toBeVisible();
       await page.keyboard.press('Escape');
       await expect(dialog).toBeHidden();
-      await expect(shortcutTrigger).toBeFocused();
+      await expect(more).toBeFocused();
     }
   });
 }

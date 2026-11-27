@@ -1,5 +1,5 @@
-// Phones (<=520 px) fold the header theme toggle into the "More actions" menu
-// (V-01). Use the header button when it is visible, otherwise the menu item.
+// Theme, palette, shortcuts, and Report live in the header More menu at every
+// width. Use the bar control when it is visible, otherwise the menu item.
 // mode: 'dark' | 'light' switches to that mode; omitted toggles.
 export async function switchTheme(page, mode) {
   const toggle = mode
@@ -14,7 +14,17 @@ export async function switchTheme(page, mode) {
   return item.click();
 }
 
-// The palette picker folds into the same menu on phones.
+// The palette picker lives in the same More menu.
+export async function paletteControl(page) {
+  const panel = page.locator('#pl-header-more-panel');
+  const open = panel.getByLabel('Color palette', { exact: true });
+  if (await open.isVisible().catch(() => false)) return open;
+  const header = page.locator('[data-header-actions]').getByLabel('Color palette', { exact: true });
+  if (await header.first().isVisible().catch(() => false)) return header.first();
+  await page.getByRole('button', { name: 'More actions', exact: true }).click();
+  return panel.getByLabel('Color palette', { exact: true });
+}
+
 export async function selectPalette(page, palette) {
   const header = page.locator('[data-header-actions]').getByLabel('Color palette', { exact: true });
   if (await header.first().isVisible()) return header.first().selectOption(palette);

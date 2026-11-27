@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, within, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import LibraryWorkspace from '../LibraryWorkspace.jsx';
 
 vi.mock('../icons.jsx', () => ({ default: () => null }));
@@ -649,4 +649,37 @@ it('records shared recent artwork only after a collection save succeeds', async 
   expect(localStorage.getItem('pl2-recent-artwork')).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'Collection artwork: Star', exact: true }));
   await waitFor(() => expect(JSON.parse(localStorage.getItem('pl2-recent-artwork'))[0].icon).toBe('Star'));
+});
+
+describe('Library phone toolbar', () => {
+  afterEach(() => { delete window.matchMedia; });
+
+  it('keeps search on the toolbar and moves filters and import tools behind Filters and …', () => {
+    window.matchMedia = vi.fn().mockImplementation((query) => ({
+      matches: query === '(max-width: 640px)',
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+    const { lib } = renderLibrary();
+    expect(screen.getByTestId('library-search')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Filters', exact: true })).toBeInTheDocument();
+    expect(screen.queryByLabelText('Filter by status')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Export', exact: true })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Filters', exact: true }));
+    const sheet = screen.getByRole('dialog', { name: 'Library filters' });
+    expect(within(sheet).getByLabelText('Filter by status')).toBeInTheDocument();
+    expect(within(sheet).getByLabelText('Filter by project profile')).toBeInTheDocument();
+    expect(within(sheet).getByLabelText('Sort prompts')).toBeInTheDocument();
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Gallery view' }));
+    expect(screen.queryByRole('dialog', { name: 'Library filters' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Library actions', exact: true }));
+    const menu = screen.getByRole('group', { name: 'Library actions' });
+    fireEvent.click(within(menu).getByRole('button', { name: 'Export', exact: true }));
+    expect(lib.exportLib).toHaveBeenCalledTimes(1);
+    expect(within(menu).getByRole('button', { name: 'Open pack studio' })).toBeInTheDocument();
+    expect(within(menu).getByRole('button', { name: 'Import', exact: true })).toBeInTheDocument();
+  });
 });

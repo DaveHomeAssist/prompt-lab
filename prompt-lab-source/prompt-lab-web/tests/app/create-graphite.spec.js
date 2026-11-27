@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { selectPalette, switchTheme } from './theme-toggle.js';
+import { paletteControl, selectPalette, switchTheme } from './theme-toggle.js';
 
 const draft = 'Write a launch brief with a named owner and measurable acceptance criteria.';
 
@@ -83,13 +83,13 @@ test('flagged Create graphite preserves all palettes, both modes and the respons
   }
   await page.reload();
   await expect(page.locator('.pl-create-graphite')).toBeVisible();
-  await expect(page.getByLabel('Color palette', { exact: true })).toHaveValue('plum');
+  await expect(await paletteControl(page)).toHaveValue('plum');
   await expect(page.locator('.pl-app-shell')).toHaveAttribute('data-theme', 'dark');
   await page.evaluate(() => localStorage.setItem('pl2-create-layout', JSON.stringify('stacked')));
   await page.reload();
   await expect(page.getByTestId('prompt-input')).toBeVisible();
   await expect(page.locator('.pl-create-graphite')).toHaveCount(0);
-  await expect(page.getByLabel('Color palette', { exact: true })).toHaveValue('plum');
+  await expect(await paletteControl(page)).toHaveValue('plum');
 });
 
 test('graphite empty and error states retain legible controls', async ({ page }, testInfo) => {

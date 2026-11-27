@@ -288,14 +288,16 @@ test('hosted wide shell preserves tab and modal keyboard behavior', async ({ pag
   await expect(primary.getByRole('tab', { name: 'Library' })).toHaveAttribute('aria-selected', 'true');
 
   await primary.getByRole('tab', { name: 'Write' }).click();
-  const shortcutTrigger = page.getByRole('button', { name: 'Keyboard shortcuts' });
+  const more = page.getByRole('button', { name: 'More actions', exact: true });
+  await more.click();
+  const shortcutTrigger = page.getByRole('button', { name: 'Keyboard shortcuts', exact: true });
   await shortcutTrigger.focus();
   await shortcutTrigger.click();
   const shortcuts = page.getByRole('dialog', { name: 'Keyboard Shortcuts' });
   await expect(shortcuts).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(shortcuts).toBeHidden();
-  await expect(shortcutTrigger).toBeFocused();
+  await expect(more).toBeFocused();
 
   const paletteTrigger = page.getByRole('button', { name: 'Command palette ⌘K', exact: true });
   await paletteTrigger.focus();

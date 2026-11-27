@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { DESKTOP_PLAN_LINK_TEXT, DESKTOP_PLAN_URL } from '../lib/billing.js';
+import { APP_VERSION } from '../constants.js';
+import { BUILD_IDENTITY } from '../buildIdentity.js';
 import Ic from '../icons';
 import useDialogA11y from '../hooks/useDialogA11y.js';
 
@@ -59,7 +61,7 @@ export default function SettingsModal({
           <h2 id="modal-settings" className={`font-bold text-base ${m.text}`}>Settings</h2>
           <button type="button" onClick={closeDialog} aria-label="Close settings" className={`${m.textSub} min-h-11 min-w-11 rounded-lg p-2 hover:text-white`}><Ic n="X" size={15} /></button>
         </div>
-        <p id="modal-settings-description" className="sr-only">Configure appearance, billing, insights, collections, and library data.</p>
+        <p id="modal-settings-description" className="sr-only">Configure appearance, billing, insights, collections, and library data. About shows the installed build.</p>
         {account && (account.manageAccount || account.signOut) && (
           <section aria-labelledby="modal-settings-account" data-testid="settings-account">
             <h3 id="modal-settings-account" className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider mb-2`}>Account</h3>
@@ -211,6 +213,10 @@ export default function SettingsModal({
           {pendingImport && <button type="button" onClick={retryImport} className={`min-h-11 rounded-lg px-3 py-2 text-sm ${m.btn} ${m.textBody}`}>Retry import</button>}
           <button type="button" onClick={() => { if (window.confirm('Clear all prompts from the library?')) clearLibrary(); }} className="flex min-h-11 items-center gap-2 text-sm bg-red-600 hover:bg-red-500 text-white rounded-lg px-3 py-2 transition-colors"><Ic n="Trash2" size={12} />Clear All Prompts</button>
         </div>
+        <section aria-labelledby="modal-settings-about" data-testid="settings-about" className={`border-t ${m.border} pt-3`}>
+          <h3 id="modal-settings-about" className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider mb-1`}>About</h3>
+          <p data-testid="app-build" className={`font-mono text-[11px] ${m.textMuted}`}>Prompt Lab v{APP_VERSION}{BUILD_IDENTITY}</p>
+        </section>
       </div>
     </div>
   );

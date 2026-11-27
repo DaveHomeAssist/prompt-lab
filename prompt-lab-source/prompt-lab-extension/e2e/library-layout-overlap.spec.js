@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium, expect, test } from '@playwright/test';
+import { closeLibraryFilters, showLibraryFilters } from '../../prompt-lab-web/tests/app/library-toolbar.js';
 
 // Two Library layouts drew content on top of other content:
 // - tile cards pinned Editor/Copy/Favorite to the bottom-right corner, outside
@@ -62,7 +63,9 @@ async function withLibrary({ width, layout, mode = 'dark' }, run) {
     await page.goto(`chrome-extension://${new URL(worker.url()).host}/panel.html`);
     if (width < 720) await page.getByRole('navigation', { name: 'Primary mobile navigation' }).getByRole('button', { name: 'Library', exact: true }).click();
     else await page.getByRole('tablist', { name: 'Workspaces' }).getByRole('tab', { name: 'Library', exact: true }).click();
+    await showLibraryFilters(page);
     await expect(page.getByRole('button', { name: layout === 'tiles' ? 'Tile view' : 'List view' })).toHaveAttribute('aria-pressed', 'true');
+    await closeLibraryFilters(page);
     await run(page);
   } finally {
     await context.close();

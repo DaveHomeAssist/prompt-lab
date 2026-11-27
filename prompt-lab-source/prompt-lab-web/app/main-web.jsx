@@ -14,7 +14,9 @@ import {
   stripLandingIntentParams,
 } from '../../prompt-lab-extension/src/lib/landingAttribution.js';
 import { buildAuthRedirectUrls, buildSignInContext } from '../../prompt-lab-extension/src/lib/signInContext.js';
+import { signInAppearance } from './signInAppearance.js';
 import '../../prompt-lab-extension/src/index.css';
+import './sign-in.css';
 
 // /app/compare and friends -> /app/#/compare before the hash router mounts.
 redirectAppPathToHash();
@@ -96,31 +98,24 @@ const landingProps = {
 
 function SignInShell({ pending = false }) {
   return (
-    <main style={{
-      minHeight: '100vh',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: '20px',
-      padding: '24px 16px',
-      boxSizing: 'border-box',
-      background: '#0f172a',
-      fontFamily: 'system-ui, -apple-system, Segoe UI, sans-serif',
-    }}>
+    <main className="pl-signin-gate">
       <section
         data-testid="signin-context"
         data-upgrade={signInContext.upgrade ? 'true' : 'false'}
         aria-labelledby="signin-context-heading"
-        style={{ maxWidth: '400px', width: '100%', color: '#f0ede6', textAlign: 'center' }}
+        className="pl-signin-context"
       >
-        <a href="/" style={{ color: '#fdba74', fontSize: '13px', textDecoration: 'underline' }}>
+        <a className="pl-signin-logo" href="/" aria-label="Prompt Lab home">
+          <span className="pl-signin-mark" aria-hidden="true">PL</span>
+          Prompt Lab
+        </a>
+        <a className="pl-signin-back" href="/">
           &larr; Back to promptlab.tools
         </a>
-        <h1 id="signin-context-heading" style={{ margin: '14px 0 8px', fontSize: '22px', lineHeight: 1.25 }}>
+        <h1 id="signin-context-heading">
           {signInContext.heading}
         </h1>
-        <p style={{ margin: 0, fontSize: '14px', lineHeight: 1.5, color: '#cbd5e1' }}>
+        <p>
           {signInContext.body}
         </p>
       </section>
@@ -129,12 +124,7 @@ function SignInShell({ pending = false }) {
           data-testid="signin-pending"
           role="status"
           aria-live="polite"
-          style={{
-            width: '100%', maxWidth: '400px', minHeight: '380px', boxSizing: 'border-box',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            border: '1px solid #27272a', borderRadius: '0.75rem', background: '#06060a',
-            color: '#94a3b8', fontSize: '14px',
-          }}
+          className="pl-signin-pending"
         >
           Loading sign-in…
         </div>
@@ -143,30 +133,7 @@ function SignInShell({ pending = false }) {
         fallbackRedirectUrl={authRedirectUrls.fallbackRedirectUrl}
         signUpForceRedirectUrl={authRedirectUrls.signUpForceRedirectUrl}
         signUpFallbackRedirectUrl={authRedirectUrls.signUpFallbackRedirectUrl}
-        appearance={{
-          layout: { socialButtonsVariant: 'blockButton' },
-          variables: {
-            colorPrimary: '#c2410c',
-            colorBackground: '#06060a',
-            colorText: '#f0ede6',
-            colorNeutral: '#f0ede6',
-            colorInputBackground: '#18181b',
-            colorInputText: '#f0ede6',
-            borderRadius: '0.75rem',
-          },
-          elements: {
-            // Provider artwork includes dark pixels; give it a light surface
-            // instead of relying on the card's general text color.
-            socialButtonsBlockButton: {
-              backgroundColor: '#f0ede6',
-              color: '#18181b',
-              border: '1px solid #f0ede6',
-              '&:hover': { backgroundColor: '#ffffff' },
-              '&:focus-visible': { outline: '2px solid #fb923c', outlineOffset: '3px' },
-            },
-            socialButtonsBlockButtonText: { color: '#18181b' },
-          },
-        }}
+        appearance={signInAppearance}
       />}
     </main>
   );

@@ -1,0 +1,121 @@
+@font-face {
+  font-family: 'Outfit';
+  src: url('/fonts/outfit.woff2') format('woff2');
+  font-weight: 300 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/fonts/jetbrains-mono.woff2') format('woff2');
+  font-weight: 400 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Signed-out /app gate. Tokens match the promptlab.tools landing page
+   (Outfit, serif wordmark, PL mark, void background, accent #C2401F). */
+.pl-signin-gate {
+  --bg-void: #06060A;
+  --bg-elevated: #101018;
+  --text-primary: #F0EDE6;
+  --text-secondary: #8A8A96;
+  --accent: #C2401F;
+  --border: rgba(255, 255, 255, 0.06);
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  padding: 32px 16px;
+  box-sizing: border-box;
+  background: var(--bg-void);
+  color: var(--text-primary);
+  font-family: 'Outfit', -apple-system, sans-serif;
+}
+.pl-signin-gate::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-size: 256px 256px;
+}
+.pl-signin-context {
+  position: relative;
+  max-width: 420px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.pl-signin-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-primary);
+  font-family: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
+  font-size: 1.5rem;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+}
+.pl-signin-mark {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+.pl-signin-back {
+  display: inline-block;
+  margin-top: 14px;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  text-decoration: none;
+}
+.pl-signin-back:hover { color: var(--text-primary); }
+.pl-signin-context h1 {
+  margin: 18px 0 8px;
+  font-family: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
+  font-size: 2rem;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+.pl-signin-context p {
+  margin: 0 auto;
+  max-width: 36rem;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+.pl-signin-pending {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  min-height: 380px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+/* Clerk repeats the page heading inside its card. Hide that title in code;
+   the subtitle, form, and footer stay. */
+.pl-signin-gate .cl-headerTitle {
+  display: none !important;
+}

@@ -719,6 +719,22 @@ textarea:disabled {
 [data-theme='light'] .pl-trash-link { color: #be123c; }
 .pl-library-index { min-width: 0; min-height: 0; overflow-y: auto; }
 .pl-library-toolbar { position: sticky; z-index: 3; top: 0; display: flex; align-items: center; gap: 0.5rem; border-bottom: 1px solid color-mix(in srgb, currentColor 11%, transparent); padding: 0.75rem 1rem; background: color-mix(in srgb, var(--pl-brand-ink) 88%, transparent); backdrop-filter: blur(16px); }
+.pl-library-toolbar.is-phone { flex-wrap: nowrap; padding: 0.45rem 0.65rem; }
+.pl-library-toolbar.is-phone .pl-library-search { flex: 1 1 auto; flex-basis: auto; min-width: 0; }
+.pl-library-toolbar.is-phone > .pl-secondary-button,
+.pl-library-toolbar.is-phone > .pl-library-actions { flex: 0 0 auto; }
+.pl-library-toolbar.is-phone .pl-library-views-label { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.pl-library-actions { position: relative; }
+.pl-library-actions-menu { position: absolute; z-index: 30; top: calc(100% + 0.35rem); right: 0; display: grid; gap: 0.25rem; min-width: 10.5rem; padding: 0.4rem; border: 1px solid color-mix(in srgb, currentColor 14%, transparent); border-radius: 0.75rem; background: var(--pl-brand-ink); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28); }
+.pl-library-actions-menu > button,
+.pl-library-actions-menu > .pl-secondary-button { flex: 0 0 auto; width: 100%; justify-content: flex-start; }
+.pl-library-sheet-scrim { position: fixed; z-index: 79; inset: 0; border: 0; background: rgba(0, 0, 0, 0.45); }
+.pl-library-filters-sheet { position: fixed; z-index: 80; left: 0; right: 0; bottom: 0; display: grid; gap: 0.65rem; padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom)); border-radius: 1rem 1rem 0 0; background: var(--pl-brand-ink); box-shadow: 0 -16px 40px rgba(0, 0, 0, 0.35); }
+.pl-library-filters-sheet select,
+.pl-library-filters-sheet .pl-layout-toggle { width: 100%; }
+@media (max-width: 640px) {
+  .pl-library-index-heading { padding: 0.65rem 0.8rem 0.35rem; }
+}
 [data-theme='light'] .pl-library-toolbar { background: rgba(255, 253, 250, 0.92); }
 .pl-library-search { display: flex; min-width: 8rem; flex: 1; align-items: center; gap: 0.45rem; border: 1px solid color-mix(in srgb, currentColor 13%, transparent); border-radius: 0.6rem; padding: 0.45rem 0.62rem; }
 .pl-library-search input { min-width: 0; width: 100%; border: 0; background: transparent; font-size: 0.74rem; outline: none; }
@@ -1275,8 +1291,36 @@ textarea:disabled {
 .pl-library-results.is-gallery .pl-library-card-actions { grid-column: 2; justify-content: flex-end; flex-wrap: wrap; }
 .pl-library-card-copy > .pl-artwork { margin-bottom: 0.3rem; }
 .pl-library-card-title { min-width: 0; overflow-wrap: anywhere; }
+/* While More is open, lift the header above the workspace so the menu can be
+   clicked. Leaving it raised all the time covers controls that sit under the
+   header on short windows. */
+.pl-app-header:has(#pl-header-more-panel) { position: relative; z-index: 80; }
+.pl-header-bar { display: flex; align-items: center; gap: 0.45rem 0.65rem; min-width: 0; flex-wrap: wrap; }
+.pl-header-identity { flex: 0 1 auto; }
+.pl-header-actions { flex: 0 0 auto; }
 .pl-unified-navigation { display: flex; align-items: center; flex-wrap: wrap; gap: 0.6rem; margin-top: 0.5rem; }
+.pl-header-bar > .pl-unified-navigation { margin-top: 0; flex: 1 1 auto; justify-content: center; min-width: 0; }
 .pl-workspace-tabs { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+@media (min-width: 1024px) {
+  .pl-header-bar { flex-wrap: nowrap; }
+  .pl-header-bar > .pl-unified-navigation,
+  .pl-header-bar .pl-workspace-tabs { flex-wrap: nowrap; }
+}
+@media (max-width: 1280px) {
+  .pl-header-utility,
+  .pl-header-count,
+  .pl-header-plan { display: none; }
+  .pl-app-header { padding-inline: 0.65rem; }
+  .pl-header-bar { gap: 0.3rem 0.4rem; }
+  .pl-header-bar .pl-tab-btn { padding-inline: 0.4rem; }
+  .pl-profile-chip-name { max-width: 5.25rem; }
+}
+/* 1024 still has to hold the signed-in account button after More. */
+@media (max-width: 1100px) {
+  .pl-header-bar { gap: 0.25rem 0.3rem; }
+  .pl-header-bar .pl-tab-btn { padding-inline: 0.22rem; }
+  .pl-header-actions { gap: 0.15rem; }
+}
 .pl-palette-control select { max-width: 5.5rem; padding: 0.25rem; border-radius: 6px; background: var(--pl-brand-ink); color: var(--pl-brand-paper); font-size: 0.68rem; }
 html[data-palette='ocean'] .pl-app-shell { --pl-brand-ember: #67d4ec; --pl-brand-ember-bright: #8de7f5; --pl-brand-ink: #071b29; --pl-brand-paper: #e6f5fa; --pl-muted-text: #aac6d4; --pl-action-text: #071b29; }
 html[data-palette='forest'] .pl-app-shell { --pl-brand-ember: #91d3a6; --pl-brand-ember-bright: #b7e7c5; --pl-brand-ink: #0e2019; --pl-brand-paper: #edf7ef; --pl-muted-text: #b1c9ba; --pl-action-text: #0e2019; }
@@ -1303,8 +1347,8 @@ html[data-palette] .pl-tab-btn[aria-selected='true'] { background: color-mix(in 
   .pl-library-workspace .pl-library-rail nav button { width: 100%; min-width: 0; }
   .pl-library-workspace .pl-trash-link { display: flex; }
   .pl-library-workspace .pl-library-index { min-height: 0; overflow-y: auto; }
-  .pl-app-header > div:first-child > div:first-child > div > span { display: none; }
-  .pl-app-header > div:first-child > div:first-child { flex-wrap: wrap; gap: 0.3rem; }
+  .pl-header-utility { display: none; }
+  .pl-header-identity { flex-wrap: nowrap; gap: 0.35rem; }
   .pl-app-header { padding: 0.45rem 0.65rem; }
 }
 @media (min-width: 2400px) {
@@ -1405,16 +1449,13 @@ html[data-palette]:not([data-palette='ember']) .pl-app-shell[data-theme='light']
 .pl-segmented[role='group'] button { flex: 1 1 0; }
 .pl-segmented button[aria-pressed='true'] { background: color-mix(in srgb, var(--pl-brand-ember) 17%, transparent); color: var(--pl-brand-ember-bright); opacity: 1; }
 
-/* Phone header: the full control row (481 px) cannot fit at 430 px and below,
-   and .is-compact clips horizontal overflow, so Report and the account menu
-   used to sit unreachable past the right edge. Secondary controls fold into
-   the More menu; New Prompt, Settings, More and the account button stay. */
-.pl-header-more { display: none; }
+/* Theme, palette, shortcuts and Report stay in More at every width so the
+   header can stay one row. New Prompt, ⌘K, Settings, More and the account
+   button stay on the bar. */
+.pl-header-more { display: block; position: relative; }
 .pl-header-more-panel { position: absolute; z-index: 85; top: calc(100% + 0.35rem); right: 0; display: grid; gap: 0.15rem; width: max-content; min-width: 13rem; max-width: calc(100vw - 1.5rem); }
 .pl-header-more-panel .pl-palette-control select { max-width: 7rem; }
 @media (max-width: 520px) {
-  .pl-app-header .pl-header-secondary { display: none; }
-  .pl-app-header .pl-header-more { display: block; }
   .pl-app-header .pl-header-actions { flex-wrap: nowrap; max-width: 100%; }
   .pl-app-header .pl-header-actions > * { flex-shrink: 0; }
 }
@@ -1443,7 +1484,6 @@ html[data-palette]:not([data-palette='ember']) .pl-app-shell[data-theme='light']
    320x568 before: 136 px header + 121 px consent banner + 64 px tab bar. */
 .pl-consent-short { display: none; }
 @media (max-width: 520px) {
-  .pl-app-header .pl-header-build { display: none; }
   .pl-app-header > div:first-child > .pl-header-identity { flex-wrap: nowrap; gap: 0.4rem; min-width: 0; }
   .pl-app-header .pl-header-identity [data-testid='library-count'] { white-space: nowrap; }
   .pl-app-shell .pl-app-header [data-testid='billing-trigger'] { min-height: 2rem; min-width: 0; padding-block: 0.2rem; }

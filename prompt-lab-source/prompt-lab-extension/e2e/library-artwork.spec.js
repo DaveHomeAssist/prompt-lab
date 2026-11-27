@@ -1,3 +1,4 @@
+import { closeLibraryFilters, libraryViewButton } from '../../prompt-lab-web/tests/app/library-toolbar.js';
 import { switchTheme } from '../../prompt-lab-web/tests/app/theme-toggle.js';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -32,9 +33,11 @@ for (const [width, height] of [[375, 812], [844, 390], [1440, 900], [3840, 1080]
       if (await page.locator('.pl-app-shell').getAttribute('data-theme') !== theme) await switchTheme(page, theme);
       await expect(page.locator('.pl-app-shell')).toHaveAttribute('data-theme', theme);
       for (const view of ['List view', 'Tile view', 'Compact view', 'Gallery view']) {
-        await page.getByRole('button', { name: view }).click();
+        await (await libraryViewButton(page, view)).click();
+        await closeLibraryFilters(page);
         const trigger = page.getByRole('button', { name: `Change artwork for ${entry.title}` });
-        await trigger.focus(); await page.keyboard.press('Enter');
+        await trigger.focus();
+        await trigger.press('Enter');
         const picker = page.getByRole('dialog', { name: `Artwork for ${entry.title}` });
         await expect(picker).toBeVisible();
         await picker.getByLabel('Prompt artwork emoji').fill('👩🏽‍💻');
@@ -54,7 +57,8 @@ for (const [width, height] of [[375, 812], [844, 390], [1440, 900], [3840, 1080]
       const box = await picker.boundingBox(); expect(box.x).toBeGreaterThanOrEqual(0); expect(box.x + box.width).toBeLessThanOrEqual(width); expect(box.y + box.height).toBeLessThanOrEqual(height);
       await picker.getByRole('button', { name: 'Clear artwork', exact: true }).click();
       await picker.getByRole('button', { name: 'Apply', exact: true }).click();
-      await page.getByRole('button', { name: 'Gallery view' }).click();
+      await (await libraryViewButton(page, 'Gallery view')).click();
+      await closeLibraryFilters(page);
       await page.getByRole('button', { name: `Add image for ${entry.title}` }).click();
       await expect(picker).toBeVisible();
       await page.screenshot({ path: test.info().outputPath(`artwork-${width}-${theme}.png`) });

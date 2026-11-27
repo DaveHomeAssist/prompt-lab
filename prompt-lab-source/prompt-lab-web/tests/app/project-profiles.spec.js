@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { switchTheme } from './theme-toggle.js';
 
 const INSTRUCTIONS = 'Use field-note terms and do not invent a location.';
 
@@ -37,7 +38,7 @@ test('picking a project profile shows the preamble in the send preview and leave
 
   await expectContrast(page.getByTestId('project-profile-chip'));
   await expectContrast(preview);
-  await page.getByRole('button', { name: /Switch to (light|dark) mode/ }).click();
+  await switchTheme(page);
   await expectContrast(page.getByTestId('project-profile-chip'));
   await expectContrast(preview);
 

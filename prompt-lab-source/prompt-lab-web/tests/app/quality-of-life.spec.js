@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { closeLibraryFilters, showLibraryFilters } from './library-toolbar.js';
 import { switchTheme } from './theme-toggle.js';
 
 const entries = [
@@ -38,11 +39,15 @@ for (const width of [375, 1440]) {
     await prepare(page, width); await navigate(page, 'Library');
     const drawer = page.getByRole('button', { name: 'Show Library drawer', exact: true }); if (await drawer.isVisible()) await drawer.click();
     await page.getByRole('button', { name: '#Writing', exact: true }).click();
+    await showLibraryFilters(page);
     await page.getByLabel('Filter by status', { exact: true }).selectOption('active');
+    await closeLibraryFilters(page);
     await navigate(page, 'Write'); await navigate(page, 'Library');
     await expect(page.getByRole('button', { name: 'Inspect Saved draft' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Inspect Assembly block' })).toHaveCount(0);
+    await showLibraryFilters(page);
     await expect(page.getByLabel('Filter by status', { exact: true })).toHaveValue('active');
+    await closeLibraryFilters(page);
     await expect(page.getByText('Tag: Writing', { exact: true })).toBeVisible();
   });
   test(`Composer new draft and Clear have safe undo at ${width}`, async ({ page }) => {
