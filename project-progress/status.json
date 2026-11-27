@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-11-27T06:52:47.753Z",
+  "snapshotAt": "2026-11-27T15:42:56.000Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "872ab1991ac97566b49d19d197e3fd7ef9b7673f",
+  "mainSha": "3e62991244695e4dc9f49eecfaea05c36c71d24c",
   "overall": "Acceptance incomplete",
   "nextAction": "Continue N03 bulk icon/tag/metadata editing from the prepared allowlist, preview and acknowledged-write contract. N01 Copy code and N02 contextual Chat are accepted. Other November and independent storage/billing/native/human gates remain with their owning records.",
   "evidence": [
+    {
+      "label": "Sign-in back link returns repeat visitors to the landing page",
+      "state": "Verified",
+      "detail": "November 27. Returning signed-out visitors were sent from the sign-in page's back link to / and straight back to /app. PR350 points the link at /?splash=1, the override sign-out already uses, and adds a regression test that fails on the old link. Merged as 3e62991. Merge-gate, version consistency, production API safety, Vercel and landing gates passed, including post-merge Landing CI. The production deployment succeeded, and a live check took a returning signed-out visitor from /app back to the landing page with pricing and FAQ.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/350"
+    },
     {
       "label": "Account Sync first upload and restore",
       "state": "Verified",
@@ -2486,6 +2492,18 @@
       "inPlan": false,
       "nextAction": null,
       "verification": "See the linked issue for its recorded status and acceptance evidence."
+    },
+    {
+      "id": "425255fc8f448148a2b8e7b568ee7dd3",
+      "title": "Sign-in back link loops repeat visitors back to /app",
+      "status": "Done",
+      "severity": "Medium",
+      "area": "Layout",
+      "type": "Bug",
+      "url": "https://app.notion.com/425255fc8f448148a2b8e7b568ee7dd3",
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "PR350 merged 3e62991; post-merge Landing CI passed; live production acceptance on November 27."
     }
   ]
 }
