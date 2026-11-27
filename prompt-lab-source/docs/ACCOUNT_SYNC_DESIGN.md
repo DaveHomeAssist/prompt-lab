@@ -258,7 +258,7 @@ Production ran [`7d558b28`](https://github.com/DaveHomeAssist/prompt-lab/commit/
 2. **R2.** The base migration was applied to the original project on November 1. Verify every migration in `supabase/migrations` against the active target, including the [safe pull cursor SQL](../supabase/migrations/20261117125000_sync_pull_safe_prefix.sql). Apply missing migrations in order. Verify forced RLS, client RPC grants, and that `sync` is outside the exposed schemas. Review provider advisors against the documented RPC design in section 10.
 3. **R3.** Supabase Auth: turn off "Allow new users to sign up" and anonymous sign-ins. Leave Realtime off.
 4. **R4.** Clerk: open "Connect with Supabase", which adds `role: authenticated` to session tokens. In Supabase, add the Clerk third-party provider with domain `clerk.promptlab.tools`. Production instance only. Do not use a JWT template.
-5. **R5.** Clerk: confirm bot protection and email verification for sign-up.
+5. **R5.** Confirm legacy bot sign-up protection and required sign-up email verification through the [Clerk Frontend API](https://clerk.com/docs/reference/frontend-api/2025-11-10/). The preflight reads the production instance without a secret key, including while Supabase is paused. If the instance switches to a different bot protection mode, verify that mode in the Clerk dashboard.
 6. **R6.** Vercel env:
    - `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` (public).
    - `SUPABASE_URL`, `SUPABASE_SECRET_KEY` and `CLERK_WEBHOOK_SIGNING_SECRET` (Sensitive, production only).
