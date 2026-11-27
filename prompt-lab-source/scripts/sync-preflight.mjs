@@ -13,7 +13,8 @@ import { fileURLToPath } from 'node:url';
 export const UNREACHABLE = 'project unreachable or paused';
 export const CLERK_DOMAIN = 'clerk.promptlab.tools';
 export const CLERK_ISSUER = `https://${CLERK_DOMAIN}`;
-export const WEBHOOK_URL = 'https://promptlab.tools/api/sync/clerk-webhook';
+const APP_ORIGIN = 'https://promptlab.tools';
+export const WEBHOOK_URL = APP_ORIGIN + '/api/sync/clerk-webhook';
 const PROJECT_URL = /^https:\/\/([a-z0-9-]+)\.supabase\.co$/;
 const PROBE_MS = 8000;
 
@@ -123,17 +124,6 @@ function authSettingsView(json) {
   return { signupOff, anonymousOff };
 }
 
-function clerkProtection(instance) {
-  const bot = instance?.attack_protection?.bot_protection?.enabled
-    ?? instance?.attack_protection?.bot_protection
-    ?? instance?.bot_protection_enabled;
-  const email = instance?.attack_protection?.email_verification?.required
-    ?? instance?.restrictions?.email_verification
-    ?? instance?.user_settings?.attributes?.email_address?.verify_at_sign_up
-    ?? instance?.email_settings?.verification_required;
-  return { bot: bot === true, email: email === true };
-}
-
 function webhookMatches(payload) {
   const rows = Array.isArray(payload) ? payload : payload?.data || payload?.endpoints || [];
   if (!Array.isArray(rows)) return false;
@@ -221,8 +211,6 @@ export async function runSyncPreflight({
     'R3  Realtime off',
     'R4  provider domain',
     'R4  no JWT template',
-    'R5  bot protection',
-    'R5  email verification',
     'R7  user.deleted endpoint',
   ].forEach(expectRemote);
   for (const table of schema.tables) expectRemote(`schema  ${table}`);
@@ -358,23 +346,47 @@ export async function runSyncPreflight({
     skipRemote('FAIL', urlConfig.value ? 'project url was not queried' : 'project url absent');
   }
 
+  // R5 belongs to the Clerk frontend instance. Its published configuration is
+  // available without credentials, including when Supabase is paused.
+  const clerkEnvironment = await request(
+    CLERK_ISSUER + '/v1/environment',
+    { headers: { Accept: 'application/json', Origin: APP_ORIGIN }, fetchImpl, timeoutMs },
+  ).catch((error) => {
+    if (!isUnreachable(error)) throw error;
+    return null;
+  });
+  let clerkSettings = null;
+  let clerkCheckDetail = 'Clerk Frontend API unreachable';
+  if (clerkEnvironment) {
+    const { response, text } = clerkEnvironment;
+    clerkCheckDetail = 'Clerk Frontend API HTTP ' + response.status;
+    if (response.ok) {
+      try {
+        clerkSettings = JSON.parse(text)?.user_settings;
+        clerkCheckDetail = 'not confirmed';
+      } catch {
+        clerkCheckDetail = 'Clerk Frontend API returned invalid JSON';
+      }
+    }
+  }
+  const bot = clerkSettings?.sign_up?.captcha_enabled === true;
+  const email = clerkSettings?.attributes?.email_address?.verify_at_sign_up === true;
+  note(bot ? 'PASS' : 'FAIL', 'R5  bot protection', bot ? 'enabled' : clerkCheckDetail);
+  note(email ? 'PASS' : 'FAIL', 'R5  email verification', email ? 'required at sign-up' : clerkCheckDetail);
+
   if (present(env, 'CLERK_SECRET_KEY') && !unreachable) {
     const headers = { Authorization: `Bearer ${env.CLERK_SECRET_KEY.trim()}`, Accept: 'application/json' };
     let templates = null;
-    let instance = null;
     let hooks = null;
     try {
       templates = await request('https://api.clerk.com/v1/jwt_templates', { headers, fetchImpl, timeoutMs });
-      instance = await request('https://api.clerk.com/v1/instance', { headers, fetchImpl, timeoutMs });
       hooks = await request('https://api.clerk.com/v1/webhooks', { headers, fetchImpl, timeoutMs });
     } catch (error) {
       if (!isUnreachable(error)) throw error;
-      templates = instance = hooks = null;
+      templates = hooks = null;
     }
     if (!templates) {
       note('FAIL', 'R4  no JWT template', 'Clerk API unreachable');
-      note('FAIL', 'R5  bot protection', 'Clerk API unreachable');
-      note('FAIL', 'R5  email verification', 'Clerk API unreachable');
       note('FAIL', 'R7  user.deleted endpoint', 'Clerk API unreachable');
     } else {
       let templateJson = null;
@@ -383,12 +395,6 @@ export async function runSyncPreflight({
       else if (jwtTemplateUsed(templateJson)) note('FAIL', 'R4  no JWT template', 'a JWT template named for the database is present');
       else note('PASS', 'R4  no JWT template', 'no database JWT template');
 
-      let instanceJson = null;
-      try { instanceJson = instance && instance.response.ok ? JSON.parse(instance.text) : null; } catch { instanceJson = null; }
-      const protection = clerkProtection(instanceJson);
-      note(protection.bot ? 'PASS' : 'FAIL', 'R5  bot protection', protection.bot ? 'enabled' : 'not confirmed');
-      note(protection.email ? 'PASS' : 'FAIL', 'R5  email verification', protection.email ? 'required at sign-up' : 'not confirmed');
-
       let hookJson = null;
       try { hookJson = hooks && hooks.response.ok ? JSON.parse(hooks.text) : null; } catch { hookJson = null; }
       if (!hooks?.response.ok) note('FAIL', 'R7  user.deleted endpoint', `Clerk webhooks HTTP ${hooks?.response?.status || 0}`);
@@ -396,9 +402,7 @@ export async function runSyncPreflight({
     }
   } else if (!unreachable) {
     note('FAIL', 'R4  no JWT template', 'CLERK_SECRET_KEY absent');
-    note('FAIL', 'R5  bot protection', 'CLERK_SECRET_KEY absent');
-    note('FAIL', 'R5  email verification', 'CLERK_SECRET_KEY absent');
-      note('FAIL', 'R7  user.deleted endpoint', 'CLERK_SECRET_KEY absent');
+    note('FAIL', 'R7  user.deleted endpoint', 'CLERK_SECRET_KEY absent');
   }
 
   if (!unreachable && !results.some((row) => row.id === 'R4  provider domain')) {

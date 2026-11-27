@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-11-27T06:10:53.630Z",
+  "snapshotAt": "2026-11-27T06:34:28.396Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,7 +9,7 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "7d558b289984fb21499e6c71f4389dbfcc71fa47",
+  "mainSha": "6faf169a0ad067c22b661535d0f907e520e3916d",
   "overall": "Acceptance incomplete",
   "nextAction": "Continue N03 bulk icon/tag/metadata editing from the prepared allowlist, preview and acknowledged-write contract. N01 Copy code and N02 contextual Chat are accepted. Other November and independent storage/billing/native/human gates remain with their owning records.",
   "evidence": [
@@ -22,8 +22,14 @@
     {
       "label": "Hosted Account Sync activation",
       "state": "Open",
-      "detail": "November 27 production 7d558b28 and dpl_A4gdF9MKagBQsNSZBuxxyGji4hko were verified. Vercel has no Account Sync or Supabase settings. The original project hostname did not resolve and the connected account lacks access. Verify the intended provider project, identity, erasure, backups and a signed-in web restore before enabling Account Sync.",
+      "detail": "November 27 production 6faf169a and dpl_27ypeBSNJQtJmYGsRJeWcZZe4o2u were verified. Vercel has no Account Sync or Supabase settings. The original project hostname did not resolve and the connected account lacks access. Verify the intended provider project, identity, erasure, backups and a signed-in web restore before enabling Account Sync.",
       "url": "https://app.notion.com/p/402255fc8f4481c5a7d5fbe429ff03c9"
+    },
+    {
+      "label": "Clerk sign-up checks",
+      "state": "Verified",
+      "detail": "November 27 production Clerk Frontend API returned sign-up CAPTCHA enabled and email verification required. On Mac Node 22.22.1 the read-only preflight candidate reported both R5 controls as passed without credentials. All 11 targeted tests passed.",
+      "url": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
     },
     {
       "label": "Signed-in rename and Cut acceptance",
@@ -1267,7 +1273,7 @@
       "id": "402255fc8f4481c5a7d5fbe429ff03c9",
       "inPlan": false,
       "nextAction": "Establish access to the intended Supabase project, then verify the hosted rollout prerequisites and signed-in restore.",
-      "verification": "2026-10-23: current scope appended and read back in existing Notion row. iCloud folder first, hosted second; complete history/backups and one shared app/API library. Runtime Not started; previous web-first checklist superseded.",
+      "verification": "2026-10-23: current scope appended and read back in existing Notion row. iCloud folder first, hosted second; complete history/backups and one shared app/API library. Runtime Not started; previous web-first checklist superseded. November 27: production Clerk settings confirmed legacy sign-up CAPTCHA and required email verification. Hosting still awaits access to the intended Supabase project.",
       "title": "Reconcile storage plan and hosted decisions B1 (sync slice 1)",
       "status": "Not started",
       "severity": "Medium",

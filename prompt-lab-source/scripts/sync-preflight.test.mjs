@@ -17,6 +17,7 @@ import {
 
 const migrationsDir = new URL('../supabase/migrations/', import.meta.url);
 const ORIGIN = 'https://abcd.supabase.co';
+const CLERK_ENVIRONMENT = 'https://clerk.promptlab.tools/v1/environment';
 const SENTINEL_KEY = 'sb_publishable_SENTINEL_VALUE';
 const SENTINEL_SECRET = 'sb_secret_SENTINEL_VALUE';
 const SENTINEL_WEBHOOK = 'whsec_SENTINEL_VALUE';
@@ -42,6 +43,15 @@ function jsonResponse(status, body) {
     ok: status >= 200 && status < 300,
     text: async () => (typeof body === 'string' ? body : JSON.stringify(body)),
   };
+}
+
+function clerkEnvironment({ captcha = true, verifyEmail = true } = {}) {
+  return jsonResponse(200, {
+    user_settings: {
+      sign_up: { captcha_enabled: captcha },
+      attributes: { email_address: { verify_at_sign_up: verifyEmail } },
+    },
+  });
 }
 
 function noSecrets(report) {
@@ -86,11 +96,19 @@ test('missing env is a failing checklist and the values are never printed', asyn
   const calls = [];
   const report = await runSyncPreflight({
     env: { VITE_SUPABASE_URL: 'https://evil.example.com/secret-path', VITE_SUPABASE_PUBLISHABLE_KEY: SENTINEL_KEY, VITE_PL_ACCOUNT_SYNC: SENTINEL_SECRET },
-    fetchImpl: async (url, init) => { calls.push({ url, init }); return jsonResponse(200, {}); },
+    fetchImpl: async (url, init) => {
+      calls.push({ url, init });
+      assert.equal(url, CLERK_ENVIRONMENT);
+      return clerkEnvironment();
+    },
     migrationsDir,
   });
   const text = formatReport(report);
-  assert.equal(calls.length, 0);
+  assert.deepEqual(calls.map(({ url }) => url), [CLERK_ENVIRONMENT]);
+  assert.equal(calls[0].init.headers.Authorization, undefined);
+  assert.equal(calls[0].init.headers.apikey, undefined);
+  assert.match(text, /PASS {2}R5 {2}bot protection {2}enabled/);
+  assert.match(text, /PASS {2}R5 {2}email verification {2}required at sign-up/);
   assert.match(text, /PASS {2}R6 {2}VITE_SUPABASE_URL {2}present/);
   assert.match(text, /PASS {2}R6 {2}anon key {2}present as VITE_SUPABASE_PUBLISHABLE_KEY/);
   assert.match(text, /FAIL {2}R6 {2}project url {2}VITE_SUPABASE_URL is not a project url/);
@@ -103,17 +121,34 @@ test('missing env is a failing checklist and the values are never printed', asyn
   assert.equal(text.includes(UNREACHABLE), false);
 });
 
+test('an unavailable Clerk endpoint fails R5 without reporting a Supabase pause', async () => {
+  const report = await runSyncPreflight({
+    env: {},
+    fetchImpl: async (url) => {
+      assert.equal(url, CLERK_ENVIRONMENT);
+      throw Object.assign(new Error('getaddrinfo ENOTFOUND'), { code: 'ENOTFOUND' });
+    },
+    migrationsDir,
+  });
+  assert.equal(report.unreachable, false);
+  assert.deepEqual(
+    report.results.filter((row) => row.id.startsWith('R5')).map(({ status, detail }) => [status, detail]),
+    [['FAIL', 'Clerk Frontend API unreachable'], ['FAIL', 'Clerk Frontend API unreachable']],
+  );
+});
+
 test('anon key presence accepts the publishable name or a legacy anon name', () => {
   assert.ok(ANON_KEY_ENV_NAMES.includes('VITE_SUPABASE_PUBLISHABLE_KEY'));
   assert.ok(ANON_KEY_ENV_NAMES.includes('SUPABASE_ANON_KEY'));
 });
 
-test('an unreachable project prints the pause phrase, does not write, and exits cleanly when env is present', async () => {
+test('an unreachable Supabase project leaves the Clerk preflight active and sends no writes', async () => {
   const calls = [];
   const report = await runSyncPreflight({
     env: env(),
     fetchImpl: async (url, init) => {
-      calls.push({ url: String(url), method: init?.method || 'GET', body: init?.body });
+      calls.push({ url: String(url), method: init?.method || 'GET', body: init?.body, headers: init?.headers });
+      if (url === CLERK_ENVIRONMENT) return clerkEnvironment();
       throw Object.assign(new Error('getaddrinfo ENOTFOUND'), { code: 'ENOTFOUND' });
     },
     migrationsDir,
@@ -122,9 +157,12 @@ test('an unreachable project prints the pause phrase, does not write, and exits 
   assert.match(text, new RegExp(`^sync:preflight\\n${UNREACHABLE}`, 'm'));
   assert.equal(report.unreachable, true);
   assert.equal(report.exitCode, 0);
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0].method, 'GET');
-  assert.equal(calls[0].body, undefined);
+  assert.deepEqual(calls.map(({ url }) => url), [ORIGIN + '/auth/v1/settings', CLERK_ENVIRONMENT]);
+  assert.ok(calls.every(({ method, body }) => method === 'GET' && body === undefined));
+  assert.equal(calls[1].headers.Authorization, undefined);
+  assert.equal(calls[1].headers.apikey, undefined);
+  assert.match(text, /PASS {2}R5 {2}bot protection {2}enabled/);
+  assert.match(text, /PASS {2}R5 {2}email verification {2}required at sign-up/);
   assert.match(text, /SKIP {2}schema {2}public.sync_items {2}project unreachable or paused/);
   assert.match(text, /SKIP {2}R3 {2}sign-ups off {2}project unreachable or paused/);
 });
@@ -135,11 +173,11 @@ test('HTTP 540 is the same clean pause result and never sends a write', async ()
     env: env(),
     fetchImpl: async (url, init) => {
       methods.push(init?.method || 'GET');
-      return jsonResponse(540, 'Project paused');
+      return url === CLERK_ENVIRONMENT ? clerkEnvironment() : jsonResponse(540, 'Project paused');
     },
     migrationsDir,
   });
-  assert.deepEqual(methods, ['GET']);
+  assert.deepEqual(methods, ['GET', 'GET']);
   assert.equal(report.exitCode, 0);
   assert.match(formatReport(report), new RegExp(UNREACHABLE));
   noSecrets(report);
@@ -159,9 +197,7 @@ test('a reachable project checks auth settings and tables with reads only', asyn
       if (target.includes('/rest/v1/sync_items')) return jsonResponse(401, { code: '42501', message: 'permission denied for table sync_items' });
       if (target.includes('/rest/v1/sync_conflicts')) return jsonResponse(404, { code: 'PGRST205', message: 'Could not find the table' });
       if (target.includes('api.clerk.com/v1/jwt_templates')) return jsonResponse(200, [{ name: 'supabase' }]);
-      if (target.includes('api.clerk.com/v1/instance')) {
-        return jsonResponse(200, { attack_protection: { bot_protection: { enabled: true }, email_verification: { required: false } } });
-      }
+      if (target === CLERK_ENVIRONMENT) return clerkEnvironment({ verifyEmail: false });
       if (target.includes('api.clerk.com/v1/webhooks')) {
         return jsonResponse(200, { data: [{ url: WEBHOOK_URL, events: ['user.deleted'] }] });
       }
@@ -213,9 +249,7 @@ test('catalog selects confirm tables and owner policies and reject a write attem
         ]);
       }
       if (target.includes('api.clerk.com/v1/jwt_templates')) return jsonResponse(200, []);
-      if (target.includes('api.clerk.com/v1/instance')) {
-        return jsonResponse(200, { attack_protection: { bot_protection: { enabled: true }, email_verification: { required: true } } });
-      }
+      if (target === CLERK_ENVIRONMENT) return clerkEnvironment();
       if (target.includes('api.clerk.com/v1/webhooks')) return jsonResponse(200, { data: [{ url: WEBHOOK_URL, events: ['user.deleted'] }] });
       throw new Error(`unexpected ${target}`);
     },
