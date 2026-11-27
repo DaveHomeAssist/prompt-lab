@@ -14,11 +14,24 @@ let as;
 let networkDown = false;
 
 class MemoryStorage {
-  constructor() { this.map = new Map(); }
+  constructor(maxBytes = Infinity) {
+    this.map = new Map();
+    this.maxBytes = maxBytes;
+  }
   get length() { return this.map.size; }
   key(index) { return [...this.map.keys()][index] ?? null; }
   getItem(key) { return this.map.has(key) ? this.map.get(key) : null; }
-  setItem(key, value) { this.map.set(key, String(value)); }
+  setItem(key, value) {
+    const text = String(value);
+    if (this.maxBytes !== Infinity) {
+      let bytes = Buffer.byteLength(key) + Buffer.byteLength(text);
+      for (const [name, stored] of this.map) {
+        if (name !== key) bytes += Buffer.byteLength(name) + Buffer.byteLength(stored);
+      }
+      if (bytes > this.maxBytes) throw Object.assign(new Error('Storage capacity exceeded'), { name: 'QuotaExceededError' });
+    }
+    this.map.set(key, text);
+  }
   removeItem(key) { this.map.delete(key); }
 }
 
@@ -48,8 +61,7 @@ function pgTransport(sub) {
 
 let fakeNow = Date.parse('2026-10-30T10:00:00Z');
 const now = () => fakeNow;
-function device(name, sub) {
-  const storage = new MemoryStorage();
+function device(name, sub, storage = new MemoryStorage()) {
   const engine = () => createSyncEngine({ storage, transport: pgTransport(sub), userId: sub, deviceId: name, now, random: () => 0.5 });
   return { storage, sync: (options) => engine().syncOnce(options), name };
 }
@@ -78,6 +90,52 @@ test('first device uploads its existing Library on first sign-in', async () => {
   assert.equal(result.pending, 0);
   const server = await inspect(A, 'select kind, item_id from public.sync_items order by kind, item_id');
   assert.deepEqual(server.map((row) => `${row.kind}:${row.item_id}`), ['prompt:p1', 'prompt:p2', 'prompt:t1', 'structure:main']);
+});
+
+test('a large Library uploads within a 5 MiB storage budget and restores on a fresh device', async () => {
+  const user = 'user_LargeFirstSync';
+  const source = device('large-source', user, new MemoryStorage(5 * 1024 * 1024));
+  const prompts = Array.from({ length: 529 }, (_, index) => entry(`large-${index}`, `Prompt ${index}`, undefined, {
+    original: `Prompt ${index}\n${'x'.repeat(3500)}`,
+    collection: 'Work',
+  }));
+  write(source, 'pl2-library', prompts);
+  write(source, 'pl2-collections', ['Work']);
+  const uploaded = await source.sync();
+  assert.equal(uploaded.status, 'synced', uploaded.error);
+  assert.equal(uploaded.pending, 0);
+
+  const fresh = device('large-fresh', user);
+  const restored = await fresh.sync();
+  const bodies = (list) => new Map(list.map(({ id, original }) => [id, original]));
+  assert.equal(restored.status, 'synced', restored.error);
+  assert.deepEqual(bodies(read(fresh, 'pl2-library')), bodies(prompts));
+  assert.deepEqual(read(fresh, 'pl2-collections'), ['Work']);
+});
+
+test('first sync reports a rejected outbox and the same engine can retry after storage recovers', async () => {
+  const user = 'user_FirstSyncRetry';
+  const storage = new MemoryStorage();
+  const prompt = entry('retry', 'Keep this prompt');
+  storage.setItem('pl2-library', JSON.stringify([prompt]));
+  const writeItem = storage.setItem.bind(storage);
+  storage.setItem = (key, value) => {
+    if (key === `pl2-sync-queue:${user}`) throw Object.assign(new Error('Storage capacity exceeded'), { name: 'QuotaExceededError' });
+    writeItem(key, value);
+  };
+  const engine = createSyncEngine({ storage, transport: pgTransport(user), userId: user, deviceId: 'retry-source', now });
+  const failed = await engine.syncOnce();
+  assert.equal(failed.status, 'error');
+  assert.equal(failed.error, 'Pending changes could not be saved');
+  assert.deepEqual(JSON.parse(storage.getItem('pl2-library')), [prompt]);
+
+  storage.setItem = writeItem;
+  const retried = await engine.syncOnce();
+  assert.equal(retried.status, 'synced', retried.error);
+  assert.equal(retried.pending, 0);
+  const fresh = device('retry-fresh', user);
+  await fresh.sync();
+  assert.deepEqual(titles(fresh), [prompt.title]);
 });
 
 test('second device merges: exact duplicates dropped, its own prompts uploaded, collections unioned', async () => {
