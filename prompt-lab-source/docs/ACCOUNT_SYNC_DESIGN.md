@@ -255,7 +255,7 @@ Production ran [`7d558b28`](https://github.com/DaveHomeAssist/prompt-lab/commit/
 ### Provider setup and release order
 
 1. **R1.** Restore access to the original `promptlab-sync` project or select its replacement in the intended Supabase organization. The original project was created November 1, 2026 in `us-east-1` on Free (ref `djoboqvwuojhpqnubnpc`). Record the verified owner, region, and cost for the active project. Confirm its contents and migration history before using it.
-2. **R2.** The base migration was applied to the original project on November 1. Verify every migration in [`supabase/migrations`](../supabase/migrations) against the active target, including the safe pull cursor. Apply missing migrations in order. Verify forced RLS, client RPC grants, and that `sync` is outside the exposed schemas. Review provider advisors against the documented RPC design in section 10.
+2. **R2.** The base migration was applied to the original project on November 1. Verify every migration in `supabase/migrations` against the active target, including the [safe pull cursor SQL](../supabase/migrations/20261117125000_sync_pull_safe_prefix.sql). Apply missing migrations in order. Verify forced RLS, client RPC grants, and that `sync` is outside the exposed schemas. Review provider advisors against the documented RPC design in section 10.
 3. **R3.** Supabase Auth: turn off "Allow new users to sign up" and anonymous sign-ins. Leave Realtime off.
 4. **R4.** Clerk: open "Connect with Supabase", which adds `role: authenticated` to session tokens. In Supabase, add the Clerk third-party provider with domain `clerk.promptlab.tools`. Production instance only. Do not use a JWT template.
 5. **R5.** Clerk: confirm bot protection and email verification for sign-up.
