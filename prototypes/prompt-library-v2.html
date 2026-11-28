@@ -303,12 +303,14 @@
 
   // ── editor ──────────────────────────────────────────────
   function startEdit(id) {
-    if (ui.dirty && ui.selectedId !== id && !window.confirm('Discard unsaved changes?')) return false;
+    if (ui.draft && ui.selectedId === id) return true; // already open: keep the draft as it is
+    if (ui.dirty && !window.confirm('Discard unsaved changes?')) return false;
     const e = entry(id);
     ui.selectedId = e ? e.id : null;
     ui.draft = e ? JSON.parse(JSON.stringify(e)) : null;
     ui.dirty = false;
     ui.runOut = '';
+    ui.runFor = null;
     ui.vars = {};
     renderEditor();
     renderCards();
@@ -362,7 +364,7 @@
         <div class="row">
           <button type="button" class="btn sm primary" id="copyFilledBtn">Copy ${vars.length ? 'filled ' : ''}prompt</button>
           <select class="select" id="runModel" aria-label="Claude model" style="width:auto;min-height:28px;padding:2px 6px">${claude.models.map((m) => `<option value="${m.id}"${m.id === store.get('lib:model', claude.defaultModel) ? ' selected' : ''}>${esc(m.label)}</option>`).join('')}</select>
-          <button type="button" class="btn sm" id="runBtn"${ui.runBusy ? ' disabled' : ''}>${ui.runBusy ? '<span class="spinner" aria-hidden="true"></span> Running…' : 'Test with Claude'}</button>
+          <button type="button" class="btn sm" id="runBtn"${ui.runBusy ? ' disabled' : ''}>${ui.runBusy ? (ui.runFor === d.id ? '<span class="spinner" aria-hidden="true"></span> Running…' : 'Another test is running…') : 'Test with Claude'}</button>
         </div>
         <div class="alert" id="runError" role="alert" hidden></div>
         ${ui.runOut ? `<div class="run-out" aria-live="polite">${esc(ui.runOut)}</div><div class="row"><button type="button" class="btn sm" id="copyRunBtn">Copy reply</button></div>` : ''}
@@ -422,17 +424,27 @@
     const prompt = filledPrompt();
     if (!prompt.trim()) { err.textContent = 'The prompt is empty.'; err.hidden = false; return; }
     if (!keys.has('anthropic')) { keys.open(); return; }
+    const sourceId = d.id;
+    const sourceTitle = d.title;
+    const stillOpen = () => ui.draft && ui.draft.id === sourceId;
     ui.runBusy = true;
     ui.runOut = '';
+    ui.runFor = sourceId;
     renderEditor();
     try {
       const r = await claude.send({ model: $('runModel') ? $('runModel').value : claude.defaultModel, effort: 'medium', messages: [{ role: 'user', content: prompt }] });
-      ui.runOut = r.text || '(empty reply)';
-      const e = entry(d.id);
-      if (e) { e.useCount += 1; d.useCount = e.useCount; persist(); }
+      const e = entry(sourceId);
+      if (e) { e.useCount += 1; persist(); }
+      if (stillOpen()) {
+        ui.runOut = r.text || '(empty reply)';
+        ui.draft.useCount = e ? e.useCount : ui.draft.useCount;
+      } else {
+        toast(`Reply for "${sourceTitle}" arrived after you switched prompts. Run it again to see it.`);
+      }
     } catch (ex) {
-      ui.runOut = '';
       ui.runBusy = false;
+      if (!stillOpen()) { toast(`Test run for "${sourceTitle}" failed.`); renderEditor(); return; }
+      ui.runOut = '';
       renderEditor();
       const box = $('runError');
       box.textContent = ex && ex.message ? ex.message : String(ex);
@@ -594,6 +606,10 @@
     } else if (id === 'runBtn') run();
     else if (id === 'copyRunBtn') { if (await copy(ui.runOut)) toast('Reply copied.'); }
     else if (id === 'dupBtn') {
+      if (ui.dirty) {
+        if (!window.confirm('Save your changes to this prompt before duplicating it?')) return;
+        saveDraft();
+      }
       const src = entry(d.id);
       const copyRow = normalize({ ...src, id: '', title: src.title + ' (copy)', versions: [], useCount: 0, createdAt: Date.now(), updatedAt: Date.now() });
       data.library.splice(data.library.indexOf(src) + 1, 0, copyRow);
