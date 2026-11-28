@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Prompt Explorer</title>
+<meta name="description" content="Personal prototype: branch an image prompt along one axis at a time and compare the variants.">
+<meta name="robots" content="noindex,nofollow">
+<link rel="stylesheet" href="shared/proto.css">
+<script src="shared/proto.js"></script>
+<style>
+  .proto-main {
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 380px) minmax(260px, 320px);
+    grid-template-areas: "tree node pins";
+  }
+  [data-panel="tree"] { grid-area: tree; }
+  [data-panel="node"] { grid-area: node; }
+  [data-panel="pins"] { grid-area: pins; }
+  @media (min-width: 768px) and (max-width: 1399px) {
+    .proto-main {
+      grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
+      grid-template-rows: minmax(0, 1.6fr) minmax(0, 1fr);
+      grid-template-areas: "tree node" "tree pins";
+    }
+  }
+  @media (min-width: 2200px) {
+    .proto-main { grid-template-columns: minmax(0, 1fr) minmax(420px, 520px) minmax(360px, 460px); }
+  }
+  @media (max-width: 767px) { .proto-main { grid-template-areas: none; } .proto-main > .panel { grid-area: auto; } }
+
+  .tree-body { padding: 0; position: relative; }
+  .tree-inner { position: relative; display: flex; gap: 56px; padding: 20px; min-width: max-content; min-height: 100%; align-items: flex-start; }
+  .tree-svg { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+  .tree-svg path { fill: none; stroke: var(--border-strong); stroke-width: 1.4; stroke-linecap: round; }
+  .depth-col { display: flex; flex-direction: column; gap: 10px; position: relative; z-index: 1; }
+  .node {
+    width: 190px; padding: 9px 11px; border-radius: var(--radius-sm);
+    border: 1px solid var(--border); background: var(--surface); cursor: pointer;
+    display: flex; flex-direction: column; gap: 4px; box-shadow: var(--shadow);
+  }
+  .node:hover { border-color: var(--border-strong); }
+  .node.is-root { border-color: var(--accent); }
+  .node[aria-selected="true"] { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .node .n-label { font-weight: 600; font-size: 13px; overflow-wrap: anywhere; }
+  .node .n-axis { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .node .n-row { display: flex; gap: 4px; align-items: center; margin-top: 2px; }
+  .node .n-row .btn { min-height: 24px; font-size: 11px; padding: 0 7px; }
+  .node .pin-dot { margin-left: auto; color: var(--accent); font-size: 12px; }
+  .axis-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; }
+  .axis-btn { text-align: left; padding: 7px 9px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
+  .axis-btn:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .axis-btn .s { font-size: 11px; color: var(--muted); }
+  .crumbs { display: flex; flex-wrap: wrap; gap: 4px; font-size: 12px; color: var(--muted); }
+  .crumbs button { border: 0; background: none; padding: 0; color: var(--text-2); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+  .pin-card { display: flex; flex-direction: column; gap: 6px; }
+  .pin-card .p { font-size: 12.5px; color: var(--text-2); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 9.5em; overflow: auto; }
+  .busy-chip[hidden] { display: none; }
+</style>
+</head>
+<body class="proto">
+<header class="proto-top">
+  <div class="proto-brand"><span class="eyebrow">Prompt Lab · Prototype</span><h1>Prompt Explorer</h1></div>
+  <div class="proto-actions">
+    <span class="chip accent busy-chip" id="busyChip" hidden><span class="spinner" aria-hidden="true"></span><span id="busyText">Branching…</span></span>
+    <select class="select hide-sm" id="modelSelect" aria-label="Claude model" style="width:auto;min-height:32px;padding:4px 8px"></select>
+    <span data-key-status="anthropic" class="chip"></span>
+    <button class="btn sm" type="button" data-keys-open>API key</button>
+    <button class="btn icon" type="button" data-theme-toggle></button>
+  </div>
+</header>
+
+<main class="proto-main">
+  <section class="panel" data-panel="tree" aria-labelledby="treeTitle">
+    <div class="panel-head">
+      <h2 id="treeTitle">Tree</h2>
+      <button class="btn sm ghost" type="button" id="importBtn">Import</button>
+      <button class="btn sm ghost" type="button" id="exportBtn">Export</button>
+      <button class="btn sm ghost danger" type="button" id="resetBtn">New tree</button>
+      <input type="file" id="importFile" accept="application/json,.json" hidden>
+    </div>
+    <div class="panel-body tree-body" id="treeScroll">
+      <div class="tree-inner" id="treeInner"><svg class="tree-svg" id="treeSvg" aria-hidden="true"></svg></div>
+    </div>
+  </section>
+
+  <section class="panel" data-panel="node" aria-labelledby="nodeTitle">
+    <div class="panel-head"><h2 id="nodeTitle">Node</h2><span class="chip" id="nodeAxis"></span></div>
+    <div class="panel-body stack" id="nodeBody">
+      <div class="crumbs" id="crumbs"></div>
+      <div class="field"><label class="label" for="nodeLabel">Label</label><input class="input" id="nodeLabel"></div>
+      <div class="field">
+        <label class="label" for="nodePrompt">Prompt</label>
+        <textarea class="textarea" id="nodePrompt" rows="8"></textarea>
+        <p class="hint" id="nodeWords"></p>
+      </div>
+      <div class="row">
+        <button class="btn sm primary" type="button" id="copyBtn">Copy prompt</button>
+        <button class="btn sm" type="button" id="pinBtn">Pin</button>
+        <button class="btn sm" type="button" id="manualChildBtn">Add child by hand</button>
+        <span class="spacer"></span>
+        <button class="btn sm ghost danger" type="button" id="deleteBtn">Delete</button>
+      </div>
+      <div class="alert" id="errorBox" role="alert" hidden></div>
+      <div class="field">
+        <div class="row"><span class="label grow">Branch along an axis</span>
+          <label class="hint row" style="gap:6px">Variants <select class="select" id="countSelect" style="width:auto;min-height:28px;padding:2px 6px"><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option></select></label>
+        </div>
+        <div class="axis-grid" id="axisGrid"></div>
+        <form class="row" id="customAxisForm" style="margin-top:6px">
+          <input class="input grow" id="customAxis" placeholder="Custom axis, e.g. 'material: cedar vs steel'" aria-label="Custom axis">
+          <button class="btn" type="submit">Branch</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" data-panel="pins" aria-labelledby="pinsTitle">
+    <div class="panel-head"><h2 id="pinsTitle">Pinned</h2><button class="btn sm ghost" type="button" id="exportPinsBtn">Copy all</button></div>
+    <div class="panel-body stack" id="pinsBody"></div>
+  </section>
+</main>
+
+<nav class="proto-rail" aria-label="Sections">
+  <button type="button" data-tab="tree"><span class="ico">⑂</span>Tree</button>
+  <button type="button" data-tab="node"><span class="ico">✎</span>Node</button>
+  <button type="button" data-tab="pins"><span class="ico">★</span>Pinned</button>
+</nav>
+
+<script>
+(function () {
+  'use strict';
+  const { store, keys, claude, tabs, esc, toast, copy, download, uid } = Proto;
+  const $ = (id) => document.getElementById(id);
+
+  const AXES = [
+    { label: 'Art style', sub: 'illustrated · photo · painterly · pixel' },
+    { label: 'Lighting', sub: 'overcast · golden hour · midday · dusk' },
+    { label: 'Camera angle', sub: 'isometric · top-down · low 3/4' },
+    { label: 'Detail level', sub: 'minimal · standard · rich' },
+    { label: 'Composition', sub: 'isolated · context · full scene' },
+    { label: 'Color palette', sub: 'muted · saturated · monochrome' },
+    { label: 'Mood', sub: 'calm · dramatic · playful' },
+    { label: 'Season state', sub: 'bare · seedling · peak · harvest' },
+    { label: 'Weather', sub: 'dry · damp · rain-soaked · dew' },
+    { label: 'Grid fidelity', sub: 'abstract · 4×6 · 4×8 · labeled' },
+  ];
+
+  const SEED = 'Stylized 3D isometric raised garden bed, premium mobile game asset, cedar wood frame, dark rich soil, 32 planting cells (4 columns × 8 rows exactly), matte black square corner hardware brackets at all 4 corners, white pea gravel pad with organic irregular border, transparent PNG background, isolated asset.';
+
+  const SCHEMA = {
+    type: 'object',
+    properties: {
+      variants: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            label: { type: 'string', description: '2-3 word node label' },
+            prompt: { type: 'string', description: 'Complete, self-contained image prompt' },
+          },
+          required: ['label', 'prompt'],
+          additionalProperties: false,
+        },
+      },
+    },
+    required: ['variants'],
+    additionalProperties: false,
+  };
+
+  function freshTree(seed) {
+    const root = { id: 'root', label: 'Seed prompt', axis: '', parentId: null, prompt: seed || SEED, children: [], expanded: true };
+    return { nodes: { root }, selectedId: 'root' };
+  }
+
+  let tree = store.get('pe:tree', null);
+  if (!tree || !tree.nodes || !tree.nodes.root) tree = freshTree();
+  let pins = store.get('pe:pins', []).filter((id) => tree.nodes[id]);
+  let busy = false;
+
+  const save = () => { store.set('pe:tree', tree); store.set('pe:pins', pins); };
+  const node = (id) => tree.nodes[id];
+  const selected = () => node(tree.selectedId) || node('root');
+
+  // ── tree render ─────────────────────────────────────────
+  function depthMap() {
+    const map = [];
+    (function walk(id, d) {
+      (map[d] = map[d] || []).push(id);
+      const n = node(id);
+      if (n.expanded) n.children.forEach((c) => node(c) && walk(c, d + 1));
+    })('root', 0);
+    return map;
+  }
+
+  function renderTree() {
+    const inner = $('treeInner');
+    inner.querySelectorAll('.depth-col').forEach((c) => c.remove());
+    depthMap().forEach((ids) => {
+      const col = document.createElement('div');
+      col.className = 'depth-col';
+      col.innerHTML = ids.map((id) => {
+        const n = node(id);
+        const kids = n.children.length;
+        return `<div class="node${id === 'root' ? ' is-root' : ''}" role="button" tabindex="0" data-node="${esc(id)}" aria-selected="${id === tree.selectedId}">
+          <span class="n-label">${esc(n.label)}</span>
+          <span class="n-axis">${esc(n.axis || 'seed')}</span>
+          <span class="n-row">
+            ${kids ? `<button type="button" class="btn ghost" data-toggle="${esc(id)}">${n.expanded ? '− hide' : '+ ' + kids}</button>` : ''}
+            <button type="button" class="btn ghost" data-branch="${esc(id)}">⑂ branch</button>
+            ${pins.includes(id) ? '<span class="pin-dot" title="Pinned">★</span>' : ''}
+          </span>
+        </div>`;
+      }).join('');
+      inner.appendChild(col);
+    });
+    requestAnimationFrame(drawConnectors);
+  }
+
+  function drawConnectors() {
+    const svg = $('treeSvg');
+    const inner = $('treeInner');
+    const base = inner.getBoundingClientRect();
+    svg.setAttribute('width', inner.scrollWidth);
+    svg.setAttribute('height', inner.scrollHeight);
+    const box = (id) => {
+      const el = inner.querySelector(`[data-node="${CSS.escape(id)}"]`);
+      return el ? el.getBoundingClientRect() : null;
+    };
+    let d = '';
+    (function walk(id) {
+      const n = node(id);
+      if (!n.expanded) return;
+      const p = box(id);
+      n.children.forEach((cid) => {
+        const c = box(cid);
+        if (p && c) {
+          const x1 = p.right - base.left, y1 = p.top + p.height / 2 - base.top;
+          const x2 = c.left - base.left, y2 = c.top + c.height / 2 - base.top;
+          const mx = (x1 + x2) / 2;
+          d += `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2} `;
+        }
+        walk(cid);
+      });
+    })('root');
+    svg.innerHTML = d ? `<path d="${d.trim()}"/>` : '';
+  }
+
+  // ── node panel ──────────────────────────────────────────
+  function pathTo(id) {
+    const out = [];
+    for (let n = node(id); n; n = n.parentId ? node(n.parentId) : null) out.unshift(n);
+    return out;
+  }
+
+  function renderNode() {
+    const n = selected();
+    $('nodeAxis').textContent = n.axis || 'seed';
+    $('crumbs').innerHTML = pathTo(n.id).map((p, i, a) => i === a.length - 1
+      ? `<span>${esc(p.label)}</span>`
+      : `<button type="button" data-goto="${esc(p.id)}">${esc(p.label)}</button><span>›</span>`).join('');
+    if (document.activeElement !== $('nodeLabel')) $('nodeLabel').value = n.label;
+    if (document.activeElement !== $('nodePrompt')) $('nodePrompt').value = n.prompt;
+    updateWords();
+    $('pinBtn').textContent = pins.includes(n.id) ? 'Unpin' : 'Pin';
+    $('deleteBtn').hidden = n.id === 'root';
+    $('axisGrid').innerHTML = AXES.map((a, i) => `<button type="button" class="axis-btn" data-axis="${i}"${busy ? ' disabled' : ''}><span>${esc(a.label)}</span><span class="s">${esc(a.sub)}</span></button>`).join('');
+  }
+
+  function updateWords() {
+    const words = ($('nodePrompt').value.trim().match(/\S+/g) || []).length;
+    $('nodeWords').textContent = words + ' words';
+  }
+
+  function renderPins() {
+    const body = $('pinsBody');
+    if (!pins.length) {
+      body.innerHTML = '<div class="empty"><strong>Nothing pinned</strong><span>Pin variants to compare them side by side.</span></div>';
+      return;
+    }
+    body.innerHTML = pins.map((id) => {
+      const n = node(id);
+      return `<div class="card pin-card">
+        <div class="row"><strong class="grow">${esc(n.label)}</strong><span class="chip">${esc(n.axis || 'seed')}</span></div>
+        <div class="p">${esc(n.prompt)}</div>
+        <div class="row">
+          <button type="button" class="btn sm" data-pin-copy="${esc(id)}">Copy</button>
+          <button type="button" class="btn sm ghost" data-goto="${esc(id)}">Open</button>
+          <span class="spacer"></span>
+          <button type="button" class="btn sm ghost danger" data-unpin="${esc(id)}" aria-label="Unpin">✕</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function renderAll() { renderTree(); renderNode(); renderPins(); }
+
+  function select(id, showPanel) {
+    if (!node(id)) return;
+    tree.selectedId = id;
+    save();
+    renderAll();
+    if (showPanel) tabs.show('node');
+  }
+
+  function setError(msg) { $('errorBox').textContent = msg || ''; $('errorBox').hidden = !msg; }
+
+  function setBusy(on, text) {
+    busy = on;
+    $('busyChip').hidden = !on;
+    $('busyText').textContent = text || 'Branching…';
+    document.querySelectorAll('.axis-btn, #customAxisForm button').forEach((b) => { b.disabled = on; });
+  }
+
+  // ── branching ───────────────────────────────────────────
+  function addChild(parentId, label, axis, prompt) {
+    const id = uid('n');
+    tree.nodes[id] = { id, label, axis, parentId, prompt, children: [], expanded: true };
+    node(parentId).children.push(id);
+    node(parentId).expanded = true;
+    return id;
+  }
+
+  async function branch(axisLabel, axisSub) {
+    if (busy) return;
+    const parent = selected();
+    const count = Number($('countSelect').value) || 4;
+    setError('');
+    if (!keys.has('anthropic')) { setError('Add your Anthropic API key to branch with Claude, or use "Add child by hand".'); keys.open(); return; }
+    setBusy(true, `Branching by ${axisLabel}…`);
+    try {
+      const r = await claude.send({
+        model: $('modelSelect').value,
+        effort: 'medium',
+        schema: SCHEMA,
+        system: 'You write variants of image-generation prompts. Given a parent prompt and one axis, write child prompts that each change only that axis and keep every other detail of the parent: subject, materials, counts, framing, background and output format. Each child is a complete, self-contained prompt under 120 words. Labels are 2-3 words, specific and distinct from each other. Do not add people or text to the image unless the parent already has them.',
+        messages: [{ role: 'user', content: `Parent prompt:\n${parent.prompt}\n\nAxis: ${axisLabel}${axisSub ? `\nAxis range: ${axisSub}` : ''}\n\nWrite exactly ${count} variants that spread across this axis.` }],
+      });
+      const variants = (r.json && Array.isArray(r.json.variants) ? r.json.variants : [])
+        .filter((v) => v && typeof v.prompt === 'string' && v.prompt.trim())
+        .slice(0, count);
+      if (!variants.length) throw new Error('Claude returned no variants. Try again.');
+      let first = null;
+      variants.forEach((v) => {
+        const id = addChild(parent.id, String(v.label || axisLabel).trim().slice(0, 60), axisLabel, v.prompt.trim());
+        first = first || id;
+      });
+      save();
+      select(first);
+      toast(`Added ${variants.length} variants.`);
+    } catch (err) {
+      setError(err && err.message ? err.message : String(err));
+    } finally {
+      setBusy(false);
+      renderNode();
+    }
+  }
+
+  // ── events ──────────────────────────────────────────────
+  $('treeInner').addEventListener('click', (e) => {
+    const t = e.target.closest('[data-toggle]');
+    const b = e.target.closest('[data-branch]');
+    const n = e.target.closest('[data-node]');
+    if (t) { e.stopPropagation(); const x = node(t.dataset.toggle); x.expanded = !x.expanded; save(); renderTree(); return; }
+    if (b) { e.stopPropagation(); select(b.dataset.branch, true); $('axisGrid').scrollIntoView({ block: 'nearest' }); return; }
+    if (n) select(n.dataset.node, window.matchMedia('(max-width: 767px)').matches);
+  });
+  $('treeInner').addEventListener('keydown', (e) => {
+    const n = e.target.closest('[data-node]');
+    if (n && (e.key === 'Enter' || e.key === ' ') && e.target === n) { e.preventDefault(); select(n.dataset.node, true); }
+  });
+  document.addEventListener('click', (e) => {
+    const g = e.target.closest('[data-goto]');
+    if (g) select(g.dataset.goto, true);
+  });
+  $('nodeLabel').addEventListener('input', (e) => { selected().label = e.target.value || 'Untitled'; save(); renderTree(); renderPins(); });
+  $('nodePrompt').addEventListener('input', (e) => { selected().prompt = e.target.value; save(); updateWords(); renderPins(); });
+  $('copyBtn').addEventListener('click', async () => { if (await copy(selected().prompt)) toast('Prompt copied.'); });
+  $('pinBtn').addEventListener('click', () => {
+    const id = selected().id;
+    pins = pins.includes(id) ? pins.filter((p) => p !== id) : pins.concat(id);
+    save(); renderAll();
+  });
+  $('manualChildBtn').addEventListener('click', () => {
+    const p = selected();
+    const id = addChild(p.id, p.label + ' variant', 'manual', p.prompt);
+    save(); select(id, true);
+    $('nodePrompt').focus();
+  });
+  $('deleteBtn').addEventListener('click', () => {
+    const n = selected();
+    if (n.id === 'root') return;
+    const doomed = [];
+    (function walk(id) { doomed.push(id); node(id).children.forEach(walk); })(n.id);
+    if (!window.confirm(`Delete "${n.label}"${doomed.length > 1 ? ` and ${doomed.length - 1} child node(s)` : ''}?`)) return;
+    const parent = node(n.parentId);
+    parent.children = parent.children.filter((c) => c !== n.id);
+    doomed.forEach((id) => delete tree.nodes[id]);
+    pins = pins.filter((p) => !doomed.includes(p));
+    tree.selectedId = parent.id;
+    save(); renderAll();
+  });
+  $('axisGrid').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-axis]');
+    if (b) { const a = AXES[+b.dataset.axis]; branch(a.label, a.sub); }
+  });
+  $('customAxisForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const v = $('customAxis').value.trim();
+    if (!v) return;
+    branch(v, '');
+  });
+  $('pinsBody').addEventListener('click', async (e) => {
+    const c = e.target.closest('[data-pin-copy]');
+    const u = e.target.closest('[data-unpin]');
+    if (c && await copy(node(c.dataset.pinCopy).prompt)) toast('Prompt copied.');
+    if (u) { pins = pins.filter((p) => p !== u.dataset.unpin); save(); renderAll(); }
+  });
+  $('exportPinsBtn').addEventListener('click', async () => {
+    if (!pins.length) { toast('Nothing pinned.'); return; }
+    const md = pins.map((id) => `## ${node(id).label} (${node(id).axis || 'seed'})\n\n${node(id).prompt}`).join('\n\n');
+    if (await copy(md)) toast('Pinned prompts copied as Markdown.');
+  });
+  $('exportBtn').addEventListener('click', () => download('prompt-explorer-tree.json', JSON.stringify({ version: 1, tree, pins }, null, 2)));
+  $('importBtn').addEventListener('click', () => $('importFile').click());
+  $('importFile').addEventListener('change', async (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const data = JSON.parse(await file.text());
+      const t = data.tree || data;
+      if (!t || !t.nodes || !t.nodes.root) throw new Error('missing root');
+      Object.values(t.nodes).forEach((n) => {
+        if (typeof n.id !== 'string' || typeof n.prompt !== 'string' || !Array.isArray(n.children)) throw new Error('bad node');
+        n.label = String(n.label || 'Untitled');
+        n.axis = String(n.axis || '');
+        n.children = n.children.filter((c) => t.nodes[c]);
+      });
+      tree = { nodes: t.nodes, selectedId: t.nodes[t.selectedId] ? t.selectedId : 'root' };
+      pins = (Array.isArray(data.pins) ? data.pins : []).filter((id) => tree.nodes[id]);
+      save(); renderAll();
+      toast('Tree imported.');
+    } catch {
+      toast('That file is not a Prompt Explorer tree.');
+    }
+  });
+  $('resetBtn').addEventListener('click', () => {
+    const seed = window.prompt('Seed prompt for the new tree (the current tree is replaced; export it first if you want to keep it):', node('root').prompt);
+    if (seed == null) return;
+    tree = freshTree(seed.trim() || SEED);
+    pins = [];
+    save(); renderAll();
+  });
+  $('modelSelect').addEventListener('change', (e) => store.set('pe:model', e.target.value));
+  window.addEventListener('resize', () => requestAnimationFrame(drawConnectors));
+  document.querySelector('.proto-rail').addEventListener('click', () => requestAnimationFrame(drawConnectors));
+  document.addEventListener('proto:keys', () => setError(''));
+
+  // ── init ────────────────────────────────────────────────
+  const savedModel = store.get('pe:model', claude.defaultModel);
+  $('modelSelect').innerHTML = claude.models.map((m) => `<option value="${m.id}"${m.id === savedModel ? ' selected' : ''}>${esc(m.label)}</option>`).join('');
+  keys.mount(['anthropic']);
+  renderAll();
+  tabs.init('tree');
+})();
+</script>
+</body>
+</html>

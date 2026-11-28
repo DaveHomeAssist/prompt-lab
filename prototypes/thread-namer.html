@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Thread Namer</title>
+<meta name="description" content="Personal prototype: turns a chat-thread summary into a short emoji-tagged title.">
+<meta name="robots" content="noindex,nofollow">
+<link rel="stylesheet" href="shared/proto.css">
+<script src="shared/proto.js"></script>
+<style>
+  .proto-main {
+    grid-template-columns: minmax(250px, 310px) minmax(0, 1fr) minmax(250px, 340px);
+    grid-template-areas: "setup name history";
+  }
+  [data-panel="setup"] { grid-area: setup; }
+  [data-panel="name"] { grid-area: name; }
+  [data-panel="history"] { grid-area: history; }
+  @media (min-width: 768px) and (max-width: 1199px) {
+    .proto-main {
+      grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+      grid-template-rows: minmax(0, 1.4fr) minmax(0, 1fr);
+      grid-template-areas: "setup name" "setup history";
+    }
+  }
+  @media (min-width: 2200px) {
+    .proto-main { grid-template-columns: minmax(320px, 400px) minmax(0, 1fr) minmax(360px, 520px); }
+  }
+  @media (max-width: 767px) { .proto-main { grid-template-areas: none; } .proto-main > .panel { grid-area: auto; } }
+
+  .project-list { display: flex; flex-direction: column; gap: 4px; }
+  .project-btn {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 8px 10px; border-radius: var(--radius-sm); border: 1px solid transparent;
+    background: transparent; text-align: left; cursor: pointer; color: var(--text-2);
+  }
+  .project-btn:hover { background: var(--surface-2); }
+  .project-btn[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--text); font-weight: 600; }
+  .project-btn .em { font-size: 17px; width: 22px; text-align: center; }
+  .project-btn .tag { margin-left: auto; font-size: 10px; font-family: var(--mono); color: var(--muted); }
+  .tax-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 6px; }
+  .tax-item {
+    display: flex; align-items: center; gap: 7px; padding: 6px 8px;
+    border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface);
+    font-size: 12px; color: var(--text-2); cursor: pointer; text-align: left;
+  }
+  .tax-item[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
+  .tax-item[disabled] { cursor: default; opacity: 0.85; }
+  .tax-item .e { font-size: 15px; }
+  .output {
+    border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2);
+    padding: 16px; display: flex; flex-direction: column; gap: 12px;
+  }
+  .output-title { font-family: var(--mono); font-size: 17px; font-weight: 500; word-break: break-word; }
+  .history-list { display: flex; flex-direction: column; gap: 6px; }
+  .h-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 8px; padding: 9px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+  .h-item .t { font-family: var(--mono); font-size: 12.5px; word-break: break-word; }
+  .h-item .m { grid-column: 1; font-size: 11px; color: var(--muted); }
+  .h-item .a { grid-row: 1 / span 2; grid-column: 2; display: flex; gap: 4px; align-items: center; }
+</style>
+</head>
+<body class="proto">
+<header class="proto-top">
+  <div class="proto-brand"><span class="eyebrow">Prompt Lab · Prototype</span><h1>Thread Namer</h1></div>
+  <div class="proto-actions">
+    <span id="keyStatus" data-key-status="anthropic" class="chip"></span>
+    <button class="btn sm" type="button" data-keys-open>API keys</button>
+    <button class="btn icon" type="button" data-theme-toggle></button>
+  </div>
+</header>
+
+<main class="proto-main">
+  <section class="panel" data-panel="setup" aria-labelledby="setupTitle">
+    <div class="panel-head"><h2 id="setupTitle">Setup</h2></div>
+    <div class="panel-body stack">
+      <div class="field">
+        <span class="label">Provider</span>
+        <div class="seg" id="providerSeg" role="group" aria-label="Provider">
+          <button type="button" data-provider="anthropic">Claude</button>
+          <button type="button" data-provider="openai">OpenAI</button>
+          <button type="button" data-provider="gemini">Gemini</button>
+        </div>
+      </div>
+      <div class="field">
+        <label class="label" for="modelSelect" id="modelLabel">Model</label>
+        <select class="select" id="modelSelect"></select>
+        <input class="input mono" id="modelInput" spellcheck="false" hidden>
+        <p class="hint" id="modelHint"></p>
+      </div>
+      <div class="field">
+        <div class="row"><span class="label grow">Project</span><button class="btn sm ghost" type="button" id="addProjectBtn">+ Add</button></div>
+        <div class="project-list" id="projectList"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" data-panel="name" aria-labelledby="nameTitle">
+    <div class="panel-head">
+      <h2 id="nameTitle">Name a thread</h2>
+      <span class="chip accent" id="activeBadge"></span>
+    </div>
+    <div class="panel-body stack">
+      <div class="field">
+        <div class="row"><span class="label grow">Second emoji</span><span class="hint">Pick one or leave on Auto</span></div>
+        <div class="tax-grid" id="taxGrid"></div>
+      </div>
+      <div class="field">
+        <label class="label" for="summary">Thread summary</label>
+        <textarea class="textarea" id="summary" rows="6" placeholder="Paste or type what the conversation covered…"></textarea>
+      </div>
+      <div class="row">
+        <div class="field"><label class="label" for="dateInput">Date</label><input class="input" type="date" id="dateInput" style="width:auto"></div>
+        <span class="spacer"></span>
+        <button class="btn primary" type="button" id="generateBtn" disabled>Generate <span class="hint hide-sm" style="color:inherit;opacity:.75">⌘↵</span></button>
+      </div>
+      <div class="alert" id="errorBox" role="alert" hidden></div>
+      <div class="output" id="outputBox" hidden aria-live="polite">
+        <span class="label">Title</span>
+        <div class="output-title" id="outputTitle"></div>
+        <div class="row">
+          <button class="btn sm primary" type="button" id="copyBtn">Copy</button>
+          <button class="btn sm" type="button" id="regenBtn">Regenerate</button>
+          <span class="spacer"></span>
+          <span class="hint" id="outputMeta"></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" data-panel="history" aria-labelledby="historyTitle">
+    <div class="panel-head">
+      <h2 id="historyTitle">History</h2>
+      <button class="btn sm ghost" type="button" id="exportHistoryBtn">Export</button>
+      <button class="btn sm ghost danger" type="button" id="clearHistoryBtn">Clear</button>
+    </div>
+    <div class="panel-body"><div class="history-list" id="historyList"></div></div>
+  </section>
+</main>
+
+<nav class="proto-rail" aria-label="Sections">
+  <button type="button" data-tab="setup"><span class="ico">⚙︎</span>Setup</button>
+  <button type="button" data-tab="name"><span class="ico">✎</span>Name</button>
+  <button type="button" data-tab="history"><span class="ico">☰</span>History</button>
+</nav>
+
+<dialog class="proto-dialog" id="projectDialog" aria-labelledby="projectDialogTitle">
+  <form method="dialog">
+    <div class="dlg-head"><h2 id="projectDialogTitle">Project</h2><button class="btn ghost icon" value="cancel" aria-label="Close">✕</button></div>
+    <div class="dlg-body">
+      <div class="row">
+        <div class="field" style="width:72px"><label class="label" for="pjEmoji">Emoji</label><input class="input" id="pjEmoji" maxlength="8" required></div>
+        <div class="field grow"><label class="label" for="pjName">Name</label><input class="input" id="pjName" required></div>
+      </div>
+      <div class="field"><label class="label" for="pjDesc">What the project is</label><textarea class="textarea" id="pjDesc" rows="3" style="min-height:70px"></textarea></div>
+      <div class="field">
+        <label class="label" for="pjTax">Second-emoji taxonomy</label>
+        <textarea class="textarea mono" id="pjTax" rows="7" placeholder="🐛 Debug/Fix&#10;📋 Planning/Spec"></textarea>
+        <p class="hint">One per line: emoji, a space, then the label.</p>
+      </div>
+    </div>
+    <div class="dlg-foot">
+      <button type="button" class="btn danger" id="pjDelete">Delete</button>
+      <span class="spacer"></span>
+      <button class="btn" value="cancel" formnovalidate>Cancel</button>
+      <button class="btn primary" value="save">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+(function () {
+  'use strict';
+  const { store, keys, claude, tabs, esc, toast, copy, download, uid } = Proto;
+
+  // ── projects ────────────────────────────────────────────
+  const BUILT_IN = [
+    { id: 'garden-os', name: 'Garden OS', emoji: '🌱',
+      description: 'Garden OS is a small ecosystem of tools: a garden planner, build guides, operations guides, documentation, architecture discussions, UI experiments, diagrams and system maps.',
+      taxonomy: [['🧱','Structure'],['🔨','Building'],['📐','Diagrams'],['📊','Data'],['🧭','Planning'],['🧪','Experiments'],['🌐','Architecture'],['📋','Operations'],['🛠','Troubleshooting'],['📚','Documentation'],['🧠','Planning Logic'],['🧩','System Design']] },
+    { id: 'prompt-lab', name: 'Prompt Lab', emoji: '🔬',
+      description: 'Prompt Lab is a prompt engineering workbench (browser extension, desktop app and hosted web app at promptlab.tools) with prompt enhancement, library management, A/B testing, evals and a notepad. Built with React, Vite and Tailwind.',
+      taxonomy: [['⚙️','Extension Config'],['🧩','Architecture'],['🎨','UI/Design'],['📦','Build/Deploy'],['🗃','Library/Storage'],['✏️','Editor/Prompts'],['🧪','Testing/A-B'],['🔌','API/Integration'],['🐛','Debug/Fix'],['📋','Planning/Spec'],['🚀','Shipping/Release']] },
+    { id: 'metagrid', name: 'MetaGrid', emoji: '⚡',
+      description: 'MetaGrid is a patent-pending wireless power transfer technology for remote AI data center infrastructure. It includes an investor awareness website (React SPA), a Fig 4 Handshake Simulator (PyQt6) and supporting technical documentation.',
+      taxonomy: [['🌐','Architecture'],['📡','Wireless Tech'],['💼','Investor/Pitch'],['🗺','Site/Map'],['📊','Data/Stats'],['🔬','Tech/R&D'],['📋','Spec/Docs'],['🎨','UI/Design'],['🧩','System Design'],['🚀','Launch/Deploy'],['💡','Concept/Strategy']] },
+    { id: 'graph-explorer', name: 'Graph Explorer', emoji: '🕸',
+      description: 'Graph Explorer is an interactive graph visualization and exploration tool: node/edge rendering, layout algorithms, Canvas 2D and data schema work.',
+      taxonomy: [['🧩','Node/Edge Logic'],['🎨','UI/Canvas'],['📐','Layout/Algorithm'],['⚙️','Config/Settings'],['📊','Data/Schema'],['🔌','API/Integration'],['🧪','Experiment'],['🐛','Debug/Fix'],['📋','Planning/Spec'],['🚀','Deploy/Ship'],['🌐','Architecture']] },
+    { id: 'curling-sim', name: 'Curling Sim', emoji: '🥌',
+      description: 'The Curling Simulator is a browser-based physics game of curling: stone delivery, sweeping, scoring and match logic.',
+      taxonomy: [['🎮','Game Logic'],['🧊','Physics/Ice'],['🎨','UI/Visuals'],['📐','Geometry/Scoring'],['⚙️','Config/Rules'],['🧪','Experiment'],['🐛','Debug/Fix'],['📋','Planning/Spec'],['🚀','Deploy/Ship'],['🧩','Architecture'],['📊','Stats/Data']] },
+  ];
+
+  const PROVIDER_DEFAULT_MODEL = { openai: 'gpt-4.1-mini', gemini: 'gemini-2.5-flash' };
+
+  const state = {
+    provider: store.get('tn:provider', 'anthropic'),
+    projectId: store.get('tn:project', 'prompt-lab'),
+    custom: store.get('tn:customProjects', []),
+    secondary: '',
+    history: store.get('tn:history', []),
+    lastTitle: '',
+    busy: false,
+  };
+  if (!['anthropic', 'openai', 'gemini'].includes(state.provider)) state.provider = 'anthropic';
+
+  const $ = (id) => document.getElementById(id);
+  const allProjects = () => BUILT_IN.concat(state.custom);
+  const activeProject = () => allProjects().find((p) => p.id === state.projectId) || BUILT_IN[0];
+  const badgeOf = (p) => p.name.toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+  function systemPrompt(p) {
+    const lines = p.taxonomy.map(([e, l]) => `${e} ${l.toLowerCase()}`).join('\n');
+    return `You are a documentation organizer for the ${p.name} project.
+${p.description || ''}
+
+Your job is to rename chat threads so they are short, clear and easy to scan in a long conversation list.
+
+Rules:
+1. Format: [emoji][emoji] | short descriptive title – MM-DD
+2. Use exactly 2 emojis. The first is always ${p.emoji}. The second comes from this taxonomy:
+${lines}
+3. The title is under 8 words, concrete and specific. Prefer nouns and system language.
+4. End with the date you are given, in MM-DD format, after an en dash.
+
+Return only the title on a single line: no code block, no quotes, no explanation, no alternatives.`;
+  }
+
+  // ── rendering ───────────────────────────────────────────
+  function renderProviders() {
+    document.querySelectorAll('#providerSeg [data-provider]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.provider === state.provider)));
+    $('keyStatus').setAttribute('data-key-status', state.provider);
+    keys.refreshStatus();
+    const sel = $('modelSelect');
+    const inp = $('modelInput');
+    if (state.provider === 'anthropic') {
+      sel.hidden = false; inp.hidden = true;
+      $('modelLabel').setAttribute('for', 'modelSelect');
+      const chosen = store.get('tn:model:anthropic', claude.defaultModel);
+      sel.innerHTML = claude.models.map((m) => `<option value="${m.id}"${m.id === chosen ? ' selected' : ''}>${esc(m.label)} · ${m.id}</option>`).join('');
+      $('modelHint').textContent = 'Runs at low effort; titles are short.';
+    } else {
+      sel.hidden = true; inp.hidden = false;
+      $('modelLabel').setAttribute('for', 'modelInput');
+      inp.value = store.get('tn:model:' + state.provider, PROVIDER_DEFAULT_MODEL[state.provider]);
+      $('modelHint').textContent = 'Any model ID your key can use. The default may be out of date.';
+    }
+  }
+
+  function renderProjects() {
+    $('projectList').innerHTML = allProjects().map((p) => `
+      <button type="button" class="project-btn" data-project="${esc(p.id)}" aria-pressed="${p.id === state.projectId}">
+        <span class="em">${esc(p.emoji)}</span><span>${esc(p.name)}</span>${p.custom ? '<span class="tag">custom · edit</span>' : ''}
+      </button>`).join('');
+  }
+
+  function renderTaxonomy() {
+    const p = activeProject();
+    $('activeBadge').textContent = `${p.emoji} ${badgeOf(p)}`;
+    const items = [['', 'Auto']].concat(p.taxonomy);
+    $('taxGrid').innerHTML = items.map(([e, l]) => `
+      <button type="button" class="tax-item" data-secondary="${esc(e)}" aria-pressed="${e === state.secondary}">
+        <span class="e">${e ? esc(e) : '✦'}</span><span>${esc(l)}</span>
+      </button>`).join('');
+  }
+
+  function renderHistory() {
+    const list = $('historyList');
+    if (!state.history.length) {
+      list.innerHTML = '<div class="empty"><strong>No titles yet</strong><span>Generated titles are kept here in this browser.</span></div>';
+      return;
+    }
+    list.innerHTML = state.history.map((h, i) => `
+      <div class="h-item">
+        <span class="t">${esc(h.title)}</span>
+        <span class="m">${esc(h.project)} · ${esc(new Date(h.at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }))}</span>
+        <span class="a">
+          <button type="button" class="btn sm ghost" data-copy="${i}">Copy</button>
+          <button type="button" class="btn sm ghost danger" data-remove="${i}" aria-label="Remove title">✕</button>
+        </span>
+      </div>`).join('');
+  }
+
+  function setError(msg) {
+    const box = $('errorBox');
+    box.textContent = msg || '';
+    box.hidden = !msg;
+  }
+
+  function updateGenerateEnabled() {
+    $('generateBtn').disabled = state.busy || $('summary').value.trim().length < 10;
+  }
+
+  // ── providers ───────────────────────────────────────────
+  async function callOpenAI(apiKey, model, system, user) {
+    let res;
+    try {
+      res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: 'Bearer ' + apiKey },
+        body: JSON.stringify({ model, max_completion_tokens: 2000, messages: [{ role: 'system', content: system }, { role: 'user', content: user }] }),
+      });
+    } catch { throw new Error('Could not reach api.openai.com.'); }
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new Error((data && data.error && data.error.message) || 'OpenAI request failed (' + res.status + ').');
+    return (data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
+  }
+
+  async function callGemini(apiKey, model, system, user) {
+    let res;
+    try {
+      res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-goog-api-key': apiKey },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: system }] },
+          contents: [{ role: 'user', parts: [{ text: user }] }],
+          generationConfig: { maxOutputTokens: 2000 },
+        }),
+      });
+    } catch { throw new Error('Could not reach the Gemini API.'); }
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new Error((data && data.error && data.error.message) || 'Gemini request failed (' + res.status + ').');
+    const parts = (data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || [];
+    return parts.filter((p) => !p.thought).map((p) => p.text || '').join('');
+  }
+
+  function cleanTitle(raw) {
+    const lines = String(raw || '').replace(/```[^\n]*\n?/g, '').split('\n').map((l) => l.trim().replace(/^["'`]+|["'`]+$/g, '')).filter(Boolean);
+    return lines[0] || '';
+  }
+
+  // ── generate ────────────────────────────────────────────
+  async function generate() {
+    const summary = $('summary').value.trim();
+    if (summary.length < 10 || state.busy) return;
+    const provider = state.provider;
+    const apiKey = keys.get(provider);
+    if (!apiKey) { setError(`Add your ${keys.providers[provider].label} API key first.`); keys.open(); return; }
+
+    const dateVal = $('dateInput').value;
+    const d = dateVal ? new Date(dateVal + 'T00:00:00') : new Date();
+    const mmdd = String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    const p = activeProject();
+    const system = systemPrompt(p);
+    let user = `Thread summary:\n${summary}\n\nDate: ${mmdd}`;
+    if (state.secondary) user += `\n\nUse ${state.secondary} as the second emoji.`;
+
+    state.busy = true;
+    setError('');
+    updateGenerateEnabled();
+    const btn = $('generateBtn');
+    btn.innerHTML = '<span class="spinner" aria-hidden="true"></span> Generating…';
+    try {
+      let raw;
+      let modelUsed;
+      if (provider === 'anthropic') {
+        const model = $('modelSelect').value || claude.defaultModel;
+        const r = await claude.send({ model, system, messages: [{ role: 'user', content: user }], maxTokens: 4000, effort: 'low' });
+        raw = r.text; modelUsed = r.model || model;
+      } else {
+        const model = ($('modelInput').value || PROVIDER_DEFAULT_MODEL[provider]).trim();
+        raw = provider === 'openai' ? await callOpenAI(apiKey, model, system, user) : await callGemini(apiKey, model, system, user);
+        modelUsed = model;
+      }
+      const title = cleanTitle(raw);
+      if (!title) throw new Error('The model returned an empty reply. Try again.');
+      state.lastTitle = title;
+      $('outputTitle').textContent = title;
+      $('outputMeta').textContent = modelUsed;
+      $('outputBox').hidden = false;
+      state.history.unshift({ id: uid('t'), title, project: badgeOf(p), at: Date.now() });
+      state.history = state.history.slice(0, 200);
+      store.set('tn:history', state.history);
+      renderHistory();
+    } catch (err) {
+      setError(err && err.message ? err.message : String(err));
+    } finally {
+      state.busy = false;
+      btn.innerHTML = 'Generate <span class="hint hide-sm" style="color:inherit;opacity:.75">⌘↵</span>';
+      updateGenerateEnabled();
+    }
+  }
+
+  // ── project editor ──────────────────────────────────────
+  let editingId = null;
+  function openProjectEditor(project) {
+    editingId = project ? project.id : null;
+    $('projectDialogTitle').textContent = project ? 'Edit project' : 'Add project';
+    $('pjEmoji').value = project ? project.emoji : '';
+    $('pjName').value = project ? project.name : '';
+    $('pjDesc').value = project ? project.description : '';
+    $('pjTax').value = project ? project.taxonomy.map(([e, l]) => `${e} ${l}`).join('\n') : '';
+    $('pjDelete').hidden = !project;
+    $('projectDialog').showModal();
+  }
+  $('projectDialog').addEventListener('close', () => {
+    if ($('projectDialog').returnValue !== 'save') return;
+    const name = $('pjName').value.trim();
+    const emoji = $('pjEmoji').value.trim();
+    if (!name || !emoji) return;
+    const taxonomy = $('pjTax').value.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
+      const i = l.indexOf(' ');
+      return i > 0 ? [l.slice(0, i), l.slice(i + 1).trim()] : [l, l];
+    });
+    const record = { id: editingId || uid('p'), name, emoji, description: $('pjDesc').value.trim(), taxonomy, custom: true };
+    if (editingId) state.custom = state.custom.map((p) => (p.id === editingId ? record : p));
+    else state.custom.push(record);
+    store.set('tn:customProjects', state.custom);
+    selectProject(record.id);
+    renderProjects();
+    toast(editingId ? 'Project updated.' : 'Project added.');
+  });
+  $('pjDelete').addEventListener('click', () => {
+    if (!editingId) return;
+    if (!window.confirm('Delete this project? Its titles stay in history.')) return;
+    state.custom = state.custom.filter((p) => p.id !== editingId);
+    store.set('tn:customProjects', state.custom);
+    $('projectDialog').close('cancel');
+    selectProject(BUILT_IN[0].id);
+    renderProjects();
+  });
+
+  function selectProject(id) {
+    state.projectId = id;
+    state.secondary = '';
+    store.set('tn:project', id);
+    renderProjects();
+    renderTaxonomy();
+  }
+
+  // ── events ──────────────────────────────────────────────
+  $('providerSeg').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-provider]');
+    if (!b) return;
+    state.provider = b.dataset.provider;
+    store.set('tn:provider', state.provider);
+    renderProviders();
+    setError('');
+  });
+  $('modelSelect').addEventListener('change', (e) => store.set('tn:model:anthropic', e.target.value));
+  $('modelInput').addEventListener('change', (e) => store.set('tn:model:' + state.provider, e.target.value.trim()));
+  $('projectList').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-project]');
+    if (!b) return;
+    const p = allProjects().find((x) => x.id === b.dataset.project);
+    if (p && p.custom && p.id === state.projectId) { openProjectEditor(p); return; }
+    selectProject(b.dataset.project);
+  });
+  $('addProjectBtn').addEventListener('click', () => openProjectEditor(null));
+  $('taxGrid').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-secondary]');
+    if (!b) return;
+    state.secondary = b.dataset.secondary;
+    renderTaxonomy();
+  });
+  $('summary').addEventListener('input', updateGenerateEnabled);
+  $('summary').addEventListener('keydown', (e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') generate(); });
+  $('generateBtn').addEventListener('click', generate);
+  $('regenBtn').addEventListener('click', generate);
+  $('copyBtn').addEventListener('click', async () => {
+    if (await copy(state.lastTitle)) toast('Title copied.');
+  });
+  $('historyList').addEventListener('click', async (e) => {
+    const c = e.target.closest('[data-copy]');
+    const r = e.target.closest('[data-remove]');
+    if (c) { if (await copy(state.history[+c.dataset.copy].title)) toast('Title copied.'); }
+    if (r) {
+      state.history.splice(+r.dataset.remove, 1);
+      store.set('tn:history', state.history);
+      renderHistory();
+    }
+  });
+  $('clearHistoryBtn').addEventListener('click', () => {
+    if (!state.history.length || !window.confirm('Clear all saved titles from this browser?')) return;
+    state.history = [];
+    store.set('tn:history', state.history);
+    renderHistory();
+  });
+  $('exportHistoryBtn').addEventListener('click', () => {
+    if (!state.history.length) { toast('No titles to export.'); return; }
+    download('thread-titles.txt', state.history.map((h) => h.title).join('\n') + '\n', 'text/plain');
+  });
+  document.addEventListener('proto:keys', () => { keys.refreshStatus(); setError(''); });
+
+  // ── init ────────────────────────────────────────────────
+  const today = new Date();
+  $('dateInput').value = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  if (!allProjects().some((p) => p.id === state.projectId)) state.projectId = BUILT_IN[0].id;
+  keys.mount(['anthropic', 'openai', 'gemini']);
+  renderProviders();
+  renderProjects();
+  renderTaxonomy();
+  renderHistory();
+  tabs.init('name');
+})();
+</script>
+</body>
+</html>

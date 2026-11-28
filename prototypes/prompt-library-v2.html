@@ -1,0 +1,679 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Prompt Library v2</title>
+<meta name="description" content="Personal prototype: a local prompt library with collections, tags, versions, variables and Claude test runs.">
+<meta name="robots" content="noindex,nofollow">
+<link rel="stylesheet" href="shared/proto.css">
+<script src="shared/proto.js"></script>
+<style>
+  .proto-main {
+    grid-template-columns: minmax(210px, 250px) minmax(0, 1fr) minmax(340px, 420px);
+    grid-template-areas: "filters prompts editor";
+  }
+  [data-panel="filters"] { grid-area: filters; }
+  [data-panel="prompts"] { grid-area: prompts; }
+  [data-panel="editor"] { grid-area: editor; }
+  @media (min-width: 768px) and (max-width: 1199px) {
+    .proto-main {
+      grid-template-columns: minmax(0, 1fr) minmax(320px, 400px);
+      grid-template-rows: minmax(0, 0.5fr) minmax(0, 1fr);
+      grid-template-areas: "filters editor" "prompts editor";
+    }
+  }
+  @media (min-width: 2200px) {
+    .proto-main { grid-template-columns: minmax(260px, 320px) minmax(0, 1fr) minmax(460px, 620px); }
+  }
+  @media (max-width: 767px) { .proto-main { grid-template-areas: none; } .proto-main > .panel { grid-area: auto; } }
+
+  .nav-list { display: flex; flex-direction: column; gap: 2px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 9px;
+    border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text-2);
+    text-align: left; cursor: pointer; font-size: 13px;
+  }
+  .nav-item:hover { background: var(--surface-2); }
+  .nav-item[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .nav-item .n { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .tag-cloud { display: flex; flex-wrap: wrap; gap: 5px; }
+  .pack { display: flex; gap: 10px; align-items: flex-start; padding: 9px; border: 1px dashed var(--border-strong); border-radius: var(--radius-sm); }
+  .pack .i { font-size: 18px; }
+  .pack p { margin: 2px 0 6px; font-size: 12px; color: var(--muted); }
+
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; padding: 10px 14px; border-bottom: 1px solid var(--border); flex: none; }
+  .toolbar .input { flex: 1 1 200px; }
+  .cards { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); align-content: start; }
+  .cards.list { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .ticket {
+    display: flex; flex-direction: column; gap: 8px; padding: 12px;
+    border: 1px dashed var(--border-strong); border-radius: var(--radius-sm); background: var(--surface);
+    cursor: pointer; text-align: left; min-width: 0;
+  }
+  .ticket:hover { border-color: var(--accent); }
+  .ticket[aria-current="true"] { border-style: solid; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .ticket.drag-over { border-color: var(--accent); background: var(--accent-soft); }
+  .ticket .t { font-weight: 700; font-size: 14px; overflow-wrap: anywhere; }
+  .ticket .meta { font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; }
+  .ticket .pv { font-size: 12.5px; color: var(--text-2); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .ticket .foot { display: flex; gap: 6px; align-items: center; padding-top: 8px; border-top: 1px dashed var(--border); flex-wrap: wrap; }
+  .cards.list .ticket { flex-direction: row; align-items: center; gap: 12px; padding: 8px 12px; }
+  .cards.list .ticket .pv { display: none; }
+  .cards.list .ticket .t { flex: 1 1 auto; font-size: 13px; }
+  .cards.list .ticket .foot { border: 0; padding: 0; }
+
+  .ed-section { display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .var-row { display: grid; grid-template-columns: minmax(80px, 130px) minmax(0, 1fr); gap: 6px; align-items: start; }
+  .var-row .label { padding-top: 9px; overflow-wrap: anywhere; }
+  .versions { display: flex; flex-direction: column; gap: 4px; }
+  .versions .v { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--text-2); }
+  .run-out { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px; max-height: 40vh; overflow: auto; }
+  .dirty-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warn); display: inline-block; }
+  .variant { display: grid; grid-template-columns: minmax(70px, 110px) minmax(0, 1fr) auto; gap: 6px; }
+</style>
+</head>
+<body class="proto">
+<header class="proto-top">
+  <div class="proto-brand"><span class="eyebrow">Prompt Lab · Prototype</span><h1>Prompt Library v2</h1></div>
+  <div class="proto-actions">
+    <span data-key-status="anthropic" class="chip hide-sm"></span>
+    <button class="btn sm" type="button" data-keys-open>API key</button>
+    <button class="btn icon" type="button" data-theme-toggle></button>
+  </div>
+</header>
+
+<main class="proto-main">
+  <section class="panel" data-panel="filters" aria-labelledby="filtersTitle">
+    <div class="panel-head"><h2 id="filtersTitle">Library</h2><button class="btn sm ghost" type="button" id="addCollectionBtn">+ Collection</button></div>
+    <div class="panel-body stack">
+      <div class="nav-list" id="collectionList"></div>
+      <div class="field"><span class="label">Tags</span><div class="tag-cloud" id="tagCloud"></div></div>
+      <div class="field"><span class="label">Starter packs</span><div class="stack" id="packList" style="gap:8px"></div></div>
+      <div class="field"><span class="label">Data</span>
+        <div class="row">
+          <button class="btn sm" type="button" id="importBtn">Import</button>
+          <button class="btn sm" type="button" id="exportBtn">Export JSON</button>
+          <button class="btn sm" type="button" id="exportMdBtn">Export Markdown</button>
+        </div>
+        <input type="file" id="importFile" accept="application/json,.json" hidden>
+        <p class="hint">Everything stays in this browser. Export to back it up.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" data-panel="prompts" aria-labelledby="promptsTitle">
+    <div class="panel-head">
+      <h2 id="promptsTitle">Prompts</h2>
+      <span class="chip" id="countChip"></span>
+      <button class="btn sm primary" type="button" id="newBtn">+ New prompt</button>
+    </div>
+    <div class="toolbar">
+      <input class="input" type="search" id="search" placeholder="Search titles, prompts, notes, tags" aria-label="Search prompts">
+      <select class="select" id="sortSelect" aria-label="Sort" style="width:auto">
+        <option value="updated">Recently updated</option>
+        <option value="newest">Newest</option>
+        <option value="a-z">A–Z</option>
+        <option value="most-used">Most used</option>
+        <option value="manual">Manual order</option>
+      </select>
+      <div class="seg" role="group" aria-label="View">
+        <button type="button" data-view="gallery">Gallery</button>
+        <button type="button" data-view="list">List</button>
+      </div>
+    </div>
+    <div class="panel-body"><div class="cards" id="cards"></div></div>
+  </section>
+
+  <section class="panel" data-panel="editor" aria-labelledby="editorTitle">
+    <div class="panel-head">
+      <h2 id="editorTitle">Editor</h2>
+      <span class="dirty-dot" id="dirtyDot" title="Unsaved changes" hidden></span>
+      <button class="btn sm primary" type="button" id="saveBtn" disabled>Save</button>
+    </div>
+    <div class="panel-body stack" id="editorBody"></div>
+  </section>
+</main>
+
+<nav class="proto-rail" aria-label="Sections">
+  <button type="button" data-tab="filters"><span class="ico">☰</span>Library</button>
+  <button type="button" data-tab="prompts"><span class="ico">▦</span>Prompts</button>
+  <button type="button" data-tab="editor"><span class="ico">✎</span>Editor</button>
+</nav>
+
+<script>
+(function () {
+  'use strict';
+  const { store, keys, claude, tabs, esc, toast, copy, download, uid, fmtDate } = Proto;
+  const $ = (id) => document.getElementById(id);
+  const now = Date.now();
+  const H = 3600 * 1000;
+
+  // ── seed + packs ────────────────────────────────────────
+  const SEED = [
+    { title: 'Release notes from commits', collection: 'Engineering', tags: ['changelog', 'writing'], original: 'Write release notes from these commits.',
+      enhanced: 'You are a senior release engineer. Given a list of git commits, produce release notes organized by **Features**, **Fixes** and **Breaking Changes**. Each entry is one sentence at most, past tense, user-facing voice. Group by area when commits share a scope. Skip refactors unless user-visible.\n\nCommits:\n{{commits}}',
+      notes: 'Works well with conventional-commit repos. Struggles with merge-commit noise.', variants: [{ label: 'Terse', content: 'One bullet per commit, no grouping.' }], useCount: 14, age: 72 },
+    { title: 'PR review — security lens', collection: 'Engineering', tags: ['code-review', 'security'], original: 'Review this PR for security issues.',
+      enhanced: 'You are an application security reviewer. Review the diff below and flag: injection paths, missing authz checks, secret handling, unsafe deserialization and dependency CVEs. For each finding include severity (Low/Med/High/Critical), file:line, a one-line impact and a minimal patch suggestion. Return "No issues found" only if the diff is empty or trivial.\n\nDiff:\n{{diff}}', notes: '', useCount: 7, age: 48 },
+    { title: 'Incident post-mortem skeleton', collection: 'Engineering', tags: ['incident', 'writing'], original: 'Write up this incident.',
+      enhanced: 'Write a blameless post-mortem from the notes below with these sections: Summary, Impact (who, how many, how long), Timeline in UTC, Root cause, What went well, What went poorly, Action items (owner and due date each). Mark anything the notes do not establish as "Unknown".\n\nNotes:\n{{notes}}', notes: '', useCount: 0, age: 6 },
+    { title: 'Landing-page hero rewrite', collection: 'Marketing', tags: ['copy', 'landing'], original: 'Rewrite this hero to be less buzzwordy.',
+      enhanced: 'You are a landing-page copywriter for developer-tools products. Rewrite the hero copy below to (1) lead with the user outcome, not the product name; (2) remove "AI-powered", "seamless" and "revolutionary"; (3) keep the headline to 8 words and the subhead to 24 words. Return three distinct options, each in the voice given in {{voice}}.\n\nHero:\n{{hero}}',
+      notes: 'Swap {{voice}} for Basecamp / Linear / Stripe to see the range.', useCount: 22, age: 168 },
+    { title: 'Changelog → post thread', collection: 'Marketing', tags: ['social', 'copy'], original: 'Turn this changelog into a thread.',
+      enhanced: 'You are a product marketer writing for developers. Convert the changelog entries into a 5–7 post thread. Post 1 hooks with the headline feature. Each later post covers one capability in 240 characters or fewer, plain prose, no emoji except a single ⚡ on the hook post. End with the docs URL.\n\nChangelog:\n{{changelog}}', notes: '', useCount: 3, age: 20 },
+    { title: 'Competitive teardown', collection: 'Research', tags: ['analysis'], original: 'Analyse this product.',
+      enhanced: 'You are a product analyst. Given the marketing site content below, produce: (1) one-sentence positioning, (2) three core jobs-to-be-done, (3) pricing summary, (4) likely ideal customer, (5) two plausible weaknesses grounded in what the copy omits. Cite specific phrases from the source for each claim.\n\nSource:\n{{content}}', notes: '', useCount: 1, age: 80 },
+    { title: 'Paper abstract → plain English', collection: 'Research', tags: ['writing', 'education'], original: 'Explain this paper simply.',
+      enhanced: 'You are explaining a machine-learning paper to a smart generalist engineer who has not read it. Paraphrase the abstract below in 120 words or fewer: what problem, what method, what result, what caveat. Avoid LaTeX. Define any jargon inline.\n\nAbstract:\n{{abstract}}', notes: 'Useful for sharing arXiv links.', useCount: 9, age: 264 },
+  ];
+
+  const PACKS = [
+    { id: 'pack-coding', icon: '💻', name: 'Coding', blurb: 'Debugging, tests and refactors.', prompts: [
+      { title: 'Explain this stack trace', tags: ['debugging'], enhanced: 'You are a senior engineer helping debug. Given the stack trace and code below: (1) name the most likely root cause in one sentence, (2) point to the frame and line that matters, (3) give the smallest fix, (4) list one check that confirms it. If the trace is not enough, say what to log next.\n\nStack trace:\n{{trace}}\n\nRelevant code:\n{{code}}' },
+      { title: 'Write tests for a function', tags: ['testing'], enhanced: 'Write unit tests in {{framework}} for the function below. Cover the main path, each branch, boundary values, invalid input and one regression case named after the bug it guards. Use descriptive test names. Do not mock what you can construct.\n\nFunction:\n{{code}}' },
+      { title: 'Refactor for readability', tags: ['refactor'], enhanced: 'Refactor the code below for readability without changing behavior. Keep public names and signatures. Prefer smaller functions and clearer names over comments. Return the refactored code, then a short list of each change and why it is safe.\n\nCode:\n{{code}}' },
+    ] },
+    { id: 'pack-writing', icon: '✍️', name: 'Writing', blurb: 'Editing, docs and replies.', prompts: [
+      { title: 'Tighten a draft', tags: ['editing'], enhanced: 'Edit the draft below for clarity and length. Cut filler, passive voice and hedges; keep the author\'s voice and every factual claim. Target {{length}}. Return the edited text, then the three biggest changes in one line each.\n\nDraft:\n{{draft}}' },
+      { title: 'Docs page rewrite', tags: ['docs'], enhanced: 'Rewrite this documentation page for a reader who wants to get one task done. Start with what the page helps them do, then numbered steps, then troubleshooting. Use second person, present tense and short sentences. Keep every command and code sample exactly as written.\n\nPage:\n{{page}}' },
+      { title: 'Email reply in three tones', tags: ['email'], enhanced: 'Draft a reply to the email below in three versions: brief, warm and firm. Each is under {{words}} words, answers every question asked and ends with a clear next step.\n\nEmail:\n{{email}}' },
+    ] },
+    { id: 'pack-research', icon: '🔬', name: 'Research', blurb: 'Interviews, briefs and comparisons.', prompts: [
+      { title: 'User interview guide', tags: ['interviews'], enhanced: 'Write a 30-minute user interview guide about {{topic}} for {{audience}}. Include a warm-up, five open questions about past behavior rather than opinions, follow-up probes for each and a closing. Avoid leading questions.' },
+      { title: 'Brief from sources', tags: ['synthesis'], enhanced: 'Summarize the sources below into a one-page brief on {{question}}. Every claim cites its source as [n]. Separate what the sources agree on, where they disagree and what none of them answer.\n\nSources:\n{{sources}}' },
+      { title: 'Compare options', tags: ['decision'], enhanced: 'Compare the options below for {{decision}}. Build a table of the criteria that matter for this decision, score each option with a one-line reason, then recommend one and name what would change the recommendation.\n\nOptions:\n{{options}}' },
+    ] },
+  ];
+
+  function normalize(r, i) {
+    const t = Date.now();
+    return {
+      id: typeof r.id === 'string' && r.id ? r.id : uid('p'),
+      title: String(r.title || 'Untitled prompt').slice(0, 200),
+      collection: String(r.collection || ''),
+      tags: Array.isArray(r.tags) ? r.tags.map(String).map((s) => s.trim()).filter(Boolean) : [],
+      original: String(r.original || ''),
+      enhanced: String(r.enhanced || r.prompt || r.content || ''),
+      notes: String(r.notes || ''),
+      variants: Array.isArray(r.variants) ? r.variants.filter((v) => v && (v.content || v.label)).map((v) => ({ label: String(v.label || 'Variant'), content: String(v.content || '') })) : [],
+      versions: Array.isArray(r.versions) ? r.versions.filter((v) => v && v.savedAt).map((v) => ({ savedAt: Number(v.savedAt), enhanced: String(v.enhanced || ''), original: String(v.original || '') })).slice(0, 25) : [],
+      useCount: Number(r.useCount) || 0,
+      createdAt: Number(r.createdAt) || (t - (i || 0) * 1000),
+      updatedAt: Number(r.updatedAt) || Number(r.createdAt) || t,
+    };
+  }
+
+  function loadState() {
+    const saved = store.get('lib:data', null);
+    if (saved && Array.isArray(saved.library)) {
+      return { library: saved.library.map(normalize), collections: Array.isArray(saved.collections) ? saved.collections.map(String) : [], packs: saved.packs || {} };
+    }
+    const library = SEED.map((s) => normalize({ ...s, createdAt: now - s.age * H, updatedAt: now - s.age * H }));
+    return { library, collections: ['Engineering', 'Marketing', 'Research'], packs: {} };
+  }
+
+  let data = loadState();
+  const ui = {
+    collection: null, tag: null, search: '', sort: store.get('lib:sort', 'updated'), view: store.get('lib:view', 'gallery'),
+    selectedId: null, draft: null, dirty: false, runOut: '', runBusy: false, vars: {},
+  };
+  const persist = () => store.set('lib:data', data);
+
+  // ── helpers ─────────────────────────────────────────────
+  const varsIn = (s) => [...new Set((String(s || '').match(/\{\{\s*[\w-]+\s*\}\}/g) || []).map((m) => m.replace(/[{}\s]/g, '')))];
+  function looksSensitive(s) {
+    if (!s) return false;
+    return /\b\d{3}-\d{2}-\d{4}\b/.test(s) || /\b(?:\d[ -]*?){13,19}\b/.test(s) || /sk-[A-Za-z0-9_-]{16,}/.test(s) || /AIza[0-9A-Za-z_-]{20,}/.test(s);
+  }
+  const entry = (id) => data.library.find((e) => e.id === id);
+  function fill(text, values) {
+    return String(text || '').replace(/\{\{\s*([\w-]+)\s*\}\}/g, (m, k) => (values[k] != null && values[k] !== '' ? values[k] : m));
+  }
+
+  function filtered() {
+    const q = ui.search.trim().toLowerCase();
+    let rows = data.library.filter((e) => {
+      if (ui.collection === '__none' && e.collection) return false;
+      if (ui.collection && ui.collection !== '__none' && e.collection !== ui.collection) return false;
+      if (ui.tag && !e.tags.includes(ui.tag)) return false;
+      if (q && !`${e.title}\n${e.original}\n${e.enhanced}\n${e.notes}\n${e.tags.join(' ')}`.toLowerCase().includes(q)) return false;
+      return true;
+    });
+    const s = ui.sort;
+    if (s === 'updated') rows.sort((a, b) => b.updatedAt - a.updatedAt);
+    else if (s === 'newest') rows.sort((a, b) => b.createdAt - a.createdAt);
+    else if (s === 'a-z') rows.sort((a, b) => a.title.localeCompare(b.title));
+    else if (s === 'most-used') rows.sort((a, b) => b.useCount - a.useCount);
+    return rows;
+  }
+
+  // ── filters panel ───────────────────────────────────────
+  function renderFilters() {
+    const count = (c) => data.library.filter((e) => (c === '__none' ? !e.collection : e.collection === c)).length;
+    const items = [{ key: null, label: 'All prompts', n: data.library.length }]
+      .concat(data.collections.map((c) => ({ key: c, label: c, n: count(c) })))
+      .concat(count('__none') ? [{ key: '__none', label: 'No collection', n: count('__none') }] : []);
+    $('collectionList').innerHTML = items.map((it) => `
+      <button type="button" class="nav-item" data-collection="${it.key == null ? '' : esc(it.key)}" aria-pressed="${ui.collection === it.key}">
+        <span>${esc(it.label)}</span><span class="n">${it.n}</span>
+      </button>`).join('');
+    const tags = [...new Set(data.library.flatMap((e) => e.tags))].sort();
+    $('tagCloud').innerHTML = tags.length
+      ? tags.map((t) => `<button type="button" class="chip" data-tag="${esc(t)}" aria-pressed="${ui.tag === t}">#${esc(t)}</button>`).join('')
+      : '<span class="hint">No tags yet.</span>';
+    $('packList').innerHTML = PACKS.map((p) => {
+      const loaded = Boolean(data.packs[p.id]);
+      return `<div class="pack"><span class="i">${p.icon}</span><div class="grow"><strong>${esc(p.name)}</strong><p>${esc(p.blurb)} ${p.prompts.length} prompts.</p>
+        <button type="button" class="btn sm" data-pack="${p.id}"${loaded ? ' disabled' : ''}>${loaded ? 'Added' : 'Add pack'}</button></div></div>`;
+    }).join('');
+  }
+
+  // ── cards ───────────────────────────────────────────────
+  function renderCards() {
+    const rows = filtered();
+    $('countChip').textContent = rows.length === data.library.length ? `${rows.length}` : `${rows.length} of ${data.library.length}`;
+    const el = $('cards');
+    el.className = 'cards' + (ui.view === 'list' ? ' list' : '');
+    document.querySelectorAll('[data-view]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === ui.view)));
+    $('sortSelect').value = ui.sort;
+    if (!rows.length) {
+      el.innerHTML = data.library.length
+        ? '<div class="empty"><strong>No matches</strong><span>Clear the search or filters.</span></div>'
+        : '<div class="empty"><strong>Your library is empty</strong><span>Create a prompt, import a file or add a starter pack.</span></div>';
+      return;
+    }
+    const draggable = ui.sort === 'manual';
+    el.innerHTML = rows.map((e) => {
+      const v = varsIn(e.enhanced).length;
+      const meta = [e.collection || 'No collection', `${e.useCount} uses`, v ? `${v} vars` : '', e.versions.length ? `v${e.versions.length}` : '', !e.enhanced.trim() ? 'Draft' : ''].filter(Boolean);
+      return `<div class="ticket" role="button" tabindex="0" data-open="${esc(e.id)}" aria-current="${e.id === ui.selectedId}"${draggable ? ' draggable="true"' : ''}>
+        <span class="t">${esc(e.title)}</span>
+        <span class="meta">${meta.map((m) => `<span>${esc(m)}</span>`).join('')}</span>
+        <span class="pv">${esc(e.enhanced || e.original || 'Empty prompt')}</span>
+        <span class="foot">
+          ${e.tags.slice(0, 3).map((t) => `<span class="chip">#${esc(t)}</span>`).join('')}
+          <span class="spacer"></span>
+          <button type="button" class="btn sm" data-copy="${esc(e.id)}">Copy</button>
+        </span>
+      </div>`;
+    }).join('');
+  }
+
+  // ── editor ──────────────────────────────────────────────
+  function startEdit(id) {
+    if (ui.draft && ui.selectedId === id) return true; // already open: keep the draft as it is
+    if (ui.dirty && !window.confirm('Discard unsaved changes?')) return false;
+    const e = entry(id);
+    ui.selectedId = e ? e.id : null;
+    ui.draft = e ? JSON.parse(JSON.stringify(e)) : null;
+    ui.dirty = false;
+    ui.runOut = '';
+    ui.runFor = null;
+    ui.vars = {};
+    renderEditor();
+    renderCards();
+    return true;
+  }
+
+  function markDirty() {
+    ui.dirty = true;
+    $('dirtyDot').hidden = false;
+    $('saveBtn').disabled = false;
+  }
+
+  function renderEditor() {
+    const body = $('editorBody');
+    const d = ui.draft;
+    $('dirtyDot').hidden = !ui.dirty;
+    $('saveBtn').disabled = !d || !ui.dirty;
+    if (!d) {
+      body.innerHTML = '<div class="empty"><strong>No prompt selected</strong><span>Pick a prompt to edit it, or create a new one.</span></div>';
+      return;
+    }
+    const vars = varsIn(d.enhanced);
+    ui.varKey = vars.join('|');
+    const tagText = Array.isArray(d.tags) ? d.tags.join(', ') : String(d.tags || '');
+    const sensitive = looksSensitive(d.enhanced) || looksSensitive(d.original) || looksSensitive(d.notes);
+    const collectionOpts = ['<option value="">No collection</option>'].concat(data.collections.map((c) => `<option${c === d.collection ? ' selected' : ''}>${esc(c)}</option>`)).join('');
+    body.innerHTML = `
+      ${sensitive ? '<div class="alert warn">This prompt may contain a key, card number or ID number.</div>' : ''}
+      <div class="field"><label class="label" for="edTitle">Title</label><input class="input" id="edTitle" data-f="title" value="${esc(d.title)}"></div>
+      <div class="row">
+        <div class="field grow"><label class="label" for="edCollection">Collection</label><select class="select" id="edCollection" data-f="collection">${collectionOpts}</select></div>
+        <div class="field grow"><label class="label" for="edTags">Tags</label><input class="input" id="edTags" data-f="tags" value="${esc(tagText)}" placeholder="comma, separated"></div>
+      </div>
+      <div class="field"><label class="label" for="edPrompt">Prompt</label><textarea class="textarea mono" id="edPrompt" data-f="enhanced" rows="10" style="font-size:12.5px">${esc(d.enhanced)}</textarea>
+        <p class="hint">Use {{name}} for fill-in values.</p></div>
+      <div class="field"><label class="label" for="edOriginal">Original ask</label><textarea class="textarea" id="edOriginal" data-f="original" rows="2" style="min-height:56px">${esc(d.original)}</textarea></div>
+      <div class="field"><label class="label" for="edNotes">Notes</label><textarea class="textarea" id="edNotes" data-f="notes" rows="2" style="min-height:56px">${esc(d.notes)}</textarea></div>
+
+      <div class="ed-section">
+        <div class="row"><span class="label grow">Variants</span><button type="button" class="btn sm ghost" id="addVariantBtn">+ Variant</button></div>
+        ${d.variants.length ? d.variants.map((v, i) => `<div class="variant">
+            <input class="input" data-variant-label="${i}" value="${esc(v.label)}" aria-label="Variant label">
+            <input class="input" data-variant-content="${i}" value="${esc(v.content)}" aria-label="Variant instruction">
+            <button type="button" class="btn sm ghost danger" data-variant-remove="${i}" aria-label="Remove variant">✕</button></div>`).join('') : '<p class="hint">Short instructions you append when running, e.g. "Terse".</p>'}
+      </div>
+
+      <div class="ed-section">
+        <span class="label">Use it</span>
+        ${vars.length ? vars.map((k) => `<div class="var-row"><label class="label" for="var-${esc(k)}">${esc(k)}</label><textarea class="textarea" id="var-${esc(k)}" data-var="${esc(k)}" rows="1" style="min-height:36px">${esc(ui.vars[k] || '')}</textarea></div>`).join('') : '<p class="hint">No {{variables}} in this prompt.</p>'}
+        ${d.variants.length ? `<label class="field"><span class="label">Variant</span><select class="select" id="variantPick"><option value="">None</option>${d.variants.map((v, i) => `<option value="${i}">${esc(v.label)}</option>`).join('')}</select></label>` : ''}
+        <div class="row">
+          <button type="button" class="btn sm primary" id="copyFilledBtn">Copy ${vars.length ? 'filled ' : ''}prompt</button>
+          <select class="select" id="runModel" aria-label="Claude model" style="width:auto;min-height:28px;padding:2px 6px">${claude.models.map((m) => `<option value="${m.id}"${m.id === store.get('lib:model', claude.defaultModel) ? ' selected' : ''}>${esc(m.label)}</option>`).join('')}</select>
+          <button type="button" class="btn sm" id="runBtn"${ui.runBusy ? ' disabled' : ''}>${ui.runBusy ? (ui.runFor === d.id ? '<span class="spinner" aria-hidden="true"></span> Running…' : 'Another test is running…') : 'Test with Claude'}</button>
+        </div>
+        <div class="alert" id="runError" role="alert" hidden></div>
+        ${ui.runOut ? `<div class="run-out" aria-live="polite">${esc(ui.runOut)}</div><div class="row"><button type="button" class="btn sm" id="copyRunBtn">Copy reply</button></div>` : ''}
+      </div>
+
+      <div class="ed-section">
+        <span class="label">Versions</span>
+        ${d.versions.length ? `<div class="versions">${d.versions.map((v, i) => `<div class="v"><span class="grow">${esc(new Date(v.savedAt).toLocaleString())}</span><button type="button" class="btn sm ghost" data-restore="${i}">Restore</button></div>`).join('')}</div>` : '<p class="hint">Each save keeps the previous prompt here.</p>'}
+      </div>
+
+      <div class="ed-section">
+        <div class="row">
+          <button type="button" class="btn sm" id="dupBtn">Duplicate</button>
+          ${ui.sort === 'manual' ? '<button type="button" class="btn sm" id="upBtn" aria-label="Move up">↑</button><button type="button" class="btn sm" id="downBtn" aria-label="Move down">↓</button>' : ''}
+          <span class="spacer"></span>
+          <button type="button" class="btn sm ghost danger" id="deleteBtn">Delete</button>
+        </div>
+        <p class="hint">Created ${esc(fmtDate(d.createdAt))} · used ${d.useCount} times</p>
+      </div>`;
+  }
+
+  function saveDraft() {
+    const d = ui.draft;
+    const e = d && entry(d.id);
+    if (!e) return;
+    const tagsVal = typeof d.tags === 'string' ? d.tags : d.tags.join(',');
+    const next = { ...d, title: d.title.trim() || 'Untitled prompt', tags: [...new Set(tagsVal.split(',').map((t) => t.trim().replace(/^#/, '')).filter(Boolean))], updatedAt: Date.now() };
+    if (e.enhanced !== next.enhanced || e.original !== next.original) {
+      next.versions = [{ savedAt: e.updatedAt || Date.now(), enhanced: e.enhanced, original: e.original }].concat(e.versions || []).slice(0, 25);
+    }
+    Object.assign(e, next);
+    ui.draft = JSON.parse(JSON.stringify(e));
+    ui.dirty = false;
+    persist();
+    renderAll();
+    toast('Saved.');
+  }
+
+  function newPrompt() {
+    if (ui.dirty && !window.confirm('Discard unsaved changes?')) return;
+    const collection = ui.collection && ui.collection !== '__none' ? ui.collection : '';
+    const e = normalize({ title: 'Untitled prompt', collection, createdAt: Date.now(), updatedAt: Date.now() });
+    data.library.unshift(e);
+    persist();
+    ui.dirty = false;
+    startEdit(e.id);
+    renderFilters();
+    tabs.show('editor');
+    const t = $('edTitle');
+    if (t) { t.focus(); t.select(); }
+  }
+
+  async function run() {
+    const d = ui.draft;
+    if (!d || ui.runBusy) return;
+    const err = $('runError');
+    const prompt = filledPrompt();
+    if (!prompt.trim()) { err.textContent = 'The prompt is empty.'; err.hidden = false; return; }
+    if (!keys.has('anthropic')) { keys.open(); return; }
+    const sourceId = d.id;
+    const sourceTitle = d.title;
+    const stillOpen = () => ui.draft && ui.draft.id === sourceId;
+    ui.runBusy = true;
+    ui.runOut = '';
+    ui.runFor = sourceId;
+    renderEditor();
+    try {
+      const r = await claude.send({ model: $('runModel') ? $('runModel').value : claude.defaultModel, effort: 'medium', messages: [{ role: 'user', content: prompt }] });
+      const e = entry(sourceId);
+      if (e) { e.useCount += 1; persist(); }
+      if (stillOpen()) {
+        ui.runOut = r.text || '(empty reply)';
+        ui.draft.useCount = e ? e.useCount : ui.draft.useCount;
+      } else {
+        toast(`Reply for "${sourceTitle}" arrived after you switched prompts. Run it again to see it.`);
+      }
+    } catch (ex) {
+      ui.runBusy = false;
+      if (!stillOpen()) { toast(`Test run for "${sourceTitle}" failed.`); renderEditor(); return; }
+      ui.runOut = '';
+      renderEditor();
+      const box = $('runError');
+      box.textContent = ex && ex.message ? ex.message : String(ex);
+      box.hidden = false;
+      return;
+    }
+    ui.runBusy = false;
+    renderEditor();
+    renderCards();
+  }
+
+  function filledPrompt() {
+    const d = ui.draft;
+    let text = fill(d.enhanced, ui.vars);
+    const pick = $('variantPick');
+    if (pick && pick.value !== '' && d.variants[+pick.value]) text += '\n\n' + d.variants[+pick.value].content;
+    return text;
+  }
+
+  function renderAll() { renderFilters(); renderCards(); renderEditor(); }
+
+  // ── events ──────────────────────────────────────────────
+  $('collectionList').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-collection]');
+    if (!b) return;
+    ui.collection = b.dataset.collection || null;
+    renderFilters(); renderCards();
+    if (window.matchMedia('(max-width: 767px)').matches) tabs.show('prompts');
+  });
+  $('collectionList').addEventListener('dblclick', (e) => {
+    const b = e.target.closest('[data-collection]');
+    const name = b && b.dataset.collection;
+    if (!name || name === '__none') return;
+    const next = window.prompt('Rename collection (leave empty to delete it; its prompts move to No collection):', name);
+    if (next == null) return;
+    const clean = next.trim();
+    data.library.forEach((x) => { if (x.collection === name) x.collection = clean; });
+    data.collections = data.collections.map((c) => (c === name ? clean : c)).filter(Boolean);
+    data.collections = [...new Set(data.collections)];
+    if (ui.collection === name) ui.collection = clean || null;
+    if (ui.draft && ui.draft.collection === name) ui.draft.collection = clean;
+    persist(); renderAll();
+  });
+  $('addCollectionBtn').addEventListener('click', () => {
+    const name = (window.prompt('New collection name:') || '').trim();
+    if (!name) return;
+    if (!data.collections.includes(name)) data.collections.push(name);
+    persist(); renderAll();
+    toast('Collection added. Double-click a collection to rename or delete it.');
+  });
+  $('tagCloud').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-tag]');
+    if (!b) return;
+    ui.tag = ui.tag === b.dataset.tag ? null : b.dataset.tag;
+    renderFilters(); renderCards();
+  });
+  $('packList').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-pack]');
+    const p = b && PACKS.find((x) => x.id === b.dataset.pack);
+    if (!p || data.packs[p.id]) return;
+    const t = Date.now();
+    const rows = p.prompts.map((x, i) => normalize({ ...x, collection: p.name, createdAt: t - i, updatedAt: t - i }));
+    data.library = rows.concat(data.library);
+    if (!data.collections.includes(p.name)) data.collections.push(p.name);
+    data.packs[p.id] = t;
+    persist(); renderAll();
+    toast(`Added ${rows.length} ${p.name} prompts.`);
+  });
+  $('search').addEventListener('input', (e) => { ui.search = e.target.value; renderCards(); });
+  $('sortSelect').addEventListener('change', (e) => { ui.sort = e.target.value; store.set('lib:sort', ui.sort); renderCards(); renderEditor(); });
+  document.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => { ui.view = b.dataset.view; store.set('lib:view', ui.view); renderCards(); }));
+  $('newBtn').addEventListener('click', newPrompt);
+
+  $('cards').addEventListener('click', async (e) => {
+    const c = e.target.closest('[data-copy]');
+    if (c) {
+      e.stopPropagation();
+      const x = entry(c.dataset.copy);
+      if (x && await copy(x.enhanced || x.original)) {
+        x.useCount += 1; persist(); renderCards();
+        if (ui.draft && ui.draft.id === x.id) ui.draft.useCount = x.useCount;
+        toast('Prompt copied.');
+      }
+      return;
+    }
+    const o = e.target.closest('[data-open]');
+    if (o && startEdit(o.dataset.open) && window.matchMedia('(max-width: 767px)').matches) tabs.show('editor');
+  });
+  $('cards').addEventListener('keydown', (e) => {
+    const o = e.target.closest('[data-open]');
+    if (o && e.target === o && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); if (startEdit(o.dataset.open)) tabs.show('editor'); }
+  });
+  let dragId = null;
+  $('cards').addEventListener('dragstart', (e) => { const o = e.target.closest('[data-open]'); dragId = o ? o.dataset.open : null; });
+  $('cards').addEventListener('dragover', (e) => {
+    const o = e.target.closest('[data-open]');
+    if (!dragId || !o) return;
+    e.preventDefault();
+    document.querySelectorAll('.ticket.drag-over').forEach((t) => t.classList.remove('drag-over'));
+    o.classList.add('drag-over');
+  });
+  $('cards').addEventListener('drop', (e) => {
+    const o = e.target.closest('[data-open]');
+    if (!dragId || !o || o.dataset.open === dragId) { dragId = null; renderCards(); return; }
+    e.preventDefault();
+    const from = data.library.findIndex((x) => x.id === dragId);
+    const [moved] = data.library.splice(from, 1);
+    const to = data.library.findIndex((x) => x.id === o.dataset.open);
+    data.library.splice(to, 0, moved);
+    dragId = null;
+    persist(); renderCards();
+  });
+  $('cards').addEventListener('dragend', () => { dragId = null; document.querySelectorAll('.ticket.drag-over').forEach((t) => t.classList.remove('drag-over')); });
+
+  $('editorBody').addEventListener('input', (e) => {
+    const d = ui.draft;
+    if (!d) return;
+    const f = e.target.dataset.f;
+    if (f) {
+      d[f] = e.target.value;
+      markDirty();
+      if (f === 'enhanced' && varsIn(d.enhanced).join('|') !== ui.varKey) {
+        const pos = e.target.selectionStart;
+        renderEditor();
+        const t = $('edPrompt');
+        t.focus();
+        t.setSelectionRange(pos, pos);
+      }
+      return;
+    }
+    if (e.target.dataset.var) { ui.vars[e.target.dataset.var] = e.target.value; return; }
+    if (e.target.dataset.variantLabel != null) { d.variants[+e.target.dataset.variantLabel].label = e.target.value; markDirty(); return; }
+    if (e.target.dataset.variantContent != null) { d.variants[+e.target.dataset.variantContent].content = e.target.value; markDirty(); }
+  });
+  $('editorBody').addEventListener('change', (e) => {
+    if (e.target.id === 'runModel') store.set('lib:model', e.target.value);
+    if (e.target.dataset.f === 'collection') { ui.draft.collection = e.target.value; markDirty(); }
+  });
+  $('editorBody').addEventListener('click', async (e) => {
+    const d = ui.draft;
+    if (!d) return;
+    const id = e.target.closest('button') && e.target.closest('button').id;
+    if (id === 'addVariantBtn') { d.variants.push({ label: 'Variant ' + (d.variants.length + 1), content: '' }); markDirty(); renderEditor(); return; }
+    const rm = e.target.closest('[data-variant-remove]');
+    if (rm) { d.variants.splice(+rm.dataset.variantRemove, 1); markDirty(); renderEditor(); return; }
+    const rs = e.target.closest('[data-restore]');
+    if (rs) {
+      const v = d.versions[+rs.dataset.restore];
+      d.enhanced = v.enhanced; d.original = v.original;
+      markDirty(); renderEditor();
+      toast('Version loaded. Save to keep it.');
+      return;
+    }
+    if (id === 'copyFilledBtn') {
+      if (await copy(filledPrompt())) {
+        const x = entry(d.id); if (x) { x.useCount += 1; d.useCount = x.useCount; persist(); renderCards(); }
+        toast('Prompt copied.');
+      }
+    } else if (id === 'runBtn') run();
+    else if (id === 'copyRunBtn') { if (await copy(ui.runOut)) toast('Reply copied.'); }
+    else if (id === 'dupBtn') {
+      if (ui.dirty) {
+        if (!window.confirm('Save your changes to this prompt before duplicating it?')) return;
+        saveDraft();
+      }
+      const src = entry(d.id);
+      const copyRow = normalize({ ...src, id: '', title: src.title + ' (copy)', versions: [], useCount: 0, createdAt: Date.now(), updatedAt: Date.now() });
+      data.library.splice(data.library.indexOf(src) + 1, 0, copyRow);
+      persist(); ui.dirty = false; startEdit(copyRow.id); renderFilters();
+      toast('Duplicated.');
+    } else if (id === 'deleteBtn') {
+      if (!window.confirm(`Delete "${d.title}"? Export first if you might want it back.`)) return;
+      data.library = data.library.filter((x) => x.id !== d.id);
+      ui.selectedId = null; ui.draft = null; ui.dirty = false;
+      persist(); renderAll();
+      tabs.show('prompts');
+    } else if (id === 'upBtn' || id === 'downBtn') {
+      const i = data.library.findIndex((x) => x.id === d.id);
+      const j = id === 'upBtn' ? i - 1 : i + 1;
+      if (j < 0 || j >= data.library.length) return;
+      [data.library[i], data.library[j]] = [data.library[j], data.library[i]];
+      persist(); renderCards();
+    }
+  });
+  $('saveBtn').addEventListener('click', saveDraft);
+  document.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's' && ui.dirty) { e.preventDefault(); saveDraft(); }
+  });
+  window.addEventListener('beforeunload', (e) => { if (ui.dirty) { e.preventDefault(); e.returnValue = ''; } });
+
+  $('exportBtn').addEventListener('click', () => {
+    if (!data.library.length) { toast('Library is empty.'); return; }
+    if (data.library.some((x) => looksSensitive(x.enhanced) || looksSensitive(x.original) || looksSensitive(x.notes))
+      && !window.confirm('Some prompts may contain keys or personal numbers. Export anyway?')) return;
+    download('promptlab-library.json', JSON.stringify({ version: 2, exportedAt: new Date().toISOString(), library: data.library, collections: data.collections }, null, 2));
+  });
+  $('exportMdBtn').addEventListener('click', () => {
+    if (!data.library.length) { toast('Library is empty.'); return; }
+    const md = data.library.map((x) => `## ${x.title}\n\n${[x.collection && `Collection: ${x.collection}`, x.tags.length && `Tags: ${x.tags.join(', ')}`].filter(Boolean).join(' · ')}\n\n\`\`\`text\n${x.enhanced}\n\`\`\`${x.notes ? `\n\n${x.notes}` : ''}`).join('\n\n');
+    download('promptlab-library.md', '# Prompt library\n\n' + md + '\n', 'text/markdown');
+  });
+  $('importBtn').addEventListener('click', () => $('importFile').click());
+  $('importFile').addEventListener('change', async (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const parsed = JSON.parse(await file.text());
+      const rows = Array.isArray(parsed) ? parsed : parsed.library;
+      if (!Array.isArray(rows) || !rows.length) throw new Error('no rows');
+      const existing = new Set(data.library.map((x) => x.id));
+      const incoming = rows.filter((r) => r && typeof r === 'object').map(normalize).map((r) => (existing.has(r.id) ? { ...r, id: uid('p') } : r));
+      if (!window.confirm(`Import ${incoming.length} prompts? They are added to your library; nothing is replaced.`)) return;
+      data.library = incoming.concat(data.library);
+      const cols = new Set(data.collections.concat(Array.isArray(parsed.collections) ? parsed.collections.map(String) : [], incoming.map((r) => r.collection).filter(Boolean)));
+      data.collections = [...cols];
+      persist(); renderAll();
+      toast(`Imported ${incoming.length} prompts.`);
+    } catch {
+      toast('That file is not a prompt library export.');
+    }
+  });
+  document.addEventListener('proto:keys', () => { const b = $('runError'); if (b) b.hidden = true; });
+
+  // ── init ────────────────────────────────────────────────
+  keys.mount(['anthropic']);
+  renderAll();
+  tabs.init('prompts');
+})();
+</script>
+</body>
+</html>
