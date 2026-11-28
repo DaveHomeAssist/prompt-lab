@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Run Object Research</title>
+<meta name="description" content="Personal prototype: April 2026 research on a provider-neutral Run Object schema for Prompt Lab.">
+<meta name="robots" content="noindex,nofollow">
+<link rel="stylesheet" href="shared/proto.css">
+<script src="shared/proto.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" integrity="sha384-bs/nf9FbdNouRbMiFcrcZfLXYPKiPaGVGplVbv7dLGECccEXDW+S3zjqSKR5ZEaD" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<style>
+  .proto-main { grid-template-columns: minmax(0, 1fr); }
+  .proto-top { gap: 18px; }
+  .doc { display: grid; gap: 16px; grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr); align-items: start; }
+  @media (max-width: 1099px) { .doc { grid-template-columns: minmax(0, 1fr); } }
+  @media (min-width: 2200px) { .doc { grid-template-columns: minmax(0, 2fr) minmax(420px, 1fr); max-width: 2400px; } }
+  .lede { font-size: 15px; color: var(--text-2); max-width: 70ch; margin: 0; }
+  .doc h3 { margin: 0 0 4px; font-size: 14px; }
+  .doc p { margin: 0; color: var(--text-2); }
+  .finding { display: flex; gap: 12px; align-items: flex-start; }
+  .finding .n { font-family: var(--mono); font-size: 12px; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); flex: none; }
+  .chart-box { position: relative; height: min(56vh, 460px); min-height: 260px; }
+  .verdict { border-left: 3px solid var(--ok); }
+  .verdict.no { border-left-color: var(--warn); }
+  .schema { font-family: var(--mono); font-size: 12.5px; line-height: 1.7; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; overflow: auto; }
+  .schema .k { color: var(--accent); }
+  .schema .ty { color: var(--ok); }
+  .schema .c { color: var(--muted); }
+  .schema .ix { font-size: 10px; padding: 1px 6px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); margin-left: 6px; }
+  .schema .grp { padding-left: 18px; }
+  table.data { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.data th, table.data td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  table.data th { font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+  table.data td.num { font-family: var(--mono); text-align: right; }
+</style>
+</head>
+<body class="proto single">
+<header class="proto-top">
+  <div class="proto-brand" style="flex:0 1 auto"><span class="eyebrow">Prompt Lab · Research</span><h1>Run Object</h1></div>
+  <nav class="proto-tabs" aria-label="Sections">
+    <button type="button" data-tab="overview">Overview</button>
+    <button type="button" data-tab="vendors">Vendor tracking</button>
+    <button type="button" data-tab="storage">Storage</button>
+    <button type="button" data-tab="schema">Schema</button>
+  </nav>
+  <span class="spacer"></span>
+  <div class="proto-actions"><button class="btn icon" type="button" data-theme-toggle></button></div>
+</header>
+
+<main class="proto-main">
+  <section class="panel" data-panel="overview" aria-labelledby="ovTitle">
+    <div class="panel-head"><h2 id="ovTitle">Overview</h2><span class="chip">Research snapshot · April 2026</span></div>
+    <div class="panel-body stack">
+      <p class="lede">A standard schema for prompt runs across providers, models and evaluation sessions, designed for a browser-extension-first product.</p>
+      <div class="doc">
+        <div class="stack">
+          <div class="card finding"><span class="n">1</span><div><h3>Vendor tracking</h3><p>Observability tools split into two camps. LangSmith and W&amp;B Prompts go deep on evaluation and chain tracing; Helicone and PromptLayer sit in the request path and capture latency, tokens and template versions.</p>
+            <button type="button" class="btn sm ghost" data-go="vendors" style="margin-top:6px">See the comparison →</button></div></div>
+          <div class="card finding"><span class="n">2</span><div><h3>Storage trade-off</h3><p>Dexie.js on IndexedDB works everywhere an extension runs but queries nested traces slowly. A local SQLite router queries well but needs a separate host process.</p>
+            <button type="button" class="btn sm ghost" data-go="storage" style="margin-top:6px">See the trade-off →</button></div></div>
+          <div class="card finding"><span class="n">3</span><div><h3>Proposed v1 schema</h3><p>Document-first hybrid: store the raw trace as one document and lift the query paths (provider, model, session, tags, time) to flat, indexed fields.</p>
+            <button type="button" class="btn sm ghost" data-go="schema" style="margin-top:6px">See the schema →</button></div></div>
+        </div>
+        <div class="card stack">
+          <h3>Decision</h3>
+          <p>Keep everything queryable at the root or in compound IndexedDB indexes. Store messages, raw tool calls and provider payloads as untyped JSON so writes stay fast and never block the main thread.</p>
+          <p class="hint">Scores in this research are the April 2026 team's subjective 0–10 ratings, not benchmarks. Model names reflect that time.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" data-panel="vendors" aria-labelledby="vTitle">
+    <div class="panel-head"><h2 id="vTitle">Vendor tracking depth</h2><button type="button" class="btn sm ghost" data-table-toggle="vendor">Show as table</button></div>
+    <div class="panel-body">
+      <div class="doc">
+        <div class="card"><div class="chart-box" id="vendorChartBox"><canvas id="vendorChart" role="img" aria-label="Radar chart comparing LangSmith and Helicone tracking depth across six dimensions"></canvas></div><div id="vendorTable" hidden></div></div>
+        <div class="stack">
+          <div class="card"><h3>LangSmith and W&amp;B</h3><p>Strongest on evaluation metrics, session tagging and multi-step chain tracing. Rely heavily on document and event storage.</p></div>
+          <div class="card"><h3>Helicone and PromptLayer</h3><p>Prioritize latency, exact token usage and fine-grained template versioning. Often run as a proxy that captures the raw HTTP request.</p></div>
+          <p class="hint">Only LangSmith and Helicone were scored; they stand in for each camp.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" data-panel="storage" aria-labelledby="sTitle">
+    <div class="panel-head"><h2 id="sTitle">Storage architecture</h2><button type="button" class="btn sm ghost" data-table-toggle="storage">Show as table</button></div>
+    <div class="panel-body">
+      <div class="doc">
+        <div class="card"><div class="chart-box" id="storageChartBox"><canvas id="storageChart" role="img" aria-label="Bar chart comparing Dexie.js and a local SQLite router on five storage capabilities"></canvas></div><div id="storageTable" hidden></div>
+          <p class="hint" style="margin-top:8px">Higher is better on every axis.</p></div>
+        <div class="stack">
+          <div class="card verdict"><h3>✓ Dexie.js (IndexedDB)</h3><p>Best extension compatibility and the easiest to ship. Querying heavily nested JSON such as trace trees is slow, so it needs a document-first schema with flattened, indexed fields.</p></div>
+          <div class="card verdict no"><h3>✕ Local SQLite router</h3><p>Better relational queries and write throughput, but it breaks the extension-first experience by requiring a separate background host process.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" data-panel="schema" aria-labelledby="scTitle">
+    <div class="panel-head"><h2 id="scTitle">Proposed v1 RunObject</h2><button type="button" class="btn sm" id="copySchemaBtn">Copy as TypeScript</button></div>
+    <div class="panel-body">
+      <div class="doc">
+        <div class="schema" id="schemaTree"></div>
+        <div class="stack">
+          <div class="card"><h3>Document-first hybrid</h3><p>The raw execution trace is one large document. The fields you query by are copied to flat top-level attributes so Dexie can index them.</p></div>
+          <div class="card"><h3>Indexes</h3><p>Single indexes on <span class="mono">timestamp</span>, <span class="mono">provider</span>, <span class="mono">model</span> and <span class="mono">metadata.session_id</span>; a multi-entry index on <span class="mono">metadata.tags</span>.</p></div>
+          <div class="card"><h3>Not indexed</h3><p>Messages, choices and tool calls stay untyped JSON blobs, which keeps writes fast.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<nav class="proto-rail" aria-label="Sections">
+  <button type="button" data-tab="overview"><span class="ico">◎</span>Overview</button>
+  <button type="button" data-tab="vendors"><span class="ico">✶</span>Vendors</button>
+  <button type="button" data-tab="storage"><span class="ico">▤</span>Storage</button>
+  <button type="button" data-tab="schema"><span class="ico">{ }</span>Schema</button>
+</nav>
+
+<script>
+(function () {
+  'use strict';
+  const { tabs, esc, copy, toast, store } = Proto;
+  const $ = (id) => document.getElementById(id);
+
+  const VENDOR = {
+    labels: ['Input & output payloads', 'Model & config params', 'Token & cost usage', 'Latency & timing', 'Prompt version tracking', 'Evaluation & tagging'],
+    series: [{ name: 'LangSmith', data: [10, 8, 8, 7, 6, 10] }, { name: 'Helicone', data: [9, 9, 10, 10, 8, 6] }],
+  };
+  const STORAGE = {
+    labels: ['Write throughput', 'Query flexibility', 'Sync complexity', 'Browser compatibility', 'Large payloads'],
+    series: [{ name: 'Dexie.js (IndexedDB)', data: [7, 5, 8, 10, 6] }, { name: 'Local router (SQLite)', data: [9, 10, 6, 3, 9] }],
+  };
+
+  const SCHEMA = [
+    ['id', 'string', 'uuid v4, primary key', true],
+    ['timestamp', 'iso-8601', 'chronological queries', true],
+    ['provider', 'string', "e.g. 'openai', 'anthropic'", true],
+    ['model', 'string', 'model ID used for the run', true],
+    ['request_data', [
+      ['messages', 'array', 'raw input payload'],
+      ['temperature', 'float', 'sampling setting, when the provider takes one'],
+    ]],
+    ['response_data', [
+      ['choices', 'array', 'raw output payload'],
+      ['latency_ms', 'integer', 'time to first token / total completion'],
+      ['usage', 'object', 'prompt and completion tokens'],
+    ]],
+    ['metadata', [
+      ['session_id', 'string', 'groups runs into chats or evals', true],
+      ['prompt_template_id', 'string', 'links to the source template'],
+      ['tags', 'array<string>', 'user-defined markers', 'multi-entry'],
+    ]],
+  ];
+
+  function renderSchema() {
+    const row = ([k, t, c, ix]) => `<div><span class="k">${esc(k)}</span>: <span class="ty">${esc(t)}</span> <span class="c">// ${esc(c)}</span>${ix ? `<span class="ix">${ix === true ? 'indexed' : esc(ix)}</span>` : ''}</div>`;
+    $('schemaTree').innerHTML = '<div>RunObject {</div><div class="grp">' + SCHEMA.map((f) => Array.isArray(f[1])
+      ? `<div><span class="k">${esc(f[0])}</span>: {</div><div class="grp">${f[1].map(row).join('')}</div><div>}</div>`
+      : row(f)).join('') + '</div><div>}</div>';
+  }
+
+  function schemaAsTs() {
+    const ts = { string: 'string', 'iso-8601': 'string', float: 'number', integer: 'number', array: 'unknown[]', object: 'Record<string, unknown>', 'array<string>': 'string[]' };
+    const line = (f, pad) => `${pad}${f[0]}: ${ts[f[1]] || 'unknown'}; // ${f[2]}`;
+    return 'interface RunObject {\n' + SCHEMA.map((f) => Array.isArray(f[1])
+      ? `  ${f[0]}: {\n${f[1].map((g) => line(g, '    ')).join('\n')}\n  };`
+      : line(f, '  ')).join('\n') + '\n}\n';
+  }
+
+  function tableFor(d) {
+    return `<table class="data"><thead><tr><th>Dimension</th>${d.series.map((s) => `<th>${esc(s.name)}</th>`).join('')}</tr></thead><tbody>${d.labels.map((l, i) => `<tr><td>${esc(l)}</td>${d.series.map((s) => `<td class="num">${s.data[i]}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+  }
+
+  const charts = {};
+  function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+  function alpha(hex, a) {
+    const h = hex.replace('#', '');
+    const n = parseInt(h.length === 3 ? h.split('').map((x) => x + x).join('') : h, 16);
+    return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`;
+  }
+  function palette() {
+    const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+    return { a: dark ? '#a78bfa' : '#6d28d9', b: dark ? '#22d3ee' : '#0e7490', text: css('--text-2'), grid: css('--border') };
+  }
+
+  function wrap(label, width) {
+    if (label.length <= width) return label;
+    const lines = [];
+    let line = '';
+    label.split(' ').forEach((w) => {
+      if ((line + ' ' + w).trim().length > width && line) { lines.push(line); line = w; } else { line = (line + ' ' + w).trim(); }
+    });
+    if (line) lines.push(line);
+    return lines;
+  }
+  const tooltip = { callbacks: { title: (items) => { const l = items[0].chart.data.labels[items[0].dataIndex]; return Array.isArray(l) ? l.join(' ') : l; } } };
+
+  function drawCharts() {
+    if (!window.Chart) {
+      ['vendor', 'storage'].forEach((k) => {
+        $(k + 'ChartBox').hidden = true;
+        const t = $(k + 'Table');
+        t.hidden = false;
+        t.innerHTML = '<p class="hint" style="margin-bottom:8px">Chart library did not load (offline?). Showing the data instead.</p>' + tableFor(k === 'vendor' ? VENDOR : STORAGE);
+      });
+      document.querySelectorAll('[data-table-toggle]').forEach((b) => { b.hidden = true; });
+      return;
+    }
+    const p = palette();
+    Chart.defaults.font.family = css('--font');
+    Chart.defaults.color = p.text;
+    Object.values(charts).forEach((c) => c.destroy());
+    const narrow = window.matchMedia('(max-width: 767px)').matches;
+    const width = narrow ? 12 : 18;
+    const vendorVisible = $('vendorChart').offsetParent !== null;
+    const storageVisible = $('storageChart').offsetParent !== null;
+    if (vendorVisible) {
+      charts.vendor = new Chart($('vendorChart'), {
+        type: 'radar',
+        data: { labels: VENDOR.labels.map((l) => wrap(l, width)), datasets: VENDOR.series.map((s, i) => {
+          const c = i ? p.b : p.a;
+          return { label: s.name, data: s.data, borderColor: c, backgroundColor: alpha(c, 0.16), pointBackgroundColor: c, borderWidth: 2 };
+        }) },
+        options: { maintainAspectRatio: false, plugins: { legend: { position: 'top' }, tooltip },
+          scales: { r: { min: 0, max: 10, ticks: { display: false, stepSize: 2 }, grid: { color: p.grid }, angleLines: { color: p.grid }, pointLabels: { color: p.text, font: { size: narrow ? 10.5 : 12 } } } } },
+      });
+    }
+    if (storageVisible) {
+      charts.storage = new Chart($('storageChart'), {
+        type: 'bar',
+        data: { labels: STORAGE.labels.map((l) => wrap(l, narrow ? 10 : 18)), datasets: STORAGE.series.map((s, i) => ({ label: s.name, data: s.data, backgroundColor: i ? p.b : p.a, borderRadius: 4, maxBarThickness: 36 })) },
+        options: { maintainAspectRatio: false, plugins: { legend: { position: 'top' }, tooltip },
+          scales: { y: { min: 0, max: 10, ticks: { stepSize: 2 }, grid: { color: p.grid } }, x: { grid: { display: false } } } },
+      });
+    }
+  }
+
+  document.querySelectorAll('[data-table-toggle]').forEach((b) => b.addEventListener('click', () => {
+    const k = b.dataset.tableToggle;
+    const box = $(k + 'ChartBox');
+    const t = $(k + 'Table');
+    const showTable = t.hidden;
+    t.hidden = !showTable;
+    box.hidden = showTable;
+    if (showTable) t.innerHTML = tableFor(k === 'vendor' ? VENDOR : STORAGE);
+    b.textContent = showTable ? 'Show as chart' : 'Show as table';
+    if (!showTable) drawCharts();
+  }));
+  document.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => tabs.show(b.dataset.go)));
+  $('copySchemaBtn').addEventListener('click', async () => { if (await copy(schemaAsTs())) toast('Schema copied as a TypeScript interface.'); });
+  document.addEventListener('proto:tab', (e) => { store.set('research:tab', e.detail); requestAnimationFrame(drawCharts); });
+  document.addEventListener('proto:theme', () => requestAnimationFrame(drawCharts));
+
+  renderSchema();
+  const startTab = store.get('research:tab', 'overview');
+  tabs.init(['overview', 'vendors', 'storage', 'schema'].includes(startTab) ? startTab : 'overview');
+})();
+</script>
+</body>
+</html>
