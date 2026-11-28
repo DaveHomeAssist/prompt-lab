@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-11-27T15:42:56.000Z",
+  "snapshotAt": "2026-11-28T05:16:56.000Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "3e62991244695e4dc9f49eecfaea05c36c71d24c",
+  "mainSha": "265f4b2000823c7fc4bf0f6fec04d18122f9e9a1",
   "overall": "Acceptance incomplete",
   "nextAction": "Continue N03 bulk icon/tag/metadata editing from the prepared allowlist, preview and acknowledged-write contract. N01 Copy code and N02 contextual Chat are accepted. Other November and independent storage/billing/native/human gates remain with their owning records.",
   "evidence": [
+    {
+      "label": "New Prompt returns focus to the prompt input",
+      "state": "Open",
+      "detail": "November 28. Choosing New Prompt from the command palette and confirming left focus nowhere, because the reset dialog returned focus to the palette's closed search box. PR352 marks the editor for focus after a new or reset draft and focuses the prompt input after the dialog closes. Merged as 265f4b2 and deployed; the live app bundle carries the change. On Dominic under Node 22 the extension Vitest suite (1,998 tests), 237 legacy tests and 15 app browser tests pass, and the new browser test fails on the old code. Signed-in production acceptance is pending.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/352"
+    },
     {
       "label": "Sign-in back link returns repeat visitors to the landing page",
       "state": "Verified",
@@ -2504,6 +2510,18 @@
       "inPlan": false,
       "nextAction": null,
       "verification": "PR350 merged 3e62991; post-merge Landing CI passed; live production acceptance on November 27."
+    },
+    {
+      "id": "426255fc8f44819b9bc5d29d5a62fef6",
+      "title": "New Prompt from the command palette leaves no focus after confirming",
+      "status": "In progress",
+      "severity": "Low",
+      "area": "Editor",
+      "type": "Bug",
+      "url": "https://app.notion.com/426255fc8f44819b9bc5d29d5a62fef6",
+      "inPlan": false,
+      "nextAction": "Confirm in the signed-in app that Cmd-K, New Prompt, Start new prompt leaves the cursor in the prompt box.",
+      "verification": "PR352 merged 265f4b2 and deployed; Dominic browser test passes and fails on the old code; signed-in acceptance pending."
     }
   ]
 }
