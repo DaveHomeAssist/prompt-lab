@@ -157,6 +157,10 @@ export default function App({
   const [enhMdPreview, setEnhMdPreview] = useState(false);
   const [resultTab, setResultTab] = useState('improved');
   const [showResetDraftConfirmation, setShowResetDraftConfirmation] = useState(false);
+  // Set when a new or reset draft should take keyboard focus. The opener (a
+  // header button or the command palette) may no longer exist, so the editor
+  // pane focuses the prompt input itself and then clears this flag.
+  const [editorFocusPending, setEditorFocusPending] = useState(false);
   const [pendingResetIntent, setPendingResetIntent] = useState('reset');
   const [splitMobilePane, setSplitMobilePane] = useState('library');
   const [scratchOpenNoteId, setScratchOpenNoteId] = useState('');
@@ -560,6 +564,8 @@ export default function App({
       dismissSaveReceipt();
       clearEditor();
       openCreateView('editor');
+      setMdPreview(false);
+      setEditorFocusPending(true);
       return;
     }
     setPendingResetIntent(intent === 'new' ? 'new' : 'reset');
@@ -571,9 +577,11 @@ export default function App({
     dismissSaveReceipt();
     clearEditor();
     openCreateView('editor');
+    setMdPreview(false);
     setEnhMdPreview(false);
     setResultTab('improved');
     setShowResetDraftConfirmation(false);
+    setEditorFocusPending(true);
     notify(`${pendingResetIntent === 'new' ? 'New prompt started' : 'Draft reset'}. Undo is available.`);
   };
 
@@ -1515,6 +1523,7 @@ export default function App({
               raw={raw} setRaw={setRaw}
               updateCursor={updateCursor}
               mdPreview={mdPreview} setMdPreview={setMdPreview}
+              focusPending={editorFocusPending} onFocusHandled={() => setEditorFocusPending(false)}
               wc={wc} score={score} inp={inp}
               lintIssues={lintIssues} lintOpen={lintOpen} setLintOpen={setLintOpen} handleLintFix={handleLintFix}
               enhMode={enhMode} setEnhMode={setEnhMode}

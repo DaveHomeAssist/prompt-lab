@@ -190,9 +190,23 @@ export default function CreateEditorPane({
   // Pending Library details, so the context bar can count them as unsaved.
   saveCollection,
   saveTags,
+  // Focus the prompt input once, after New Prompt or Reset draft.
+  focusPending = false,
+  onFocusHandled,
 }) {
   // ── Scoring strip (inline) ──
   const rawInputRef = useRef(null);
+  useEffect(() => {
+    if (!focusPending) return undefined;
+    // Runs after the reset dialog's own focus restoration, which is queued
+    // first in the same commit, so the prompt input ends up focused.
+    const frame = requestAnimationFrame(() => {
+      rawInputRef.current?.focus();
+      onFocusHandled?.();
+    });
+    return () => cancelAnimationFrame(frame);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusPending]);
   const lintScope = editingId || 'draft';
   const [dismissedHints, setDismissedHints] = useState(() => readDismissedLintHints(lintScope));
   useEffect(() => { setDismissedHints(readDismissedLintHints(lintScope)); }, [lintScope]);
